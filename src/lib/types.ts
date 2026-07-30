@@ -6,7 +6,7 @@ export type SourceType = 'twitter' | 'gdelt' | 'reddit' | 'hackernews' | 'google
 export type MentionType = 'post' | 'article' | 'story' | 'comment' | 'trend_signal';
 export type Phase = 'forming' | 'rising' | 'formed' | 'decaying';
 export type Legitimacy = 'LEGIT' | 'BOT_CAMPAIGN' | 'TWITTER_NATIVE' | 'PRE_BURST' | 'NOISE' | 'UNCERTAIN';
-export type AgentName = 'scout' | 'cluster' | 'score' | 'phase' | 'validator' | 'orchestrator';
+export type AgentName = 'scout' | 'cluster' | 'score' | 'phase' | 'validator' | 'evaluator' | 'orchestrator';
 export type AgentStatus = 'idle' | 'running' | 'success' | 'failed' | 'waiting';
 
 // ─── Normalized mention ──────────────────────────────────────────────────

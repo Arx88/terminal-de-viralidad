@@ -13,7 +13,8 @@ const AGENT_COLORS: Record<string, string> = {
   score: '#2DD4BF',
   phase: '#A78BFA',
   validator: '#F87171',
-  orchestrator: '#00FF9F',
+  evaluator: '#00FF9F',
+  orchestrator: '#94A3B8',
 };
 
 const AGENT_ICONS: Record<string, string> = {
@@ -22,7 +23,18 @@ const AGENT_ICONS: Record<string, string> = {
   score: 'Σ',
   phase: '⟲',
   validator: '✓',
+  evaluator: '⚖',
   orchestrator: '◉',
+};
+
+const AGENT_NAMES_ES: Record<string, string> = {
+  scout: 'Scout — Recolector',
+  cluster: 'Cluster — Agrupador',
+  score: 'Score — Puntuador',
+  phase: 'Phase — Clasificador',
+  validator: 'Validator — Validador',
+  evaluator: 'Evaluator — Crítico',
+  orchestrator: 'Orchestrator',
 };
 
 export function AgentActivityPanel({ activities, loops }: AgentActivityPanelProps) {
@@ -84,40 +96,48 @@ export function AgentActivityPanel({ activities, loops }: AgentActivityPanelProp
           activities.map(act => {
             const color = AGENT_COLORS[act.agent] ?? '#7D8590';
             const icon = AGENT_ICONS[act.agent] ?? '·';
+            const name_es = AGENT_NAMES_ES[act.agent] ?? act.agent;
             return (
               <div
                 key={act.id}
-                className="px-3 py-2 border-b hover:bg-[#161B22] transition-colors"
+                className="px-3 py-2.5 border-b hover:bg-[#161B22] transition-colors"
                 style={{ borderColor: '#161B22' }}
               >
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="font-mono" style={{ color, fontSize: 11 }}>{icon}</span>
-                  <span className="font-mono uppercase" style={{ color, fontSize: 10, fontWeight: 600, letterSpacing: '0.5px' }}>
-                    {act.agent}
+                  <span className="font-mono" style={{ color, fontSize: 12 }}>{icon}</span>
+                  <span className="font-sans" style={{ color, fontSize: 11, fontWeight: 600 }}>
+                    {name_es}
                   </span>
                   <span
                     className="font-mono"
                     style={{
                       fontSize: 8,
-                      padding: '1px 4px',
+                      padding: '1px 5px',
                       borderRadius: 2,
                       background: act.status === 'success' ? '#2DD4BF20' : act.status === 'failed' ? '#F8717120' : act.status === 'waiting' ? '#FBBF2420' : '#7D859020',
                       color: act.status === 'success' ? '#2DD4BF' : act.status === 'failed' ? '#F87171' : act.status === 'waiting' ? '#FBBF24' : '#7D8590',
                       letterSpacing: '0.5px',
                     }}
                   >
-                    {act.status}
+                    {act.status === 'success' ? 'OK' : act.status === 'failed' ? 'FAIL' : act.status === 'waiting' ? 'WAIT' : act.status.toUpperCase()}
                   </span>
                   <span className="font-mono ml-auto" style={{ color: '#7D8590', fontSize: 9 }}>
-                    i{act.iteration} · {act.duration_ms ?? 0}ms
+                    iter {act.iteration} · {act.duration_ms ?? 0}ms
                   </span>
                 </div>
-                <div className="font-mono" style={{ color: '#94A3B8', fontSize: 10, lineHeight: 1.3 }}>
+                {/* Explicación en español del LLM */}
+                {act.explanation && (
+                  <div className="font-sans mb-1.5" style={{ color: '#E6EDF3', fontSize: 11, lineHeight: 1.4 }}>
+                    {act.explanation}
+                  </div>
+                )}
+                {/* Output técnico compacto */}
+                <div className="font-mono" style={{ color: '#7D8590', fontSize: 9, lineHeight: 1.3 }}>
                   {act.output_summary}
                 </div>
                 {act.metrics && Object.keys(act.metrics).length > 0 && (
                   <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-1 font-mono" style={{ fontSize: 9 }}>
-                    {Object.entries(act.metrics).slice(0, 4).map(([k, v]) => (
+                    {Object.entries(act.metrics).slice(0, 5).map(([k, v]) => (
                       <span key={k} style={{ color: '#7D8590' }}>
                         <span style={{ opacity: 0.6 }}>{k}:</span>{' '}
                         <span style={{ color: '#94A3B8' }}>{String(v)}</span>

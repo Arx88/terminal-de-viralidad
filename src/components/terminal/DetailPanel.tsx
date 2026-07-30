@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import type { Narrative } from '@/lib/types';
-import { PHASE_CONFIG, LEGITIMACY_CONFIG } from '@/lib/types';
+import { PHASE_CONFIG } from '@/lib/types';
 import { PhaseBadge, LegitimacyBadge } from './Badges';
 import { Sparkline } from './Sparkline';
 
@@ -17,11 +17,11 @@ export function DetailPanel({ narrative }: DetailPanelProps) {
 
   if (!narrative) {
     return (
-      <div className="h-full flex items-center justify-center font-mono" style={{ color: '#484F58', fontSize: 12 }}>
+      <div className="h-full flex items-center justify-center font-sans" style={{ color: '#484F58', fontSize: 13 }}>
         <div className="text-center">
-          <div style={{ fontSize: 28, marginBottom: 8 }}>◇</div>
-          <div>select a narrative from the left panel</div>
-          <div style={{ marginTop: 4, fontSize: 10 }}>j/k navigate · enter open</div>
+          <div className="font-mono" style={{ fontSize: 32, marginBottom: 12, color: '#2DD4BF' }}>◇</div>
+          <div style={{ marginBottom: 6 }}>Seleccioná una narrativa del panel izquierdo</div>
+          <div className="font-mono" style={{ fontSize: 10, color: '#30363D' }}>j/k navegar · enter abrir · / buscar</div>
         </div>
       </div>
     );
@@ -29,80 +29,131 @@ export function DetailPanel({ narrative }: DetailPanelProps) {
 
   const cfg = PHASE_CONFIG[narrative.status];
   const sampleMention = narrative.sample_mentions[effectiveIdx];
+  const ageHours = ((Date.now() - narrative.first_seen) / 3600_000).toFixed(1);
 
   return (
-    <div className="h-full flex flex-col overflow-hidden">
+    <div className="h-full flex flex-col overflow-auto custom-scroll">
       {/* Header */}
-      <div className="px-4 py-3 border-b" style={{ borderColor: '#21262D' }}>
-        <div className="flex items-center justify-between mb-1.5">
-          <div className="flex items-center gap-2">
-            <span className="font-mono" style={{ color: cfg.color, fontSize: 14 }}>{cfg.icon}</span>
-            <h2 className="font-mono font-bold truncate" style={{ color: '#E6EDF3', fontSize: 16, letterSpacing: '-0.01em' }}>
-              {narrative.title}
-            </h2>
+      <div className="px-5 py-4 border-b" style={{ borderColor: '#21262D', background: cfg.glow }}>
+        <div className="flex items-start justify-between gap-3 mb-2">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="font-mono" style={{ color: cfg.color, fontSize: 18 }}>{cfg.icon}</span>
+              <h2 className="font-sans font-bold" style={{ color: '#E6EDF3', fontSize: 19, lineHeight: 1.2, letterSpacing: '-0.01em' }}>
+                {narrative.title}
+              </h2>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <PhaseBadge phase={narrative.status} confidence={narrative.phase_confidence} />
+              <LegitimacyBadge legitimacy={narrative.legitimacy} size="md" />
+              <span className="font-mono" style={{ color: '#7D8590', fontSize: 10 }}>
+                hace {ageHours}h · {narrative.mention_count} menciones · {narrative.source_count} fuentes
+              </span>
+            </div>
           </div>
-          <PhaseBadge phase={narrative.status} confidence={narrative.phase_confidence} />
         </div>
-        <p className="font-sans" style={{ color: '#94A3B8', fontSize: 11, lineHeight: 1.4 }}>
-          {narrative.summary}
-        </p>
       </div>
 
-      {/* Stats row */}
-      <div className="grid grid-cols-6 border-b" style={{ borderColor: '#21262D' }}>
+      {/* BRIEFING — the most important section */}
+      <div className="px-5 py-4 border-b" style={{ borderColor: '#21262D', background: '#0D1117' }}>
+        <div className="flex items-center gap-2 mb-2">
+          <span className="font-mono" style={{ color: '#5EEAD4', fontSize: 11, fontWeight: 600, letterSpacing: '1.5px' }}>
+            ▮ BRIEFING
+          </span>
+          {narrative.briefing_pending && (
+            <span className="font-mono" style={{ color: '#FBBF24', fontSize: 9 }}>
+              <span style={{ display: 'inline-block', width: 5, height: 5, background: '#FBBF24', borderRadius: '50%', marginRight: 4, animation: 'pulse-dot 1s ease-in-out infinite' }} />
+              generando...
+            </span>
+          )}
+        </div>
+        {narrative.briefing ? (
+          <p className="font-sans" style={{ color: '#E6EDF3', fontSize: 13, lineHeight: 1.55 }}>
+            {narrative.briefing}
+          </p>
+        ) : (
+          <p className="font-sans" style={{ color: '#484F58', fontSize: 12, fontStyle: 'italic' }}>
+            El briefing se está generando con el LLM...
+          </p>
+        )}
+      </div>
+
+      {/* Legitimacy explanation */}
+      {narrative.legitimacy_explanation && (
+        <div className="px-5 py-3 border-b" style={{ borderColor: '#21262D' }}>
+          <div className="font-mono mb-1.5" style={{ color: '#7D8590', fontSize: 10, letterSpacing: '1.5px' }}>
+            ¿POR QUÉ ESTA LEGITIMIDAD?
+          </div>
+          <p className="font-sans" style={{ color: '#94A3B8', fontSize: 12, lineHeight: 1.5 }}>
+            {narrative.legitimacy_explanation}
+          </p>
+        </div>
+      )}
+
+      {/* Stats row — labels en español */}
+      <div className="grid grid-cols-5 border-b" style={{ borderColor: '#21262D' }}>
         {[
-          { label: 'SCORE', value: narrative.current_score.toFixed(0), color: '#2DD4BF' },
-          { label: 'VEL', value: narrative.velocity_1h.toFixed(1) + '/h', color: '#E6EDF3' },
-          { label: 'MAT', value: (narrative.maturity_score * 100).toFixed(0) + '%', color: '#E6EDF3' },
-          { label: 'PEN', value: (narrative.trash_penalty * 100).toFixed(0) + '%', color: '#E6EDF3' },
-          { label: 'SRCS', value: String(narrative.source_count), color: '#E6EDF3' },
-          { label: 'ITER', value: String(narrative.loop_iterations), color: '#5EEAD4' },
+          { label: 'SCORE', value: narrative.current_score.toFixed(0), sub: '/100', color: '#2DD4BF' },
+          { label: 'VELOCIDAD', value: (narrative.velocity_score * 100).toFixed(0), sub: '%', color: '#E6EDF3' },
+          { label: 'MADUREZ', value: (narrative.maturity_score * 100).toFixed(0), sub: '%', color: '#E6EDF3' },
+          { label: 'CALIDAD', value: (narrative.trash_penalty * 100).toFixed(0), sub: '%', color: '#E6EDF3' },
+          { label: 'ITER', value: String(narrative.loop_iterations), sub: '', color: '#5EEAD4' },
         ].map(s => (
-          <div key={s.label} className="px-3 py-2 border-r last:border-r-0" style={{ borderColor: '#21262D' }}>
-            <div className="font-mono font-bold tabular-nums" style={{ color: s.color, fontSize: 14 }}>{s.value}</div>
-            <div className="font-mono" style={{ color: '#7D8590', fontSize: 8, letterSpacing: '1px' }}>{s.label}</div>
+          <div key={s.label} className="px-3 py-3 border-r last:border-r-0" style={{ borderColor: '#21262D' }}>
+            <div className="font-mono font-bold tabular-nums" style={{ color: s.color, fontSize: 18, lineHeight: 1 }}>
+              {s.value}<span style={{ fontSize: 10, opacity: 0.6 }}>{s.sub}</span>
+            </div>
+            <div className="font-mono mt-1" style={{ color: '#7D8590', fontSize: 8, letterSpacing: '1px' }}>{s.label}</div>
           </div>
         ))}
       </div>
 
       {/* Timeline */}
-      <div className="px-4 py-3 border-b" style={{ borderColor: '#21262D' }}>
+      <div className="px-5 py-3 border-b" style={{ borderColor: '#21262D' }}>
         <div className="flex items-center justify-between mb-2">
-          <span className="font-mono" style={{ color: '#7D8590', fontSize: 10, letterSpacing: '1px' }}>VELOCITY · 24H</span>
+          <span className="font-mono" style={{ color: '#7D8590', fontSize: 10, letterSpacing: '1.5px' }}>VELOCIDAD HISTÓRICA</span>
           <span className="font-mono" style={{ color: '#94A3B8', fontSize: 10 }}>
-            burst: {narrative.burst_onset ? new Date(narrative.burst_onset).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' }) : '—'}
+            {narrative.burst_onset
+              ? `▣ burst detectado ${new Date(narrative.burst_onset).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}`
+              : '○ sin burst'}
           </span>
         </div>
         <Sparkline
-          points={narrative.history.length > 1 ? narrative.history : [0, narrative.velocity_1h]}
+          points={narrative.history.length > 1 ? narrative.history : [0, narrative.velocity_score * 100]}
           color={cfg.color}
-          width={520}
-          height={48}
+          width={560}
+          height={44}
         />
       </div>
 
-      {/* Legitimacy + sources */}
-      <div className="px-4 py-3 border-b flex items-center gap-3" style={{ borderColor: '#21262D' }}>
-        <span className="font-mono" style={{ color: '#7D8590', fontSize: 10, letterSpacing: '1px' }}>LEGITIMACY</span>
-        <LegitimacyBadge legitimacy={narrative.legitimacy} size="md" />
-        <div className="flex items-center gap-1.5 ml-2">
+      {/* Sources */}
+      <div className="px-5 py-3 border-b" style={{ borderColor: '#21262D' }}>
+        <div className="font-mono mb-2" style={{ color: '#7D8590', fontSize: 10, letterSpacing: '1.5px' }}>FUENTES QUE CONFIRMARON</div>
+        <div className="flex items-center gap-1.5 flex-wrap">
           {(['twitter', 'gdelt', 'reddit', 'hackernews', 'googletrends'] as const).map(src => {
             const active = narrative.sources.includes(src);
+            const labels: Record<string, string> = {
+              twitter: 'Twitter/X',
+              gdelt: 'GDELT',
+              reddit: 'Reddit',
+              hackernews: 'Hacker News',
+              googletrends: 'Google Trends',
+            };
             return (
               <span
                 key={src}
-                className="font-mono"
+                className="font-sans"
                 style={{
-                  fontSize: 9,
-                  padding: '2px 5px',
-                  borderRadius: 2,
+                  fontSize: 11,
+                  padding: '3px 8px',
                   background: active ? '#2DD4BF20' : 'transparent',
                   color: active ? '#2DD4BF' : '#484F58',
                   border: `1px solid ${active ? '#2DD4BF50' : '#21262D'}`,
-                  letterSpacing: '0.5px',
+                  borderRadius: 3,
+                  fontWeight: active ? 500 : 400,
                 }}
               >
-                {src.slice(0, 4).toUpperCase()}
+                {active ? '✓' : '○'} {labels[src]}
               </span>
             );
           })}
@@ -110,88 +161,100 @@ export function DetailPanel({ narrative }: DetailPanelProps) {
       </div>
 
       {/* Keywords */}
-      <div className="px-4 py-2 border-b" style={{ borderColor: '#21262D' }}>
-        <div className="font-mono mb-1.5" style={{ color: '#7D8590', fontSize: 10, letterSpacing: '1px' }}>KEYWORDS</div>
-        <div className="flex flex-wrap gap-1.5">
-          {narrative.keywords.slice(0, 10).map(kw => (
-            <span
-              key={kw}
-              className="font-mono"
-              style={{
-                fontSize: 10,
-                padding: '2px 6px',
-                background: '#161B22',
-                color: '#94A3B8',
-                borderRadius: 2,
-                border: '1px solid #21262D',
-              }}
-            >
-              {kw}
-            </span>
-          ))}
+      {narrative.keywords.length > 0 && (
+        <div className="px-5 py-3 border-b" style={{ borderColor: '#21262D' }}>
+          <div className="font-mono mb-2" style={{ color: '#7D8590', fontSize: 10, letterSpacing: '1.5px' }}>KEYWORDS</div>
+          <div className="flex flex-wrap gap-1.5">
+            {narrative.keywords.slice(0, 12).map(kw => (
+              <span
+                key={kw}
+                className="font-mono"
+                style={{
+                  fontSize: 10,
+                  padding: '2px 7px',
+                  background: '#161B22',
+                  color: '#94A3B8',
+                  borderRadius: 2,
+                  border: '1px solid #21262D',
+                }}
+              >
+                {kw}
+              </span>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Sample mentions */}
-      <div className="flex-1 overflow-hidden flex flex-col">
-        <div className="px-4 py-2 border-b flex items-center justify-between" style={{ borderColor: '#21262D' }}>
-          <span className="font-mono" style={{ color: '#7D8590', fontSize: 10, letterSpacing: '1px' }}>SAMPLE MENTIONS</span>
-          <span className="font-mono" style={{ color: '#7D8590', fontSize: 10 }}>
-            {effectiveIdx + 1} / {narrative.sample_mentions.length}
-          </span>
-        </div>
-        {sampleMention && (
-          <div className="flex-1 px-4 py-3 overflow-auto">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="font-mono" style={{
-                fontSize: 9, padding: '2px 5px', background: '#2DD4BF20', color: '#2DD4BF',
-                borderRadius: 2, letterSpacing: '0.5px',
-              }}>
-                {sampleMention.source.toUpperCase()}
-              </span>
-              <span className="font-mono" style={{ color: '#E6EDF3', fontSize: 11 }}>
-                {sampleMention.author.handle ?? sampleMention.author.name ?? 'unknown'}
-              </span>
-              {sampleMention.author.followers && (
-                <span className="font-mono" style={{ color: '#7D8590', fontSize: 10 }}>
-                  {sampleMention.author.followers.toLocaleString()} followers
-                </span>
-              )}
-              <span className="font-mono ml-auto" style={{ color: '#7D8590', fontSize: 10 }}>
-                {new Date(sampleMention.published_at ?? sampleMention.fetched_at).toLocaleString('es', {
-                  hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit',
-                })}
-              </span>
-            </div>
-            {sampleMention.title && (
-              <div className="font-sans mb-2" style={{ color: '#E6EDF3', fontSize: 13, fontWeight: 600, lineHeight: 1.4 }}>
-                {sampleMention.title}
-              </div>
-            )}
-            <div className="font-sans" style={{ color: '#E6EDF3', fontSize: 12, lineHeight: 1.5 }}>
-              {sampleMention.body}
-            </div>
-            {sampleMention.engagement && (sampleMention.engagement.likes || sampleMention.engagement.score) && (
-              <div className="flex items-center gap-4 mt-3 font-mono" style={{ color: '#7D8590', fontSize: 10 }}>
-                {sampleMention.engagement.likes != null && <span>♥ {sampleMention.engagement.likes.toLocaleString()}</span>}
-                {sampleMention.engagement.retweets != null && <span>↻ {sampleMention.engagement.retweets.toLocaleString()}</span>}
-                {sampleMention.engagement.replies != null && <span>💬 {sampleMention.engagement.replies.toLocaleString()}</span>}
-                {sampleMention.engagement.score != null && <span>↑ {sampleMention.engagement.score.toLocaleString()}</span>}
-                {sampleMention.engagement.comments != null && <span>💬 {sampleMention.engagement.comments.toLocaleString()}</span>}
-              </div>
-            )}
-            <a
-              href={sampleMention.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-block mt-3 font-mono hover:underline"
-              style={{ color: '#58A6FF', fontSize: 10, letterSpacing: '0.5px' }}
-            >
-              ↗ open original
-            </a>
+      {narrative.sample_mentions.length > 0 && (
+        <div className="px-5 py-3">
+          <div className="font-mono mb-2" style={{ color: '#7D8590', fontSize: 10, letterSpacing: '1.5px' }}>
+            MENCIONES ({effectiveIdx + 1} / {narrative.sample_mentions.length})
           </div>
-        )}
-      </div>
+          {sampleMention && (
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="font-mono" style={{
+                  fontSize: 9, padding: '2px 6px', background: '#2DD4BF20', color: '#2DD4BF',
+                  borderRadius: 2, letterSpacing: '0.5px', fontWeight: 600,
+                }}>
+                  {sampleMention.source.toUpperCase()}
+                </span>
+                <span className="font-mono" style={{ color: '#E6EDF3', fontSize: 11 }}>
+                  {sampleMention.author.handle ?? sampleMention.author.name ?? 'unknown'}
+                </span>
+                {sampleMention.author.followers && (
+                  <span className="font-mono" style={{ color: '#7D8590', fontSize: 10 }}>
+                    {sampleMention.author.followers.toLocaleString()} seguidores
+                  </span>
+                )}
+                <span className="font-mono ml-auto" style={{ color: '#7D8590', fontSize: 10 }}>
+                  {sampleMention.published_at
+                    ? new Date(sampleMention.published_at).toLocaleString('es', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })
+                    : '—'}
+                </span>
+              </div>
+              {sampleMention.title && (
+                <div className="font-sans mb-2" style={{ color: '#E6EDF3', fontSize: 13, fontWeight: 600, lineHeight: 1.4 }}>
+                  {sampleMention.title}
+                </div>
+              )}
+              <div className="font-sans" style={{ color: '#E6EDF3', fontSize: 12, lineHeight: 1.55 }}>
+                {sampleMention.body}
+              </div>
+              {sampleMention.engagement && (sampleMention.engagement.likes || sampleMention.engagement.score) && (
+                <div className="flex items-center gap-4 mt-3 font-mono" style={{ color: '#7D8590', fontSize: 10 }}>
+                  {sampleMention.engagement.likes != null && <span>♥ {sampleMention.engagement.likes.toLocaleString()}</span>}
+                  {sampleMention.engagement.retweets != null && <span>↻ {sampleMention.engagement.retweets.toLocaleString()}</span>}
+                  {sampleMention.engagement.replies != null && <span>💬 {sampleMention.engagement.replies.toLocaleString()}</span>}
+                  {sampleMention.engagement.score != null && <span>↑ {sampleMention.engagement.score.toLocaleString()}</span>}
+                  {sampleMention.engagement.comments != null && <span>💬 {sampleMention.engagement.comments.toLocaleString()}</span>}
+                </div>
+              )}
+              <a
+                href={sampleMention.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block mt-3 font-mono hover:underline"
+                style={{ color: '#58A6FF', fontSize: 10, letterSpacing: '0.5px' }}
+              >
+                ↗ abrir original
+              </a>
+            </div>
+          )}
+        </div>
+      )}
+
+      <style>{`
+        @keyframes pulse-dot {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.4; transform: scale(0.8); }
+        }
+        .custom-scroll::-webkit-scrollbar { width: 8px; }
+        .custom-scroll::-webkit-scrollbar-track { background: #0D1117; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #21262D; border-radius: 4px; }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background: #30363D; }
+      `}</style>
     </div>
   );
 }

@@ -173,13 +173,13 @@ export default function Home() {
               borderColor: '#21262D',
               background: '#070A0F',
               color: '#2DD4BF',
-              fontSize: 10,
-              letterSpacing: '1px',
+              fontSize: 11,
+              letterSpacing: '0.5px',
               cursor: 'pointer',
               textAlign: 'left',
             }}
           >
-            $ trigger --new-loop ▮
+            ▮ Iniciar nuevo loop de agentes →
           </button>
         </aside>
 
@@ -234,20 +234,16 @@ export default function Home() {
         </div>
         <div className="px-3 py-1 flex items-center justify-between" style={{ height: 24, borderTop: '1px solid #161B22' }}>
           <div className="flex items-center gap-3 font-mono" style={{ color: '#7D8590', fontSize: 9, letterSpacing: '0.5px' }}>
-            <span>j/k navigate</span>
-            <span>·</span>
-            <span>enter open</span>
-            <span>·</span>
-            <span>s star</span>
-            <span>·</span>
-            <span>? help</span>
+            <span>flujo: scout → cluster → score → phase → validator → <span style={{ color: '#00FF9F' }}>evaluator</span> → loop</span>
           </div>
           <div className="flex items-center gap-2 font-mono" style={{ fontSize: 9 }}>
             <span style={{ color: sCfg.color }}>● {sCfg.label}</span>
             <span style={{ color: '#7D8590' }}>·</span>
-            <span style={{ color: '#7D8590' }}>{narratives.size} narratives</span>
+            <span style={{ color: '#7D8590' }}>{narratives.size} narrativas</span>
             <span style={{ color: '#7D8590' }}>·</span>
-            <span style={{ color: '#7D8590' }}>{activities.length} events</span>
+            <span style={{ color: '#7D8590' }}>{activities.length} eventos</span>
+            <span style={{ color: '#7D8590' }}>·</span>
+            <span style={{ color: '#5EEAD4' }}>LLM: NVIDIA Nemotron-3-Ultra-550B</span>
           </div>
         </div>
       </footer>

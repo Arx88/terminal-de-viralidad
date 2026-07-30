@@ -1,0 +1,10 @@
+{
+  "functions": {
+    "src/app/api/trigger/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/stream/route.ts": {
+      "maxDuration": 300
+    }
+  }
+}

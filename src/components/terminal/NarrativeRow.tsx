@@ -41,44 +41,45 @@ function NarrativeRowImpl({ narrative, selected, onSelect }: NarrativeRowProps) 
             {narrative.status === 'decaying' && '▽'}
           </span>
           <span
-            className="font-mono truncate"
-            style={{ color: '#E6EDF3', fontSize: 12, letterSpacing: '-0.01em' }}
+            className="font-sans truncate"
+            style={{ color: '#E6EDF3', fontSize: 12, fontWeight: 500, letterSpacing: '-0.01em' }}
             title={narrative.title}
           >
             {narrative.title}
           </span>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <Sparkline points={narrative.history} color={accent} width={50} height={14} />
+          <Sparkline points={narrative.history} color={accent} width={44} height={14} />
           <span
             className="font-mono tabular-nums"
-            style={{ color: '#E6EDF3', fontSize: 12, fontWeight: 600, minWidth: 38, textAlign: 'right' }}
+            style={{ color: '#E6EDF3', fontSize: 12, fontWeight: 600, minWidth: 32, textAlign: 'right' }}
           >
             {narrative.current_score.toFixed(0)}
           </span>
-          <span
-            className="font-mono tabular-nums"
-            style={{
-              color: narrative.last_delta_pct >= 0 ? '#2DD4BF' : '#F87171',
-              fontSize: 10,
-              minWidth: 38,
-              textAlign: 'right',
-            }}
-          >
-            {narrative.last_delta_pct >= 0 ? '▲' : '▽'}
-            {Math.abs(narrative.last_delta_pct).toFixed(1)}%
-          </span>
         </div>
       </div>
-      <div className="flex items-center justify-between gap-2 mt-1.5">
+      {/* Briefing preview (truncated) */}
+      {narrative.briefing && (
+        <div className="font-sans truncate mt-1" style={{ color: '#94A3B8', fontSize: 10, lineHeight: 1.3 }}>
+          {narrative.briefing}
+        </div>
+      )}
+      <div className="flex items-center justify-between gap-2 mt-1">
         <div className="flex items-center gap-1.5 min-w-0">
           <LegitimacyBadge legitimacy={narrative.legitimacy} size="sm" />
           <span className="font-mono" style={{ color: '#7D8590', fontSize: 9 }}>
-            {narrative.source_count}src · {narrative.mention_count}m
+            {narrative.source_count} fuentes · {narrative.mention_count} menc.
           </span>
         </div>
-        <span className="font-mono" style={{ color: '#7D8590', fontSize: 9 }}>
-          iter {narrative.loop_iterations}
+        <span
+          className="font-mono tabular-nums"
+          style={{
+            color: narrative.last_delta_pct >= 0 ? '#2DD4BF' : '#F87171',
+            fontSize: 9,
+          }}
+        >
+          {narrative.last_delta_pct >= 0 ? '▲' : '▽'}
+          {Math.abs(narrative.last_delta_pct).toFixed(1)}%
         </span>
       </div>
     </button>
@@ -94,6 +95,7 @@ export const NarrativeRow = memo(NarrativeRowImpl, (prev, next) =>
   prev.narrative.legitimacy === next.narrative.legitimacy &&
   prev.narrative.history === next.narrative.history &&
   prev.narrative.title === next.narrative.title &&
+  prev.narrative.briefing === next.narrative.briefing &&
   prev.narrative.source_count === next.narrative.source_count &&
   prev.narrative.mention_count === next.narrative.mention_count &&
   prev.narrative.loop_iterations === next.narrative.loop_iterations

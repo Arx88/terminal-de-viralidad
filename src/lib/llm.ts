@@ -1,223 +1,189 @@
 // ─────────────────────────────────────────────────────────────────────────
-// LLM integration — uses z-ai-web-dev-sdk to generate human-readable content
+// LLM integration — NVIDIA NIM API (nemotron-3-ultra-550b-a55b)
 //
-// All functions are async and have graceful fallbacks (rule-based text)
-// in case the LLM is unavailable or slow.
+// This is the real intelligence layer. Every agent calls these functions
+// to reason about its task in natural language (Spanish, rioplatense).
+//
+// The model has reasoning_content (chain-of-thought) that we expose for
+// transparency — the user can see WHY each agent decided what it decided.
 // ─────────────────────────────────────────────────────────────────────────
 
-import ZAI from 'z-ai-web-dev-sdk';
-import type { Narrative, AgentActivity, Legitimacy, Phase } from './types';
+import OpenAI from 'openai';
 
-let zaiInstance: Awaited<ReturnType<typeof ZAI.create>> | null = null;
+const NIM_BASE_URL = 'https://integrate.api.nvidia.com/v1';
+// Use llama-3.1-70b-instruct — fast, JSON-reliable, no reasoning mode issues.
+// nemotron models spend all tokens in reasoning_content and timeout.
+// llama-3.3-70b-instruct is slow and unreliable for JSON.
+const NIM_MODEL = process.env.NIM_MODEL || 'meta/llama-3.1-70b-instruct';
 
-async function getZai() {
-  if (!zaiInstance) {
-    try {
-      zaiInstance = await ZAI.create();
-    } catch (err) {
-      console.error('[LLM] failed to initialize ZAI:', err);
-      return null;
+let client: OpenAI | null = null;
+// Global LLM mutex — serialize all NIM calls to avoid saturation timeouts
+let llm_queue: Array<() => void> = [];
+let llm_running = false;
+
+function getClient(): OpenAI {
+  if (!client) {
+    const apiKey = process.env.NVIDIA_API_KEY || process.env.NIM_API_KEY;
+    if (!apiKey) {
+      throw new Error('NVIDIA_API_KEY not set in environment');
     }
+    client = new OpenAI({
+      apiKey,
+      baseURL: NIM_BASE_URL,
+      timeout: 90_000,
+      maxRetries: 2,
+    });
   }
-  return zaiInstance;
+  return client;
 }
 
-async function complete(systemPrompt: string, userMessage: string, maxRetries = 2): Promise<string | null> {
-  const zai = await getZai();
-  if (!zai) return null;
+async function withLlmLock<T>(fn: () => Promise<T>): Promise<T> {
+  // Wait for previous LLM call to finish
+  if (llm_running) {
+    await new Promise<void>(resolve => llm_queue.push(resolve));
+  }
+  llm_running = true;
+  try {
+    return await fn();
+  } finally {
+    llm_running = false;
+    const next = llm_queue.shift();
+    if (next) next();
+  }
+}
 
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      const completion = await zai.chat.completions.create({
-        messages: [
-          { role: 'assistant', content: systemPrompt },
-          { role: 'user', content: userMessage },
-        ],
-        thinking: { type: 'disabled' },
-      });
-      const content = completion.choices[0]?.message?.content;
-      if (content && content.trim().length > 0) return content.trim();
-    } catch (err: any) {
-      console.error(`[LLM] attempt ${attempt} failed:`, err.message);
-      if (attempt < maxRetries) {
-        await new Promise(r => setTimeout(r, 800 * attempt));
+export interface LLMResponse {
+  content: string;
+  reasoning: string;       // chain-of-thought visible
+  usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number };
+  latency_ms: number;
+}
+
+/**
+ * Low-level call to Nemotron. Returns content + reasoning.
+ * temperature: 0.3 default (deterministic-ish but still creative).
+ * max_tokens: 1500 default — enough for structured JSON + reasoning.
+ */
+export async function llm(
+  systemPrompt: string,
+  userMessage: string,
+  opts: { temperature?: number; max_tokens?: number; json_mode?: boolean } = {}
+): Promise<LLMResponse> {
+  const start = Date.now();
+
+  return withLlmLock(async () => {
+    const c = getClient();
+
+    const completion = await c.chat.completions.create({
+      model: NIM_MODEL,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userMessage },
+      ],
+      temperature: opts.temperature ?? 0.4,
+      max_tokens: opts.max_tokens ?? 2000,
+      // NIM supports response_format for JSON mode
+      ...(opts.json_mode ? { response_format: { type: 'json_object' as const } } : {}),
+    });
+
+    const choice = completion.choices[0];
+    if (!choice) {
+      throw new Error('NIM returned no choices');
+    }
+
+    const msg: any = choice.message;
+    return {
+      content: msg.content ?? '',
+      reasoning: msg.reasoning_content ?? '',
+      usage: completion.usage as any,
+      latency_ms: Date.now() - start,
+    };
+  });
+}
+
+/**
+ * Same as llm() but parses JSON from the response.
+ * Falls back to extracting JSON from code fences if present.
+ */
+export async function llmJson<T = unknown>(
+  systemPrompt: string,
+  userMessage: string,
+  opts: { temperature?: number; max_tokens?: number } = {}
+): Promise<{ data: T; raw: LLMResponse }> {
+  const raw = await llm(
+    systemPrompt + '\n\nRespondé con JSON válido únicamente. Sin markdown, sin explicaciones, sin code fences. Solo el objeto JSON.',
+    userMessage,
+    { ...opts, json_mode: true }
+  );
+
+  let data: T;
+  try {
+    data = JSON.parse(raw.content) as T;
+  } catch {
+    // Try to extract JSON from code fences or surrounding text
+    const jsonMatch = raw.content.match(/```(?:json)?\s*([\s\S]*?)```/) || raw.content.match(/(\{[\s\S]*\})/);
+    if (jsonMatch) {
+      try {
+        data = JSON.parse(jsonMatch[1]) as T;
+      } catch (e: any) {
+        throw new Error(`Failed to parse JSON from LLM response: ${e.message}\nContent: ${raw.content.slice(0, 500)}`);
       }
+    } else {
+      throw new Error(`LLM response was not valid JSON. Content: ${raw.content.slice(0, 500)}`);
     }
   }
-  return null;
+
+  return { data, raw };
 }
 
-// ─── Narrative briefing ──────────────────────────────────────────────────
-// Generates a 2-3 sentence readable summary of what the narrative is about.
-
-export async function generateNarrativeBriefing(n: Narrative): Promise<string> {
-  const mentionSamples = n.sample_mentions.slice(0, 5).map((m, i) =>
-    `[${i + 1}] (${m.source}) ${m.author.handle ?? 'unknown'}: ${m.title ?? m.body}`
-  ).join('\n');
-
-  const systemPrompt = `Sos un analista de inteligencia que escribe briefings concisos en español rioplatense.
-Tu trabajo: en 2-3 oraciones, explicar QUÉ está pasando en esta narrativa, QUIÉNES están hablando de eso, y POR QUÉ podría importar.
-No uses markdown. No uses emojis. Estilo directo, informativo, como un cable de agencia de noticias.`;
-
-  const userMessage = `Narrativa: "${n.title}"
-Fase: ${n.status}
-Legitimidad: ${n.legitimacy}
-Fuentes que la confirmaron: ${n.sources.join(', ')}
-Menciones: ${n.mention_count}
-Velocidad actual: ${n.velocity_1h.toFixed(1)} menciones/hora
-Score: ${n.current_score.toFixed(0)}/100
-Keywords: ${n.keywords.slice(0, 6).join(', ')}
-
-Muestras de menciones:
-${mentionSamples}
-
-Escribí el briefing:`;
-
-  const result = await complete(systemPrompt, userMessage);
-  if (result) return result;
-
-  // Fallback rule-based
-  return fallbackBriefing(n);
-}
-
-function fallbackBriefing(n: Narrative): string {
-  const sourceList = n.sources.join(', ');
-  const phaseDesc: Record<Phase, string> = {
-    forming: 'está empezando a aparecer',
-    rising: 'está ganando tracción rápidamente',
-    formed: 'ya está consolidada',
-    decaying: 'está perdiendo fuerza',
-  };
-  const legitDesc: Record<Legitimacy, string> = {
-    LEGIT: 'confirmada por múltiples fuentes confiables',
-    BOT_CAMPAIGN: 'posible campaña de bots coordinada',
-    TWITTER_NATIVE: 'nativa de Twitter, sin confirmación externa aún',
-    PRE_BURST: 'detectada en medios externos antes de explotar en Twitter',
-    NOISE: 'ruido sin relevancia significativa',
-    UNCERTAIN: 'aún en evaluación',
-  };
-  return `Esta narrativa sobre "${n.title}" ${phaseDesc[n.status]} con ${n.mention_count} menciones detectadas en ${sourceList}. La legitimidad es ${legitDesc[n.legitimacy]}. Velocidad actual: ${n.velocity_1h.toFixed(1)} menciones por hora.`;
-}
-
-// ─── System briefing ─────────────────────────────────────────────────────
-// Generates a 1-2 sentence overview of what the system is currently tracking.
-
-export async function generateSystemBriefing(narratives: Narrative[]): Promise<string> {
-  if (narratives.length === 0) {
-    return 'Sistema en espera. No hay narrativas activas para monitorear.';
+/**
+ * Same as llmJson but returns null on failure instead of throwing.
+ * Use this in agents so the loop doesn't break when LLM is saturated.
+ */
+export async function llmJsonSafe<T = unknown>(
+  systemPrompt: string,
+  userMessage: string,
+  opts: { temperature?: number; max_tokens?: number } = {}
+): Promise<{ data: T | null; raw: LLMResponse | null; error?: string }> {
+  try {
+    const result = await llmJson<T>(systemPrompt, userMessage, opts);
+    return { data: result.data, raw: result.raw };
+  } catch (err: any) {
+    console.error(`[llm] llmJsonSafe failed: ${err.message.slice(0, 100)}`);
+    return { data: null, raw: null, error: err.message };
   }
-
-  const top = narratives.slice(0, 5);
-  const summary = top.map(n =>
-    `- "${n.title}" [${n.status}, ${n.legitimacy}, score ${n.current_score.toFixed(0)}]`
-  ).join('\n');
-
-  const phaseCounts = {
-    forming: narratives.filter(n => n.status === 'forming').length,
-    rising: narratives.filter(n => n.status === 'rising').length,
-    formed: narratives.filter(n => n.status === 'formed').length,
-    decaying: narratives.filter(n => n.status === 'decaying').length,
-  };
-
-  const systemPrompt = `Sos un sistema de inteligencia que monitorea tendencias emergentes en redes sociales y medios.
-Escribí en español rioplatense, en 1-2 oraciones máximo, un resumen ejecutivo de lo que el sistema está detectando ahora.
-Estilo: directo, informativo, sin markdown, sin emojis. Como un header de dashboard de un analista.`;
-
-  const userMessage = `Total de narrativas activas: ${narratives.length}
-Distribución por fase: ${phaseCounts.forming} formándose, ${phaseCounts.rising} creciendo, ${phaseCounts.formed} formadas, ${phaseCounts.decaying} decayendo.
-
-Top 5 narrativas:
-${summary}
-
-Escribí el resumen ejecutivo:`;
-
-  const result = await complete(systemPrompt, userMessage);
-  if (result) return result;
-
-  // Fallback
-  return `Monitoreando ${narratives.length} narrativas: ${phaseCounts.rising} creciendo, ${phaseCounts.forming} formándose, ${phaseCounts.formed} consolidadas, ${phaseCounts.decaying} decayendo.`;
 }
 
-// ─── Agent explanation ───────────────────────────────────────────────────
-// Generates a 1-sentence plain-Spanish explanation of what an agent did.
+/**
+ * Quick health check — used at boot to verify the API key.
+ */
+export async function llmHealthCheck(): Promise<{ ok: boolean; latency_ms: number; model: string; error?: string }> {
+  const start = Date.now();
+  try {
+    const c = getClient();
+    const completion = await c.chat.completions.create({
+      model: NIM_MODEL,
+      messages: [{ role: 'user', content: 'Responde solo: PONG' }],
+      max_tokens: 20,
+      temperature: 0,
+    });
+    const content = completion.choices[0]?.message?.content ?? '';
+    return {
+      ok: content.length > 0,
+      latency_ms: Date.now() - start,
+      model: NIM_MODEL,
+    };
+  } catch (err: any) {
+    return {
+      ok: false,
+      latency_ms: Date.now() - start,
+      model: NIM_MODEL,
+      error: err.message,
+    };
+  }
+}
 
-const AGENT_NAMES_ES: Record<string, string> = {
-  scout: 'Scout (recolector)',
-  cluster: 'Cluster (agrupador)',
-  score: 'Score (puntuador)',
-  phase: 'Phase (clasificador de fase)',
-  validator: 'Validator (validador)',
-  orchestrator: 'Orchestrator (orquestador)',
+export const NIM_CONFIG = {
+  baseUrl: NIM_BASE_URL,
+  model: NIM_MODEL,
 };
-
-export async function generateAgentExplanation(activity: AgentActivity): Promise<string> {
-  // Only generate for meaningful events to save LLM calls
-  if (activity.status === 'success' && !activity.output_summary.includes('Error')) {
-    const systemPrompt = `Sos un asistente que explica en español rioplatense, en 1 oración corta (máx 20 palabras), qué hizo un agente de un sistema de monitoreo de tendencias.
-Sin markdown, sin emojis, lenguaje natural y claro.`;
-
-    const userMessage = `Agente: ${AGENT_NAMES_ES[activity.agent] ?? activity.agent}
-Estado: ${activity.status}
-Resumen técnico: ${activity.output_summary}
-Métricas: ${JSON.stringify(activity.metrics ?? {})}
-
-Explicá en una oración qué hizo:`;
-
-    const result = await complete(systemPrompt, userMessage);
-    if (result) return result;
-  }
-
-  // Fallback rule-based
-  return fallbackAgentExplanation(activity);
-}
-
-function fallbackAgentExplanation(activity: AgentActivity): string {
-  const agent = AGENT_NAMES_ES[activity.agent] ?? activity.agent;
-  switch (activity.agent) {
-    case 'scout':
-      return `${agent} recolectó menciones de las fuentes configuradas.`;
-    case 'cluster':
-      return `${agent} agrupó las menciones en narrativas por similitud semántica.`;
-    case 'score':
-      return `${agent} calculó el score de viralidad (velocidad × madurez × penalty × decay).`;
-    case 'phase':
-      return `${agent} clasificó cada narrativa en una de las 4 fases (forming/rising/formed/decaying).`;
-    case 'validator':
-      return activity.status === 'waiting'
-        ? `${agent} decidió que faltan más fuentes para confirmar la narrativa. Va a re-loopear.`
-        : `${agent} validó la narrativa y le asignó legitimidad.`;
-    case 'orchestrator':
-      return `${agent} coordinó el loop completo de los 5 agentes.`;
-    default:
-      return `${agent} ejecutó su tarea.`;
-  }
-}
-
-// ─── Legitimacy explanation ──────────────────────────────────────────────
-// Generates a 1-sentence explanation of WHY a narrative got its legitimacy.
-
-export async function generateLegitimacyExplanation(n: Narrative): Promise<string> {
-  const systemPrompt = `Sos un analista de inteligencia. En español rioplatense, 1 oración, explicá POR QUÉ una narrativa recibió su clasificación de legitimidad. Sin markdown.`;
-
-  const userMessage = `Narrativa: "${n.title}"
-Legitimidad asignada: ${n.legitimacy}
-Fuentes: ${n.sources.join(', ')} (${n.source_count} fuentes)
-Penalty de trash: ${(n.trash_penalty * 100).toFixed(0)}% (más alto = más limpia)
-Menciones duplicadas estimadas: ${((1 - n.trash_penalty) * 100).toFixed(0)}%
-
-Por qué recibió "${n.legitimacy}":`;
-
-  const result = await complete(systemPrompt, userMessage);
-  if (result) return result;
-
-  // Fallback
-  const explanations: Record<Legitimacy, string> = {
-    LEGIT: `Confirmada por ${n.source_count} fuentes distintas con baja señal de manipulación (${(n.trash_penalty * 100).toFixed(0)}% clean).`,
-    BOT_CAMPAIGN: `Solo detectada en Twitter con alta señal de bots (${(n.trash_penalty * 100).toFixed(0)}% clean). Probable campaña coordinada.`,
-    TWITTER_NATIVE: `Solo en Twitter pero sin señales claras de manipulación. Rumor o meme nativo de la plataforma.`,
-    PRE_BURST: `Detectada en fuentes externas (GDELT/Reddit) pero aún sin pickup en Twitter. Potencial early signal.`,
-    NOISE: `Pocas menciones o sin fuentes confiables. Ruido sin relevancia.`,
-    UNCERTAIN: `Aún no hay suficiente información para clasificar la legitimidad.`,
-  };
-  return explanations[n.legitimacy];
-}

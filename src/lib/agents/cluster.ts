@@ -1,13 +1,11 @@
 // ─────────────────────────────────────────────────────────────────────────
-// Agent 2: CLUSTER
-// Role: dedup mentions, group into narratives by semantic similarity.
-// Input: NormalizedMention[] (+ optional existing narratives for incremental update)
-// Output: Narrative[] (each with mention_count, author_count, source_count, keywords)
-// Algorithm: simple TF-IDF cosine similarity (tier-1 in the doc)
-// For MVP we use token overlap Jaccard — fast, no embeddings needed.
+// Agent 2: CLUSTER (LLM-driven)
+// Role: el LLM lee todas las menciones y decide cómo agruparlas en narrativas.
+// Genera títulos significativos en español y resúmenes legibles.
 // ─────────────────────────────────────────────────────────────────────────
 
-import type { AgentResult, NormalizedMention, Narrative } from '../types';
+import { llmJson } from '../llm';
+import type { AgentResult, NormalizedMention, Narrative, SourceType } from '../types';
 import { store } from '../eventbus';
 
 export interface ClusterInput {
@@ -20,169 +18,143 @@ export interface ClusterInput {
 
 export interface ClusterOutput {
   narratives: Narrative[];
-  new_narrative_count: number;
-  updated_narrative_count: number;
-  unassigned_count: number;
+  reasoning: string;
+  new_count: number;
+  updated_count: number;
 }
 
-const SIM_THRESHOLD = 0.18; // Jaccard threshold for "same narrative"
-
-function tokenize(text: string): Set<string> {
-  return new Set(
-    text.toLowerCase()
-      .replace(/https?:\/\/\S+/g, '')
-      .replace(/[@#]\w+/g, ' ')
-      .normalize('NFKD')
-      .replace(/[^\w\s]/g, ' ')
-      .split(/\s+/)
-      .filter(w => w.length > 3)
-  );
+interface ClusterLLMResponse {
+  narratives: Array<{
+    title: string;             // título significativo en español
+    summary: string;           // resumen legible de qué trata
+    keywords: string[];
+    mention_indices: number[]; // índices en el array de menciones
+    is_new: boolean;
+    existing_narrative_id?: string;
+  }>;
+  reasoning: string;
 }
 
-function jaccard(a: Set<string>, b: Set<string>): number {
-  if (a.size === 0 || b.size === 0) return 0;
-  let inter = 0;
-  for (const w of a) if (b.has(w)) inter++;
-  return inter / (a.size + b.size - inter);
-}
+const SYSTEM_PROMPT = `Sos CLUSTER, un analista semántico de un sistema de inteligencia.
+Tu trabajo: leer menciones de múltiples fuentes y agruparlas en NARRATIVAS coherentes.
 
-function extractKeywords(mentions: NormalizedMention[], limit = 8): string[] {
-  const freq = new Map<string, number>();
-  for (const m of mentions) {
-    const text = `${m.title ?? ''} ${m.body}`;
-    const tokens = tokenize(text);
-    for (const t of tokens) {
-      freq.set(t, (freq.get(t) ?? 0) + 1);
-    }
-  }
-  return Array.from(freq.entries())
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, limit)
-    .map(([w]) => w);
-}
+Una narrativa = un tema/evento/ángulo específico que conecta varias menciones. No agrupes solo por keyword exacta — agrupá por SIGNIFICADO. Mencionás A y mención B pueden ser de la misma narrativa aunque usen palabras distintas.
 
-function generateTitle(keywords: string[]): string {
-  if (keywords.length === 0) return 'untitled-narrative';
-  const top = keywords.slice(0, 3).map(w => w.toUpperCase()).join('-');
-  return top;
-}
+Cada narrativa debe tener:
+- Un TÍTULO significativo en español (no MAYÚS-CON-GUIONES, sino algo legible como "Crisis regulatoria en cripto" o "Avance de modelos de agentes autónomos").
+- Un RESUMEN de 1-2 oraciones explicando de qué trata.
+- Keywords relevantes (3-6).
+- Los índices de las menciones que pertenecen a ella.
+
+Si una mención no encaja en ninguna narrativa existente, creá una nueva.
+Pensá en español rioplatense. Sos analítico y conceptual.`;
 
 export async function clusterAgent(input: ClusterInput): Promise<AgentResult<ClusterOutput>> {
   const start = Date.now();
   const { loop_id, iteration, mentions, existing_narratives, query } = input;
 
-  // Build token sets for existing narratives (from their keywords + sample mentions)
-  const narrative_tokens = existing_narratives.map(n => ({
-    narrative: n,
-    tokens: new Set([
-      ...n.keywords,
-      ...n.sample_mentions.flatMap(m => [...tokenize(`${m.title ?? ''} ${m.body}`)]),
-      ...tokenize(n.title),
-    ]),
+  if (mentions.length === 0) {
+    return {
+      agent: 'cluster',
+      status: 'success',
+      output: { narratives: existing_narratives, reasoning: 'Sin menciones nuevas para clusterizar', new_count: 0, updated_count: 0 },
+      summary: 'Cluster: sin menciones nuevas',
+      metrics: { new: 0, updated: 0 },
+      duration_ms: Date.now() - start,
+      request_reloop: false,
+    };
+  }
+
+  // Build context: existing narratives + new mentions (COMPACT to avoid LLM timeout)
+  const existingContext = existing_narratives.slice(0, 5).map((n) => ({
+    id: n.id,
+    title: n.title,
+    keywords: n.keywords.slice(0, 4),
   }));
 
+  const mentionsContext = mentions.slice(0, 12).map((m, i) => ({
+    i,
+    s: m.source,
+    a: m.author.handle ?? 'unknown',
+    t: ((m.title ?? '') + ' ' + m.body).slice(0, 100),
+  }));
+
+  const resp = await llmJson<ClusterLLMResponse>(
+    SYSTEM_PROMPT,
+    `Tema: "${query}" | Iter: ${iteration}
+
+NARRATIVAS EXISTENTES:
+${JSON.stringify(existingContext)}
+
+NUEVAS MENCIONES (usa índice "i"):
+${JSON.stringify(mentionsContext)}
+
+Agrupá las menciones en narrativas. JSON:
+{"narratives":[{"title":"título en español","summary":"1-2 oraciones","keywords":["k1"],"mention_indices":[0,2],"is_new":true,"existing_narrative_id":null}],"reasoning":"por qué"}`,
+    { temperature: 0.4, max_tokens: 1500 }
+  );
+
+  // Build narratives from response
   const updated = new Map<string, Narrative>();
   for (const n of existing_narratives) updated.set(n.id, { ...n });
 
-  const unassigned: NormalizedMention[] = [];
   let new_count = 0;
   let updated_count = 0;
 
-  for (const mention of mentions) {
-    const m_tokens = tokenize(`${mention.title ?? ''} ${mention.body} ${query}`);
-    let best_narrative_id: string | null = null;
-    let best_sim = 0;
+  for (const cn of resp.data.narratives) {
+    const narrativeMentions = cn.mention_indices
+      .filter(i => i >= 0 && i < mentions.length)
+      .map(i => mentions[i]);
 
-    for (const { narrative, tokens } of narrative_tokens) {
-      const sim = jaccard(m_tokens, tokens);
-      if (sim > best_sim) {
-        best_sim = sim;
-        best_narrative_id = narrative.id;
-      }
-    }
+    if (narrativeMentions.length === 0) continue;
 
-    if (best_sim >= SIM_THRESHOLD && best_narrative_id) {
-      const n = updated.get(best_narrative_id)!;
-      n.mention_count += 1;
-      n.last_seen = Math.max(n.last_seen, mention.fetched_at);
-      n.sample_mentions = [mention, ...n.sample_mentions].slice(0, 10);
-      if (!n.sources.includes(mention.source)) {
-        n.sources = [...n.sources, mention.source];
-        n.source_count = n.sources.length;
+    if (!cn.is_new && cn.existing_narrative_id && updated.has(cn.existing_narrative_id)) {
+      // Update existing
+      const n = updated.get(cn.existing_narrative_id)!;
+      n.mention_count += narrativeMentions.length;
+      n.last_seen = Math.max(n.last_seen, ...narrativeMentions.map(m => m.fetched_at));
+      n.sample_mentions = [...narrativeMentions, ...n.sample_mentions].slice(0, 10);
+      for (const m of narrativeMentions) {
+        if (!n.sources.includes(m.source)) {
+          n.sources = [...n.sources, m.source];
+          n.source_count = n.sources.length;
+        }
       }
+      n.summary = cn.summary; // refresh summary
       updated_count++;
     } else {
-      unassigned.push(mention);
-    }
-  }
-
-  // Create new narratives from unassigned mentions (group them by similarity)
-  const unassigned_groups: NormalizedMention[][] = [];
-  for (const m of unassigned) {
-    const m_tokens = tokenize(`${m.title ?? ''} ${m.body} ${query}`);
-    let placed = false;
-    for (const group of unassigned_groups) {
-      const group_tokens = tokenize(`${group[0].title ?? ''} ${group[0].body} ${query}`);
-      if (jaccard(m_tokens, group_tokens) >= SIM_THRESHOLD * 1.5) {
-        group.push(m);
-        placed = true;
-        break;
-      }
-    }
-    if (!placed) unassigned_groups.push([m]);
-  }
-
-  for (const group of unassigned_groups) {
-    if (group.length < 1) continue;
-    const keywords = extractKeywords(group);
-    const sources = Array.from(new Set(group.map(m => m.source)));
-    const id = crypto.randomUUID();
-    const now = Date.now();
-    const new_narrative: Narrative = {
-      id,
-      title: generateTitle(keywords),
-      summary: `Narrativa detectada sobre: ${keywords.slice(0, 4).join(', ')}`,
-      status: 'forming',
-      legitimacy: 'UNCERTAIN',
-      origin_source: group[0].source,
-      origin_quality: 0.5,
-      first_seen: Math.min(...group.map(m => m.fetched_at)),
-      last_seen: Math.max(...group.map(m => m.fetched_at)),
-      mention_count: group.length,
-      author_count: new Set(group.map(m => m.author.handle).filter(Boolean)).size,
-      source_count: sources.length,
-      sources,
-      keywords,
-      velocity_1h: 0,
-      velocity_6h: 0,
-      velocity_24h: 0,
-      acceleration: 0,
-      entropy: 0,
-      trash_penalty: 1.0,
-      velocity_score: 0,
-      maturity_score: 0,
-      current_score: 0,
-      decay_factor: 1.0,
-      burst_onset: null,
-      predicted_peak: null,
-      phase_confidence: 0.5,
-      history: [0],
-      sample_mentions: group.slice(0, 10),
-      last_delta_pct: 0,
-      loop_iterations: 1,
-    };
-    updated.set(id, new_narrative);
-    narrative_tokens.push({ narrative: new_narrative, tokens: new Set([...keywords, ...tokenize(new_narrative.title)]) });
-    new_count++;
-  }
-
-  // Update author_count + entropy for all narratives
-  for (const n of updated.values()) {
-    const authors = new Set(n.sample_mentions.map(m => m.author.handle).filter(Boolean));
-    n.author_count = Math.max(n.author_count, authors.size);
-    // Simple entropy proxy
-    if (n.author_count > 0) {
-      n.entropy = Math.min(1, Math.log(n.author_count + 1) / Math.log(20));
+      // New narrative
+      const id = crypto.randomUUID();
+      const sources: SourceType[] = Array.from(new Set(narrativeMentions.map(m => m.source)));
+      const new_narrative: Narrative = {
+        id,
+        title: cn.title,
+        summary: cn.summary,
+        status: 'forming',
+        legitimacy: 'UNCERTAIN',
+        origin_source: narrativeMentions[0].source,
+        origin_quality: 0.5,
+        first_seen: Math.min(...narrativeMentions.map(m => m.fetched_at)),
+        last_seen: Math.max(...narrativeMentions.map(m => m.fetched_at)),
+        mention_count: narrativeMentions.length,
+        author_count: new Set(narrativeMentions.map(m => m.author.handle).filter(Boolean)).size,
+        source_count: sources.length,
+        sources,
+        keywords: cn.keywords,
+        velocity_1h: 0, velocity_6h: 0, velocity_24h: 0,
+        acceleration: 0, entropy: 0, trash_penalty: 1.0,
+        velocity_score: 0, maturity_score: 0, current_score: 0, decay_factor: 1.0,
+        burst_onset: null, predicted_peak: null, phase_confidence: 0.5,
+        history: [0],
+        sample_mentions: narrativeMentions.slice(0, 10),
+        last_delta_pct: 0,
+        loop_iterations: 1,
+        briefing: '', // will be filled by validator/evaluator
+        legitimacy_explanation: '',
+        briefing_pending: true,
+      };
+      updated.set(id, new_narrative);
+      new_count++;
     }
   }
 
@@ -193,10 +165,15 @@ export async function clusterAgent(input: ClusterInput): Promise<AgentResult<Clu
     started_at: start,
     finished_at: Date.now(),
     duration_ms: Date.now() - start,
-    input_summary: `${mentions.length} mentions, ${existing_narratives.length} existing narratives`,
-    output_summary: `${new_count} new + ${updated_count} updated, ${unassigned.length - new_count} unassigned`,
+    input_summary: `${mentions.length} menciones, ${existing_narratives.length} narrativas existentes`,
+    output_summary: `${new_count} nuevas, ${updated_count} actualizadas`,
+    explanation: resp.data.reasoning.slice(0, 250),
     loop_id, iteration,
-    metrics: { new_narratives: new_count, updated: updated_count, unassigned: unassigned.length },
+    metrics: {
+      new: new_count, updated: updated_count,
+      llm_tokens: resp.raw.usage.total_tokens,
+      llm_latency_ms: resp.raw.latency_ms,
+    },
   });
 
   return {
@@ -204,12 +181,11 @@ export async function clusterAgent(input: ClusterInput): Promise<AgentResult<Clu
     status: 'success',
     output: {
       narratives: Array.from(updated.values()),
-      new_narrative_count: new_count,
-      updated_narrative_count: updated_count,
-      unassigned_count: unassigned.length - new_count,
+      reasoning: resp.data.reasoning,
+      new_count, updated_count,
     },
-    summary: `Cluster: ${new_count} new + ${updated_count} updated narratives`,
-    metrics: { new: new_count, updated: updated_count, total: updated.size },
+    summary: `Cluster: ${new_count} nuevas + ${updated_count} actualizadas`,
+    metrics: { new: new_count, updated: updated_count },
     duration_ms: Date.now() - start,
     request_reloop: false,
   };

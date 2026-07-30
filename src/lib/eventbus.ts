@@ -64,8 +64,10 @@ class EventBus {
   }
 }
 
-// Singleton
-export const bus = new EventBus();
+// Singleton — use global to survive HMR in dev
+const globalAny = globalThis as any;
+export const bus: EventBus = globalAny.__terminal_bus ?? new EventBus();
+if (!globalAny.__terminal_bus) globalAny.__terminal_bus = bus;
 
 // ─── Narrative store (in-memory for MVP) ──────────────────────────────────
 class NarrativeStore {
@@ -98,6 +100,7 @@ class NarrativeStore {
     this.activities.unshift(activity);
     if (this.activities.length > 200) this.activities.pop();
     bus.emitAgentActivity(activity);
+    console.log(`[store] activity logged: ${activity.agent} ${activity.status} | ${activity.output_summary.slice(0, 80)}`);
   }
 
   getActivities(limit = 50): AgentActivity[] {
@@ -105,4 +108,5 @@ class NarrativeStore {
   }
 }
 
-export const store = new NarrativeStore();
+export const store: NarrativeStore = globalAny.__terminal_store ?? new NarrativeStore();
+if (!globalAny.__terminal_store) globalAny.__terminal_store = store;

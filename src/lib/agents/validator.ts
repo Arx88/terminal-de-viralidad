@@ -1,11 +1,10 @@
 // ─────────────────────────────────────────────────────────────────────────
-// Agent 5: VALIDATOR
-// Role: cross-source validation + legitimacy badge.
-// Decides whether to request re-loop (need more sources) or converge.
-// Input: Narrative[] (scored + phased)
-// Output: Narrative[] with .legitimacy set + convergence decision
+// Agent 5: VALIDATOR (LLM-driven)
+// Role: el LLM evalúa legitimidad (LEGIT/BOT_CAMPAIGN/etc) con razonamiento,
+// genera el briefing legible de la narrativa, y decide si converge.
 // ─────────────────────────────────────────────────────────────────────────
 
+import { llmJson, llmJsonSafe } from '../llm';
 import type { AgentResult, Narrative, Legitimacy, SourceType } from '../types';
 import { store } from '../eventbus';
 
@@ -21,102 +20,147 @@ export interface ValidatorOutput {
   converged_ids: string[];
   reloop_narrative_ids: string[];
   need_more_sources: SourceType[];
-  legitimacy_distribution: Record<Legitimacy, number>;
+  reasoning: string;
 }
 
-function classifyLegitimacy(n: Narrative): Legitimacy {
-  const sources = n.sources;
-  const has_twitter = sources.includes('twitter');
-  const has_gdelt = sources.includes('gdelt');
-  const has_reddit = sources.includes('reddit');
-  const has_hn = sources.includes('hackernews');
-  const has_other_real = has_gdelt || has_reddit || has_hn;
-  const trash = n.trash_penalty;
-
-  if (has_twitter && has_other_real && trash > 0.6) return 'LEGIT';
-  if (has_twitter && !has_other_real && trash < 0.4) return 'BOT_CAMPAIGN';
-  if (has_twitter && !has_other_real && trash >= 0.4) return 'TWITTER_NATIVE';
-  if (!has_twitter && has_other_real) return 'PRE_BURST';
-  if (sources.length === 0 || n.mention_count < 2) return 'NOISE';
-  return 'UNCERTAIN';
+interface ValidatorLLMResponse {
+  validated: Array<{
+    narrative_id: string;
+    legitimacy: Legitimacy;
+    legitimacy_reasoning: string;
+    briefing: string;          // resumen legible 2-3 oraciones
+    should_converge: boolean;
+    need_more_sources?: SourceType[];
+    why_converge_or_not: string;
+  }>;
+  reasoning: string;
 }
 
-function shouldConverge(n: Narrative, iteration: number, max_iter: number): boolean {
-  // Convergence criteria:
-  // 1. legitimacy is not UNCERTAIN
-  // 2. AND (has 2+ sources OR trash_penalty is decisive (< 0.3 or > 0.7))
-  // 3. OR max iterations reached
-  if (iteration >= max_iter) return true;
-  const leg = n.legitimacy;
-  if (leg === 'UNCERTAIN') return false;
-  if (n.source_count >= 2) return true;
-  if (n.trash_penalty < 0.3 || n.trash_penalty > 0.7) return true;
-  return false;
-}
+const SYSTEM_PROMPT = `Sos VALIDATOR, el último agente del loop. Tu trabajo doble:
 
-function whatSourcesNeeded(n: Narrative): SourceType[] {
-  const needed: SourceType[] = [];
-  // If only Twitter, need GDELT or Reddit to confirm
-  if (n.sources.includes('twitter') && !n.sources.includes('gdelt')) needed.push('gdelt');
-  if (n.sources.includes('twitter') && !n.sources.includes('reddit')) needed.push('reddit');
-  // If GDELT only, need Twitter to confirm pre-burst
-  if (!n.sources.includes('twitter') && n.sources.includes('gdelt')) needed.push('twitter');
-  return needed;
-}
+1. Para cada narrativa:
+   - Asigná LEGITIMACY (LEGIT, BOT_CAMPAIGN, TWITTER_NATIVE, PRE_BURST, NOISE, UNCERTAIN) basándote en cross-source validation + señales de manipulación.
+   - Generá un BRIEFING legible en español rioplatense (2-3 oraciones) explicando QUÉ está pasando, QUIÉNES hablan, y POR QUÉ importa.
+   - Decidí si CONVERGE (should_converge: true) o si necesita otro loop (should_converge: false + need_more_sources).
+
+2. Criterios de convergencia:
+   - CONVERGE si: legitimacy no es UNCERTAIN Y (tiene 2+ fuentes O trash_penalty < 0.3 O trash_penalty > 0.7).
+   - NO CONVERGE si: legitimacy es UNCERTAIN o solo 1 fuente con trash_penalty entre 0.3-0.7.
+   - Si queda UNCERTAIN después de 3 iteraciones, igualmente convergé con categoría UNCERTAIN.
+
+3. El briefing debe ser INFORMATIVO, no genérico. Decir algo específico sobre el contenido de las menciones. Nada de "esta narrativa trata sobre X". Mejor: "Creciente preocupación en Twitter sobre X tras el anuncio de Y, con poca cobertura de medios tradicionales todavía."
+
+Sos riguroso. Si una narrativa es mierda, marcá NOISE. No inflés legitimidad.
+Pensá en español rioplatense.`;
 
 export async function validatorAgent(input: ValidatorInput): Promise<AgentResult<ValidatorOutput>> {
   const start = Date.now();
   const { loop_id, iteration, narratives, max_iterations } = input;
 
+  if (narratives.length === 0) {
+    return {
+      agent: 'validator',
+      status: 'success',
+      output: { narratives: [], converged_ids: [], reloop_narrative_ids: [], need_more_sources: [], reasoning: 'Sin narrativas' },
+      summary: 'Validator: sin narrativas',
+      metrics: {},
+      duration_ms: Date.now() - start,
+      request_reloop: false,
+    };
+  }
+
+  const context = narratives.map(n => ({
+    id: n.id,
+    t: n.title,
+    s: n.summary.slice(0, 80),
+    mc: n.mention_count,
+    sc: n.source_count,
+    src: n.sources,
+    tp: n.trash_penalty.toFixed(2),
+    st: n.status,
+    age_min: Math.floor((Date.now() - n.first_seen) / 60_000),
+    sm: n.sample_mentions.slice(0, 3).map(m => ({
+      src: m.source,
+      a: m.author.handle,
+      b: ((m.title ?? '') + ' ' + m.body).slice(0, 120),
+    })),
+  }));
+
+  const result = await llmJsonSafe<ValidatorLLMResponse>(
+    SYSTEM_PROMPT,
+    `Iter: ${iteration} (max: ${max_iterations})
+Narrativas:
+${JSON.stringify(context)}
+
+Para cada una:
+1. Asigná legitimacy + legitimacy_reasoning
+2. Generá briefing legible (2-3 oraciones, informativo, específico al contenido)
+3. Decidí should_converge (true/false) + need_more_sources + why_converge_or_not
+
+JSON:
+{"validated":[{"narrative_id":"...","legitimacy":"LEGIT|BOT_CAMPAIGN|TWITTER_NATIVE|PRE_BURST|NOISE|UNCERTAIN","legitimacy_reasoning":"...","briefing":"...","should_converge":true,"need_more_sources":[],"why_converge_or_not":"..."}],"reasoning":"..."}`,
+    { temperature: 0.4, max_tokens: 2000 }
+  );
+
   const validated: Narrative[] = [];
   const converged_ids: string[] = [];
   const reloop_narrative_ids: string[] = [];
-  const need_more_sources_set = new Set<SourceType>();
-  const distribution: Record<Legitimacy, number> = {
-    LEGIT: 0, BOT_CAMPAIGN: 0, TWITTER_NATIVE: 0, PRE_BURST: 0, NOISE: 0, UNCERTAIN: 0,
-  };
+  const need_more_set = new Set<SourceType>();
 
-  for (const n of narratives) {
-    const legitimacy = classifyLegitimacy(n);
-    distribution[legitimacy]++;
-    const updated: Narrative = { ...n, legitimacy };
-    validated.push(updated);
-    store.upsert(updated);
-
-    if (shouldConverge(updated, iteration, max_iterations)) {
+  if (result.data) {
+    const valMap = new Map(result.data.validated.map(v => [v.narrative_id, v]));
+    for (const n of narratives) {
+      const v = valMap.get(n.id);
+      if (!v) {
+        validated.push(n);
+        continue;
+      }
+      const force_converge = iteration >= max_iterations;
+      const should_converge = force_converge || v.should_converge;
+      const updated: Narrative = {
+        ...n,
+        legitimacy: v.legitimacy,
+        briefing: v.briefing,
+        legitimacy_explanation: v.legitimacy_reasoning,
+        briefing_pending: false,
+      };
+      validated.push(updated);
+      store.upsert(updated);
+      if (should_converge) {
+        converged_ids.push(updated.id);
+      } else {
+        reloop_narrative_ids.push(updated.id);
+        (v.need_more_sources ?? []).forEach(s => need_more_set.add(s));
+      }
+      store.logActivity({
+        id: crypto.randomUUID(),
+        agent: 'validator',
+        status: should_converge ? 'success' : 'waiting',
+        started_at: start, finished_at: Date.now(), duration_ms: Date.now() - start,
+        input_summary: `"${n.title.slice(0, 40)}"`,
+        output_summary: should_converge ? `CONVERGE como ${v.legitimacy}` : `NO CONVERGE`,
+        explanation: v.why_converge_or_not.slice(0, 250),
+        loop_id, iteration,
+        metrics: { legitimacy: v.legitimacy, converged: should_converge ? 1 : 0 },
+      });
+    }
+  } else {
+    // Fallback: converge all with UNCERTAIN legitimacy
+    for (const n of narratives) {
+      const updated: Narrative = {
+        ...n,
+        legitimacy: 'UNCERTAIN',
+        briefing: `Narrativa sobre "${n.title}" con ${n.mention_count} menciones detectadas en ${n.sources.join(', ')}. El validador no pudo generar un briefing detallado (LLM no disponible).`,
+        legitimacy_explanation: 'Fallback: LLM no disponible, marcado como UNCERTAIN.',
+        briefing_pending: false,
+      };
+      validated.push(updated);
+      store.upsert(updated);
       converged_ids.push(updated.id);
-      store.logActivity({
-        id: crypto.randomUUID(),
-        agent: 'validator',
-        status: 'success',
-        started_at: start,
-        finished_at: Date.now(),
-        duration_ms: Date.now() - start,
-        input_summary: `narrative=${updated.title} iter=${iteration}`,
-        output_summary: `CONVERGED as ${legitimacy}`,
-        loop_id, iteration,
-        metrics: { legitimacy, sources: updated.source_count, score: updated.current_score.toFixed(1) },
-      });
-    } else {
-      reloop_narrative_ids.push(updated.id);
-      const needed = whatSourcesNeeded(updated);
-      needed.forEach(s => need_more_sources_set.add(s));
-      store.logActivity({
-        id: crypto.randomUUID(),
-        agent: 'validator',
-        status: 'waiting',
-        started_at: start,
-        finished_at: Date.now(),
-        duration_ms: Date.now() - start,
-        input_summary: `narrative=${updated.title} iter=${iteration}`,
-        output_summary: `NEED MORE DATA: ${needed.join(', ') || 'uncertain'}`,
-        loop_id, iteration,
-        metrics: { legitimacy, sources: updated.source_count, needed: needed.length },
-      });
     }
   }
 
-  const need_more = Array.from(need_more_sources_set);
+  const need_more = Array.from(need_more_set);
   const request_reloop = reloop_narrative_ids.length > 0 && iteration < max_iterations;
 
   return {
@@ -127,16 +171,12 @@ export async function validatorAgent(input: ValidatorInput): Promise<AgentResult
       converged_ids,
       reloop_narrative_ids,
       need_more_sources: need_more,
-      legitimacy_distribution: distribution,
+      reasoning: result.data?.reasoning ?? 'Fallback aplicado',
     },
-    summary: `Validated ${validated.length}: ${converged_ids.length} converged, ${reloop_narrative_ids.length} need re-loop`,
-    metrics: {
-      converged: converged_ids.length,
-      reloop: reloop_narrative_ids.length,
-      ...Object.fromEntries(Object.entries(distribution).map(([k, v]) => [k, v])) as Record<string, number>,
-    },
+    summary: `Validator: ${converged_ids.length} convergen, ${reloop_narrative_ids.length} re-loop ${result.data ? '' : '(fallback)'}`,
+    metrics: { converged: converged_ids.length, reloop: reloop_narrative_ids.length, fallback: result.data ? 0 : 1 },
     duration_ms: Date.now() - start,
     request_reloop,
-    reloop_reason: request_reloop ? `Need more sources: ${need_more.join(', ')}` : undefined,
+    reloop_reason: request_reloop ? `Fuentes faltantes: ${need_more.join(', ')}` : undefined,
   };
 }
