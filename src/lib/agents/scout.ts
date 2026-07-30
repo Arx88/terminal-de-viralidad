@@ -5,7 +5,7 @@
 // No usa mocks aleatorios — el LLM simula un escenario plausible con su razonamiento.
 // ─────────────────────────────────────────────────────────────────────────
 
-import { llmJson, llm } from '../llm';
+import { llmJson, llmJsonSafe } from '../llm';
 import type { AgentResult, NormalizedMention, SourceType } from '../types';
 import { store } from '../eventbus';
 import { adapters } from '../adapters';
@@ -59,30 +59,29 @@ export async function scoutAgent(input: ScoutInput): Promise<AgentResult<ScoutOu
 
   console.log(`[scout] starting iter=${iteration} query="${query}"`);
 
-  // 1. LLM decide el plan de búsqueda
+  // 1. LLM decide el plan de búsqueda (prompt corto para evitar timeout)
   console.log(`[scout] calling LLM for plan...`);
-  const planResp = await llmJson<ScoutLLMResponse>(
+  const planResult = await llmJsonSafe<ScoutLLMResponse>(
     SYSTEM_PROMPT,
-    `Tema de monitoreo: "${query}"
-Iteración del loop: ${iteration}
-Fuentes disponibles: ${sources.join(', ')}
-${feedback ? `Feedback del evaluador anterior:\n${feedback}\n` : ''}Menciones ya recolectadas: ${existing_mentions.length}
+    `Tema: "${query}" | Iter: ${iteration} | Fuentes: ${sources.join(',')}
+${feedback ? `Feedback: ${feedback.slice(0, 200)}` : ''}
 
-Tu trabajo ahora:
-1. Hacé un plan de búsqueda concreto (qué ángulos del tema explorar, qué sub-queries usar).
-2. Generá hasta 8 sub-queries específicas (cortas, tipo búsqueda).
-3. Explicá tu razonamiento.
-
-Respondé con JSON:
-{
-  "plan": "explicación breve del plan",
-  "sub_queries": ["...", "..."],
-  "reasoning": "por qué elegiste este enfoque"
-}`,
-    { temperature: 0.5, max_tokens: 1500 }
+Generá plan de búsqueda + 4 sub-queries + razonamiento.
+JSON: {"plan":"...","sub_queries":["..."],"reasoning":"..."}`,
+    { temperature: 0.5, max_tokens: 600 }
   );
 
-  const plan = planResp.data;
+  let plan: ScoutLLMResponse;
+  if (planResult.data) {
+    plan = planResult.data;
+  } else {
+    // Fallback: deterministic plan
+    plan = {
+      plan: `Buscar información sobre "${query}" en las fuentes disponibles`,
+      sub_queries: [query, `${query} noticias`, `${query} análisis`, `${query} reacciones`],
+      reasoning: `Plan fallback generado porque el LLM no respondió: ${planResult.error?.slice(0, 60)}`,
+    };
+  }
   console.log(`[scout] plan received: ${plan.plan.slice(0, 80)}`);
   const existing_ids = new Set(existing_mentions.map(m => m.source_id));
   const collected: NormalizedMention[] = [];
@@ -135,43 +134,45 @@ Generá entre 5 y 10 menciones. Respondé con JSON:
 }`;
 
     try {
-      const simResp = await llmJson<{ mentions: SimulatedMention[]; reasoning: string }>(
+      const simResult = await llmJsonSafe<{ mentions: SimulatedMention[]; reasoning: string }>(
         SYSTEM_PROMPT,
         simPrompt,
-        { temperature: 0.7, max_tokens: 2500 }
+        { temperature: 0.7, max_tokens: 1200 }
       );
 
-      for (const sm of simResp.data.mentions) {
-        const id = crypto.randomUUID();
-        const mention: NormalizedMention = {
-          id,
-          source: sm.source,
-          source_id: `sim_${id.slice(0, 8)}`,
-          url: sm.source === 'twitter' ? `https://x.com/${sm.author_handle.replace('@','')}/status/${Math.floor(Math.random()*1e18)}` :
-               sm.source === 'reddit' ? `https://reddit.com/r/${query.split(' ')[0].toLowerCase()}/comments/${id.slice(0,6)}` :
-               sm.source === 'hackernews' ? `https://news.ycombinator.com/item?id=${Math.floor(Math.random()*1e7)}` :
-               `https://trends.google.com/trends/explore?q=${encodeURIComponent(query)}`,
-          fetched_at: Date.now(),
-          published_at: Date.now() - sm.published_ago_minutes * 60_000,
-          type: sm.source === 'twitter' ? 'post' : sm.source === 'gdelt' ? 'article' : 'story',
-          title: sm.title,
-          body: sm.body,
-          lang: sm.lang,
-          author: {
-            handle: sm.author_handle,
-            name: sm.author_handle.replace('@','').replace('/u/','').replace('hn-',''),
-            followers: sm.followers,
-          },
-          engagement: sm.engagement,
-          entities: {
-            hashtags: (sm.body.match(/#\w+/g) ?? []),
-            urls: [],
-            domains: sm.source === 'gdelt' ? [sm.author_handle] : [],
-          },
-        };
-        if (!existing_ids.has(mention.source_id)) {
-          collected.push(mention);
-          existing_ids.add(mention.source_id);
+      if (simResult.data && simResult.data.mentions) {
+        for (const sm of simResult.data.mentions) {
+          const id = crypto.randomUUID();
+          const mention: NormalizedMention = {
+            id,
+            source: sm.source,
+            source_id: `sim_${id.slice(0, 8)}`,
+            url: sm.source === 'twitter' ? `https://x.com/${sm.author_handle.replace('@','')}/status/${Math.floor(Math.random()*1e18)}` :
+                 sm.source === 'reddit' ? `https://reddit.com/r/${query.split(' ')[0].toLowerCase()}/comments/${id.slice(0,6)}` :
+                 sm.source === 'hackernews' ? `https://news.ycombinator.com/item?id=${Math.floor(Math.random()*1e7)}` :
+                 `https://trends.google.com/trends/explore?q=${encodeURIComponent(query)}`,
+            fetched_at: Date.now(),
+            published_at: Date.now() - sm.published_ago_minutes * 60_000,
+            type: sm.source === 'twitter' ? 'post' : sm.source === 'gdelt' ? 'article' : 'story',
+            title: sm.title,
+            body: sm.body,
+            lang: sm.lang,
+            author: {
+              handle: sm.author_handle,
+              name: sm.author_handle.replace('@','').replace('/u/','').replace('hn-',''),
+              followers: sm.followers,
+            },
+            engagement: sm.engagement,
+            entities: {
+              hashtags: (sm.body.match(/#\w+/g) ?? []),
+              urls: [],
+              domains: sm.source === 'gdelt' ? [sm.author_handle] : [],
+            },
+          };
+          if (!existing_ids.has(mention.source_id)) {
+            collected.push(mention);
+            existing_ids.add(mention.source_id);
+          }
         }
       }
     } catch (err: any) {
@@ -179,7 +180,7 @@ Generá entre 5 y 10 menciones. Respondé con JSON:
     }
   }
 
-  const reasoning = plan.reasoning || planResp.raw.reasoning;
+  const reasoning = plan.reasoning || (planResult.raw?.reasoning ?? 'Plan generado');
   const sources_used = Array.from(new Set(collected.map(m => m.source)));
 
   store.logActivity({
@@ -196,8 +197,7 @@ Generá entre 5 y 10 menciones. Respondé con JSON:
     metrics: {
       mentions: collected.length,
       sources: sources_used.length,
-      llm_tokens: planResp.raw.usage.total_tokens,
-      llm_latency_ms: planResp.raw.latency_ms,
+      llm_fallback: planResult.data ? 0 : 1,
     },
   });
 
@@ -210,8 +210,8 @@ Generá entre 5 y 10 menciones. Respondé con JSON:
       plan: plan.plan,
       sources_used,
     },
-    summary: `Scout recolectó ${collected.length} menciones`,
-    metrics: { mentions: collected.length, sources: sources_used.length },
+    summary: `Scout recolectó ${collected.length} menciones ${planResult.data ? '' : '(fallback)'}`,
+    metrics: { mentions: collected.length, sources: sources_used.length, fallback: planResult.data ? 0 : 1 },
     duration_ms: Date.now() - start,
     request_reloop: false,
   };
