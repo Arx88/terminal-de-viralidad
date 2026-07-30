@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FOGÓN — Detector personal de tendencias</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700;9..144,800;9..144,900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        bgbase: '#0F0A08',
+        bgcard: 'rgba(255,255,255,0.03)',
+        bordercard: 'rgba(255,255,255,0.06)',
+        textmain: '#F4EFE3',
+        textsec: '#9CA3AF',
+        textmute: '#6B7280',
+        ember: '#F59E0B',
+        violet: '#A78BFA',
+        emerald: '#34D399',
+        ash: '#6B7280',
+      },
+      fontFamily: {
+        sans: ['Inter', 'sans-serif'],
+        serif: ['Fraunces', 'serif'],
+        mono: ['JetBrains Mono', 'monospace'],
+      }
+    }
+  }
+}
+</script>
+<style>
+  * { -webkit-font-smoothing: antialiased; }
+  body {
+    background: #0F0A08;
+    background-image:
+      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(245,158,11,0.08), transparent),
+      radial-gradient(ellipse 60% 40% at 80% 50%, rgba(167,139,250,0.05), transparent),
+      radial-gradient(ellipse 60% 40% at 20% 80%, rgba(52,211,153,0.04), transparent);
+    min-height: 100vh;
+  }
+
+  /* Glassmorphism card */
+  .glass {
+    background: rgba(255,255,255,0.03);
+    backdrop-filter: blur(12px) saturate(1.4);
+    -webkit-backdrop-filter: blur(12px) saturate(1.4);
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+
+  /* Glow effects */
+  .glow-ember { box-shadow: 0 0 30px -8px rgba(245,158,11,0.25), 0 0 60px -20px rgba(245,158,11,0.15); }
+  .glow-violet { box-shadow: 0 0 30px -8px rgba(167,139,250,0.2), 0 0 60px -20px rgba(167,139,250,0.1); }
+  .glow-emerald { box-shadow: 0 0 30px -8px rgba(52,211,153,0.2), 0 0 60px -20px rgba(52,211,153,0.1); }
+  .glow-ash { box-shadow: none; opacity: 0.7; }
+
+  /* Status dot pulse */
+  .pulse-dot {
+    position: relative;
+  }
+  .pulse-dot::before {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border-radius: 50%;
+    border: 2px solid #34D399;
+    opacity: 0.4;
+    animation: pulseRing 2s ease-out infinite;
+  }
+  @keyframes pulseRing {
+    0% { transform: scale(0.8); opacity: 0.6; }
+    100% { transform: scale(2); opacity: 0; }
+  }
+
+  /* Card hover */
+  .trend-card {
+    transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+  }
+  .trend-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(255,255,255,0.12);
+  }
+  .trend-card:hover.glow-ember { box-shadow: 0 8px 40px -8px rgba(245,158,11,0.35), 0 0 80px -20px rgba(245,158,11,0.2); }
+  .trend-card:hover.glow-violet { box-shadow: 0 8px 40px -8px rgba(167,139,250,0.3), 0 0 80px -20px rgba(167,139,250,0.15); }
+  .trend-card:hover.glow-emerald { box-shadow: 0 8px 40px -8px rgba(52,211,153,0.3), 0 0 80px -20px rgba(52,211,153,0.15); }
+
+  /* Fade in animation */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .fade-up { animation: fadeUp 0.6s ease-out backwards; }
+
+  /* Ember pulse for "creciendo" */
+  @keyframes emberPulse {
+    0%, 100% { box-shadow: 0 0 30px -8px rgba(245,158,11,0.25), 0 0 60px -20px rgba(245,158,11,0.15); }
+    50% { box-shadow: 0 0 40px -8px rgba(245,158,11,0.4), 0 0 80px -20px rgba(245,158,11,0.25); }
+  }
+  .ember-pulse { animation: emberPulse 3s ease-in-out infinite; }
+
+  /* Sparkline draw */
+  @keyframes drawSpark {
+    from { stroke-dashoffset: 200; }
+    to { stroke-dashoffset: 0; }
+  }
+  .spark-line {
+    stroke-dasharray: 200;
+    animation: drawSpark 1.5s ease-out forwards;
+  }
+
+  /* Status bar gradient */
+  .bar-ember { background: linear-gradient(90deg, transparent, #F59E0B, transparent); }
+  .bar-violet { background: linear-gradient(90deg, transparent, #A78BFA, transparent); }
+  .bar-emerald { background: linear-gradient(90deg, transparent, #34D399, transparent); }
+  .bar-ash { background: linear-gradient(90deg, transparent, #6B7280, transparent); opacity: 0.3; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+  /* Panel slide */
+  .panel-slide {
+    transition: transform 0.4s cubic-bezier(0.4,0,0.2,1);
+  }
+</style>
+</head>
+<body class="text-textmain font-sans">
+
+<!-- HEADER -->
+<header class="sticky top-0 z-40 glass border-b border-white/5">
+  <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <svg width="32" height="32" viewBox="0 0 32 32" class="drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]">
+        <defs>
+          <radialGradient id="logoFire" cx="50%" cy="80%">
+            <stop offset="0%" stop-color="#FBBF24"/>
+            <stop offset="50%" stop-color="#F59E0B"/>
+            <stop offset="100%" stop-color="#C2410C"/>
+          </radialGradient>
+        </defs>
+        <path d="M16 30 C8 26, 6 18, 12 10 C10 16, 14 20, 16 16 C14 8, 20 4, 22 2 C24 10, 28 14, 26 22 C28 18, 30 26, 26 28 C28 30, 22 31, 16 30 Z" fill="url(#logoFire)"/>
+      </svg>
+      <div>
+        <h1 class="font-serif font-bold text-xl tracking-tight">FOGÓN</h1>
+        <p class="text-xs text-textsec -mt-0.5">detector personal de tendencias</p>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-6">
+      <div class="hidden md:flex items-center gap-2 text-xs text-textsec">
+        <div class="pulse-dot w-2 h-2 rounded-full bg-emerald"></div>
+        <span>Motor Nemotron activo</span>
+      </div>
+      <div class="hidden md:block text-xs text-textsec">
+        <span class="text-textmute">última actualización:</span> <span class="font-mono">hace 12 min</span>
+      </div>
+      <button class="px-4 py-2 glass rounded-lg text-sm text-textsec hover:text-textmain hover:border-white/20 transition-all">
+        Re-escanear
+      </button>
+    </div>
+  </div>
+
+  <!-- Filter pills -->
+  <div class="max-w-7xl mx-auto px-6 pb-3 flex items-center gap-2 overflow-x-auto">
+    <button class="px-3 py-1.5 rounded-full text-xs font-medium bg-white/10 text-textmain border border-white/10 whitespace-nowrap">Todas <span class="text-textsec ml-1">6</span></button>
+    <button class="px-3 py-1.5 rounded-full text-xs font-medium glass text-violet border border-violet/20 hover:border-violet/40 transition whitespace-nowrap">Por nacer <span class="text-textmute ml-1">2</span></button>
+    <button class="px-3 py-1.5 rounded-full text-xs font-medium glass text-emerald border border-emerald/20 hover:border-emerald/40 transition whitespace-nowrap">Nacida <span class="text-textmute ml-1">1</span></button>
+    <button class="px-3 py-1.5 rounded-full text-xs font-medium glass text-ember border border-ember/20 hover:border-ember/40 transition whitespace-nowrap">Creciendo <span class="text-textmute ml-1">2</span></button>
+    <button class="px-3 py-1.5 rounded-full text-xs font-medium glass text-ash border border-ash/20 hover:border-ash/40 transition whitespace-nowrap">Muriendo <span class="text-textmute ml-1">1</span></button>
+    <div class="ml-auto flex items-center gap-2 text-xs text-textsec">
+      <button class="hover:text-textmain transition">Relevancia ▾</button>
+    </div>
+  </div>
+</header>
+
+<!-- MAIN GRID -->
+<main class="max-w-7xl mx-auto px-6 py-8">
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" id="trendsGrid"></div>
+</main>
+
+<!-- FOOTER -->
+<footer class="border-t border-white/5 mt-12">
+  <div class="max-w-7xl mx-auto px-6 py-6 flex items-center justify-between text-xs text-textmute">
+    <div class="flex items-center gap-4">
+      <span>FOGÓN · experimental</span>
+      <span>·</span>
+      <span>Nemotron-3-Ultra-550B · thinking:false</span>
+    </div>
+    <div class="flex items-center gap-4">
+      <span>fuentes: Bluesky · Mastodon · HN · GDELT · RSS</span>
+    </div>
+  </div>
+</footer>
+
+<!-- DETAIL PANEL -->
+<div id="overlay" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 opacity-0 pointer-events-none transition-opacity duration-300" onclick="closePanel()"></div>
+<aside id="detailPanel" class="panel-slide fixed right-0 top-0 bottom-0 w-full max-w-md z-50 glass border-l border-white/10 translate-x-full overflow-y-auto">
+  <div class="p-6" id="panelContent"></div>
+</aside>
+
+<script>
+const trends = [
+  {
+    id: 1,
+    title: "Regulación de IA en la UE",
+    state: "creciendo",
+    stateColor: "ember",
+    metric: "+312% / 24h",
+    briefing: "Borrador filtrado de la Comisión Europea genera debate en Bluesky y r/spain. 14 posts en 2h, sin cobertura en medios tradicionales aún.",
+    sources: ["Bluesky", "Reddit"],
+    time: "hace 2h",
+    sparkData: [2, 3, 2, 5, 8, 12, 18, 25, 38, 52, 68, 82],
+    velocity: "82 menc/h",
+    confidence: "82%",
+    firstSeen: "hace 2h 14min",
+    sourcesDetail: [{name:"Bluesky", count:9, icon:"bsky"}, {name:"Reddit", count:5, icon:"reddit"}],
+    mentions: [
+      {author:"@ia_policy_es", source:"Bluesky", text:"El borrador filtrado sobre IA general del artículo 7 es preocupante...", time:"hace 2h"},
+      {author:"@dev_es", source:"Bluesky", text:"Hilo sobre implicaciones del artículo 7 para devs independientes", time:"hace 1h"},
+      {author:"u/tech_observer", source:"Reddit", text:"¿Alguien leyó el borrador de la UE? r/spain", time:"hace 45min"},
+    ]
+  },
+  {
+    id: 2,
+    title: "Brote de actividad solar",
+    state: "por nacer",
+    stateColor: "violet",
+    metric: "señal débil",
+    briefing: "Preprint de arXiv sobre tormenta solar mencionado por 3 cuentas técnicas. Señal débil pero de calidad alta en el originador.",
+    sources: ["arXiv", "Bluesky"],
+    time: "hace 45min",
+    sparkData: [0, 0, 1, 0, 1, 2, 1, 2, 3, 2, 3, 4],
+    velocity: "4 menc/h",
+    confidence: "65%",
+    firstSeen: "hace 45min",
+    sourcesDetail: [{name:"arXiv", count:1, icon:"arxiv"}, {name:"Bluesky", count:3, icon:"bsky"}],
+    mentions: [
+      {author:"@solar_physics", source:"Bluesky", text:"Nuevo preprint sobre ciclo solar 25 — los datos son significativos", time:"hace 45min"},
+      {author:"@astro_es", source:"Bluesky", text:"Si esto se confirma, las auroras van a ser visibles mucho más al sur", time:"hace 30min"},
+    ]
+  },
+  {
+    id: 3,
+    title: "Despidos en tech",
+    state: "muriendo",
+    stateColor: "ash",
+    metric: "−40% velocity",
+    briefing: "Tema de despidos tech pierde tracción después de 3 días. Velocity decreciendo 40% vs ayer. Ya no genera conversación nueva.",
+    sources: ["HN", "Reddit"],
+    time: "hace 3 días",
+    sparkData: [45, 52, 48, 40, 35, 28, 22, 18, 15, 12, 10, 8],
+    velocity: "8 menc/h",
+    confidence: "85%",
+    firstSeen: "hace 3 días",
+    sourcesDetail: [{name:"HN", count:12, icon:"hn"}, {name:"Reddit", count:8, icon:"reddit"}],
+    mentions: [
+      {author:"throwaway_dev", source:"HN", text:"Another round of layoffs at big tech", time:"hace 1 día"},
+    ]
+  },
+  {
+    id: 4,
+    title: "Cripto recupera",
+    state: "nacida",
+    stateColor: "emerald",
+    metric: "recién detectada",
+    briefing: "Subreddit r/CryptoCurrency muestra aumento de actividad positiva tras semana de baja. Sentimiento cambiando de negativo a neutral.",
+    sources: ["Reddit"],
+    time: "hace 1h",
+    sparkData: [5, 4, 3, 4, 6, 8, 10, 14, 18, 22, 28, 35],
+    velocity: "35 menc/h",
+    confidence: "70%",
+    firstSeen: "hace 1h",
+    sourcesDetail: [{name:"Reddit", count:14, icon:"reddit"}],
+    mentions: [
+      {author:"u/crypto_watch", source:"Reddit", text:"BTC sube 5% en 1h — primero en 2 semanas", time:"hace 50min"},
+      {author:"u/satoshi_es", source:"Reddit", text:"¿Cambió el sentimiento o es pump?", time:"hace 30min"},
+    ]
+  },
+  {
+    id: 5,
+    title: "Cumbre climática",
+    state: "creciendo",
+    stateColor: "ember",
+    metric: "+184% / 24h",
+    briefing: "Decisión de la ONU sobre fondos climáticos empieza a viralizar en Mastodon y medios ES. Cobertura cruzada emergiendo.",
+    sources: ["Mastodon", "RSS"],
+    time: "hace 5h",
+    sparkData: [3, 4, 3, 5, 7, 6, 9, 14, 20, 28, 35, 42],
+    velocity: "42 menc/h",
+    confidence: "78%",
+    firstSeen: "hace 5h",
+    sourcesDetail: [{name:"Mastodon", count:18, icon:"mastodon"}, {name:"RSS", count:8, icon:"rss"}],
+    mentions: [
+      {author:"@climate_es@masto.es", source:"Mastodon", text:"La ONU aprobó fondos climáticos — esto es enorme", time:"hace 5h"},
+      {author:"El Confidencial", source:"RSS", text:"La ONU reached agreement on climate funds", time:"hace 4h"},
+    ]
+  },
+  {
+    id: 6,
+    title: "Nueva API de Bluesky",
+    state: "por nacer",
+    stateColor: "violet",
+    metric: "47 ★ / 24h",
+    briefing: "GitHub trending: nuevo SDK para Bluesky firehose. 47 stars en 1 día. Mencionado en HN por 2 usuarios técnicos.",
+    sources: ["GitHub", "HN"],
+    time: "hace 30min",
+    sparkData: [0, 0, 5, 8, 12, 18, 22, 28, 35, 40, 44, 47],
+    velocity: "47 ★/24h",
+    confidence: "68%",
+    firstSeen: "hace 30min",
+    sourcesDetail: [{name:"GitHub", count:1, icon:"github"}, {name:"HN", count:2, icon:"hn"}],
+    mentions: [
+      {author:"@bluesky-dev", source:"GitHub", text:"New firehose SDK — 3x faster than official", time:"hace 30min"},
+      {author:"tptacek", source:"HN", text:"This is actually well designed", time:"hace 15min"},
+    ]
+  }
+];
+
+const stateConfig = {
+  'creciendo': { label: 'Creciendo', color: '#F59E0B', bgClass: 'glow-ember', barClass: 'bar-ember', pulse: true },
+  'por nacer': { label: 'Por nacer', color: '#A78BFA', bgClass: 'glow-violet', barClass: 'bar-violet', pulse: false },
+  'nacida':    { label: 'Nacida',    color: '#34D399', bgClass: 'glow-emerald', barClass: 'bar-emerald', pulse: false },
+  'muriendo':  { label: 'Muriendo',  color: '#6B7280', bgClass: 'glow-ash', barClass: 'bar-ash', pulse: false },
+};
+
+const sourceIcons = {
+  'Bluesky':  `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 10.8c-1.6-3.1-5.9-8.9-9.9-8.9C.5 1.9 0 4.4 0 6.3c0 1.6.8 7.9 1.3 9.1.6 1.4 2.4 2.2 3.7 1.4 2-1.2 3.9-4.3 5.1-6.1 1.6 2.7 3.1 5.4 5.1 6.1 1.3.6 3.1-.2 3.7-1.4.5-1.2 1.3-7.5 1.3-9.1 0-1.9-.5-4.4-2.1-4.4-4 0-8.3 5.8-9.9 8.9z"/></svg>`,
+  'Reddit':    `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.6 0 12 0zm5.01 4.74c.69 0 1.25.56 1.25 1.25s-.56 1.25-1.25 1.25-1.25-.56-1.25-1.25.56-1.25 1.25-1.25zM12 19.5c-3.86 0-7-2.69-7-6 0-.31.03-.62.08-.92-.55-.31-.92-.89-.92-1.56 0-.99.81-1.8 1.8-1.8.48 0 .92.19 1.24.49 1.05-.7 2.48-1.15 4.06-1.21l.87-4.1c.04-.18.21-.3.39-.26l2.87.61c.2-.42.62-.71 1.12-.71.69 0 1.25.56 1.25 1.25s-.56 1.25-1.25 1.25-1.21-.5-1.25-1.13l-2.57-.55-.78 3.67c1.55.07 2.95.52 3.98 1.21.32-.3.76-.49 1.24-.49.99 0 1.8.81 1.8 1.8 0 .67-.37 1.25-.92 1.56.05.3.08.61.08.92 0 3.31-3.14 6-7 6zm-3.5-4.5c-.69 0-1.25.56-1.25 1.25S7.81 17.5 8.5 17.5s1.25-.56 1.25-1.25-.56-1.25-1.25-1.25zm7 0c-.69 0-1.25.56-1.25 1.25s.56 1.25 1.25 1.25 1.25-.56 1.25-1.25-.56-1.25-1.25-1.25z"/></svg>`,
+  'arXiv':     `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M8 8l8 8M16 8l-8 8"/></svg>`,
+  'HN':        `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3 1h18v22H3z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M7 7l3 6-3 4M17 7l-3 6 3 4" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>`,
+  'Mastodon':  `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M23.27 5.33c-.36-2.67-2.7-4.77-5.47-5.18C17.33.07 15.55 0 12.04 0H12c-3.51 0-4.26.07-5.7.15C3.55.56 1.21 2.66.85 5.33.69 6.62.68 8.02.69 9.27c.02 2.03.05 3.38.09 4.75.15 5.32 1.07 7.69 2.4 8.93 1.7 1.58 4.5 1.74 6.49 1.84 1.7.08 7.04.12 8.83-.04 1.79-.16 3.5-.55 4.84-1.84 1.33-1.24 2.25-3.61 2.4-8.93.04-1.37.07-2.72.09-4.75.01-1.25 0-2.65-.16-3.94z"/></svg>`,
+  'RSS':       `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M4 4v3.5C13.17 7.5 16.5 10.83 16.5 20H20C20 8.5 15.5 4 4 4zm0 6v3.5c3.59 0 6.5 2.91 6.5 6.5H14c0-5.52-4.48-10-10-10zm2 8a2 2 0 11-4 0 2 2 0 014 0z"/></svg>`,
+  'GitHub':    `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.44 9.8 8.21 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.75.08-.73.08-.73 1.21.09 1.84 1.24 1.84 1.24 1.07 1.84 2.81 1.31 3.5 1 .11-.78.42-1.31.76-1.61-2.67-.3-5.47-1.34-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.12-.3-.54-1.52.12-3.18 0 0 1.01-.32 3.3 1.23.96-.27 1.98-.4 3-.41 1.02.01 2.04.14 3 .41 2.29-1.55 3.3-1.23 3.3-1.23.66 1.66.24 2.88.12 3.18.77.84 1.24 1.91 1.24 3.22 0 4.61-2.81 5.63-5.49 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.22.7.83.58C20.57 21.8 24 17.3 24 12c0-6.63-5.37-12-12-12z"/></svg>`,
+};
+
+function renderSparkline(data, color) {
+  const max = Math.max(...data, 1);
+  const w = 100, h = 32;
+  const stepX = w / (data.length - 1);
+  const points = data.map((v, i) => `${i * stepX},${h - (v / max) * (h - 4) - 2}`).join(' ');
+  const areaPoints = `0,${h} ${points} ${w},${h}`;
+  const gradId = `grad-${Math.random().toString(36).slice(2,8)}`;
+  return `
+    <svg width="100%" height="32" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" class="overflow-visible">
+      <defs>
+        <linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="${color}" stop-opacity="0.25"/>
+          <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+      <polygon points="${areaPoints}" fill="url(#${gradId})"/>
+      <polyline points="${points}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="spark-line"/>
+      <circle cx="${(data.length-1)*stepX}" cy="${h - (data[data.length-1]/max)*(h-4) - 2}" r="2.5" fill="${color}"/>
+    </svg>
+  `;
+}
+
+function renderCard(t, index) {
+  const cfg = stateConfig[t.state];
+  const glowClass = t.state === 'creciendo' ? `${cfg.bgClass} ember-pulse` : cfg.bgClass;
+  return `
+    <article class="trend-card glass ${glowClass} rounded-2xl overflow-hidden cursor-pointer fade-up"
+             style="animation-delay: ${index * 0.08}s"
+             onclick="openPanel(${t.id})">
+      <!-- Status bar -->
+      <div class="h-0.5 ${cfg.barClass}"></div>
+
+      <div class="p-5">
+        <!-- Header: state + metric -->
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full" style="background:${cfg.color}; box-shadow: 0 0 8px ${cfg.color}80;"></span>
+            <span class="text-xs font-medium uppercase tracking-wider" style="color:${cfg.color}">${cfg.label}</span>
+          </div>
+          <span class="font-mono text-xs text-textsec">${t.metric}</span>
+        </div>
+
+        <!-- Title -->
+        <h3 class="font-serif font-bold text-lg leading-tight mb-2 text-textmain">${t.title}</h3>
+
+        <!-- Briefing -->
+        <p class="text-sm text-textsec leading-relaxed mb-4">${t.briefing}</p>
+
+        <!-- Sparkline -->
+        <div class="mb-4">${renderSparkline(t.sparkData, cfg.color)}</div>
+
+        <!-- Footer: sources + time -->
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            ${t.sources.map(s => `
+              <span class="flex items-center gap-1 px-2 py-1 rounded-md bg-white/5 text-xs text-textsec">
+                <span style="color:${cfg.color}; opacity:0.7;">${sourceIcons[s] || ''}</span>
+                ${s}
+              </span>
+            `).join('')}
+          </div>
+          <span class="text-xs text-textmute">${t.time}</span>
+        </div>
+      </div>
+    </article>
+  `;
+}
+
+function openPanel(id) {
+  const t = trends.find(x => x.id === id);
+  if (!t) return;
+  const cfg = stateConfig[t.state];
+  document.getElementById('panelContent').innerHTML = `
+    <div class="flex items-center justify-between mb-6">
+      <div class="flex items-center gap-2">
+        <span class="w-2.5 h-2.5 rounded-full" style="background:${cfg.color}; box-shadow: 0 0 12px ${cfg.color};"></span>
+        <span class="text-sm font-medium uppercase tracking-wider" style="color:${cfg.color}">${cfg.label}</span>
+      </div>
+      <button onclick="closePanel()" class="text-textmute hover:text-textmain transition">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <h2 class="font-serif font-bold text-2xl leading-tight mb-3">${t.title}</h2>
+    <p class="text-xs text-textmute mb-6 font-mono">primera detección: ${t.firstSeen}</p>
+
+    <!-- Briefing -->
+    <div class="mb-6 p-4 rounded-xl bg-white/[0.02] border border-white/5">
+      <p class="text-xs uppercase tracking-wider text-textmute mb-2 font-medium">Briefing de Nemotron</p>
+      <p class="text-sm text-textsec leading-relaxed">${t.briefing}</p>
+      <p class="text-xs text-textmute mt-3 font-mono">Nemotron-3-Ultra-550B · 4.2s · 312 tokens</p>
+    </div>
+
+    <!-- Metrics -->
+    <div class="grid grid-cols-2 gap-3 mb-6">
+      <div class="p-3 rounded-xl bg-white/[0.02] border border-white/5">
+        <p class="text-xs text-textmute mb-1">Velocity</p>
+        <p class="font-mono text-lg" style="color:${cfg.color}">${t.velocity}</p>
+      </div>
+      <div class="p-3 rounded-xl bg-white/[0.02] border border-white/5">
+        <p class="text-xs text-textmute mb-1">Confianza</p>
+        <p class="font-mono text-lg text-textmain">${t.confidence}</p>
+      </div>
+    </div>
+
+    <!-- Sparkline large -->
+    <div class="mb-6 p-4 rounded-xl bg-white/[0.02] border border-white/5">
+      <p class="text-xs uppercase tracking-wider text-textmute mb-3 font-medium">Evolución 24h</p>
+      ${renderSparkline(t.sparkData, cfg.color)}
+    </div>
+
+    <!-- Sources -->
+    <div class="mb-6">
+      <p class="text-xs uppercase tracking-wider text-textmute mb-3 font-medium">Fuentes verificables</p>
+      <div class="space-y-2">
+        ${t.sourcesDetail.map(s => `
+          <div class="flex items-center gap-3 p-2 rounded-lg bg-white/[0.02]">
+            <span style="color:${cfg.color}; opacity:0.8;">${sourceIcons[s.name] || ''}</span>
+            <span class="text-sm text-textsec flex-1">${s.name}</span>
+            <span class="font-mono text-xs text-textmute">${s.count} menciones</span>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+
+    <!-- Recent mentions -->
+    <div class="mb-6">
+      <p class="text-xs uppercase tracking-wider text-textmute mb-3 font-medium">Menciones recientes</p>
+      <div class="space-y-3">
+        ${t.mentions.map(m => `
+          <div class="p-3 rounded-lg bg-white/[0.02] border border-white/5">
+            <div class="flex items-center gap-2 mb-1">
+              <span style="color:${cfg.color}; opacity:0.7; font-size:12px;">${sourceIcons[m.source] || ''}</span>
+              <span class="text-xs text-textsec font-medium">${m.author}</span>
+              <span class="text-xs text-textmute ml-auto">${m.time}</span>
+            </div>
+            <p class="text-sm text-textsec leading-relaxed">${m.text}</p>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="flex gap-2">
+      <button class="flex-1 py-2.5 rounded-xl text-sm font-semibold transition" style="background:${cfg.color}; color:#0F0A08;">Atizar (seguir)</button>
+      <button class="px-4 py-2.5 rounded-xl text-sm glass text-textsec hover:text-textmain transition">Guardar</button>
+    </div>
+  `;
+
+  document.getElementById('overlay').classList.remove('opacity-0', 'pointer-events-none');
+  document.getElementById('overlay').classList.add('opacity-100');
+  document.getElementById('detailPanel').classList.remove('translate-x-full');
+}
+
+function closePanel() {
+  document.getElementById('overlay').classList.add('opacity-0', 'pointer-events-none');
+  document.getElementById('overlay').classList.remove('opacity-100');
+  document.getElementById('detailPanel').classList.add('translate-x-full');
+}
+
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePanel(); });
+
+// Render
+document.getElementById('trendsGrid').innerHTML = trends.map(renderCard).join('');
+</script>
+
+</body>
+</html>
