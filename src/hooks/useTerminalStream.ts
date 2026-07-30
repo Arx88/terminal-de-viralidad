@@ -156,10 +156,11 @@ export function useTerminalStream() {
       })
       .catch(() => { /* */ });
 
+    // Trigger first agent step on mount
     fetch('/api/trigger', { method: 'POST', body: JSON.stringify({ query: 'IA agentes autónomos' }), headers: { 'Content-Type': 'application/json' } })
       .catch(() => { /* */ });
 
-    // Periodic re-triggers to keep the system alive (every 30s)
+    // Poll /api/trigger every 8s to advance the loop step by step
     const triggerInterval = setInterval(() => {
       const queries = ['IA agentes autónomos', 'regulación cripto 2026', 'cumbre climática', 'despidos tech'];
       const q = queries[Math.floor(Math.random() * queries.length)];
@@ -168,7 +169,7 @@ export function useTerminalStream() {
         body: JSON.stringify({ query: q }),
         headers: { 'Content-Type': 'application/json' },
       }).catch(() => { /* */ });
-    }, 30_000);
+    }, 8_000);
 
     const onVisibility = () => {
       if (document.hidden) {
