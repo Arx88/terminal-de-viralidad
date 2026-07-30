@@ -157,18 +157,39 @@ export function useTerminalStream() {
       .catch(() => { /* */ });
 
     // Trigger first agent step on mount
-    fetch('/api/trigger', { method: 'POST', body: JSON.stringify({ query: 'IA agentes autónomos' }), headers: { 'Content-Type': 'application/json' } })
-      .catch(() => { /* */ });
+    const runTrigger = async (query?: string) => {
+      try {
+        const res = await fetch('/api/trigger', {
+          method: 'POST',
+          body: JSON.stringify({ query: query || 'IA agentes autónomos' }),
+          headers: { 'Content-Type': 'application/json' },
+        });
+        const data = await res.json();
+        // If the response includes narratives, merge them into state
+        if (data.narratives && Array.isArray(data.narratives)) {
+          startTransition(() => {
+            setState(prev => {
+              const narratives = new Map(prev.narratives);
+              for (const n of data.narratives) narratives.set(n.id, n);
+              return { ...prev, narratives };
+            });
+          });
+        }
+        if (data.activities && Array.isArray(data.activities)) {
+          startTransition(() => {
+            setState(prev => ({ ...prev, activities: data.activities }));
+          });
+        }
+      } catch { /* */ }
+    };
+
+    runTrigger();
 
     // Poll /api/trigger every 8s to advance the loop step by step
     const triggerInterval = setInterval(() => {
       const queries = ['IA agentes autónomos', 'regulación cripto 2026', 'cumbre climática', 'despidos tech'];
       const q = queries[Math.floor(Math.random() * queries.length)];
-      fetch('/api/trigger', {
-        method: 'POST',
-        body: JSON.stringify({ query: q }),
-        headers: { 'Content-Type': 'application/json' },
-      }).catch(() => { /* */ });
+      runTrigger(q);
     }, 8_000);
 
     const onVisibility = () => {

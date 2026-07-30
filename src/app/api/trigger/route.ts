@@ -73,12 +73,17 @@ export async function POST(req: NextRequest) {
       console.error(`[trigger] step ${stepName} failed:`, err.message);
     }));
 
+    // Also return current narratives snapshot so client can display immediately
+    const currentNarratives = store.list({ limit: 20 });
+
     return NextResponse.json({
       status: 'step_started',
       step: stepName,
       next_step: STEP_NAMES[state.step],
       iteration: state.iteration,
       query: state.query,
+      narratives: currentNarratives,
+      activities: store.getActivities(10),
       ts: Date.now(),
     });
   } catch (err: any) {
