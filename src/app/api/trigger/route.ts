@@ -27,20 +27,20 @@ export async function POST(req: NextRequest) {
 
     // Run all 6 agents sequentially in this invocation
     let mentions: NormalizedMention[] = [];
-    let narratives: Narrative[] = store.list({ limit: 50 });
+    let narratives: Narrative[] = store.list({ limit: 50 }) ?? [];
 
     // 1. Scout
     console.log(`[trigger] step scout starting`);
     try {
       const r = await scoutAgent({ loop_id, iteration: 1, query, sources, existing_mentions: mentions });
-      mentions = r.output.mentions;
+      mentions = r.output?.mentions ?? [];
     } catch (e: any) { console.error('[trigger] scout failed:', e.message); }
 
     // 2. Cluster
     console.log(`[trigger] step cluster starting (${mentions.length} mentions)`);
     try {
       const r = await clusterAgent({ loop_id, iteration: 1, mentions, existing_narratives: narratives, query });
-      narratives = r.output.narratives;
+      narratives = r.output?.narratives ?? narratives;
     } catch (e: any) { console.error('[trigger] cluster failed:', e.message); }
 
     // 3. Score
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
       console.log(`[trigger] step score starting (${narratives.length} narratives)`);
       try {
         const r = await scoreAgent({ loop_id, iteration: 1, narratives });
-        narratives = r.output.narratives;
+        narratives = r.output?.narratives ?? narratives;
       } catch (e: any) { console.error('[trigger] score failed:', e.message); }
     }
 
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
       console.log(`[trigger] step phase starting`);
       try {
         const r = await phaseAgent({ loop_id, iteration: 1, narratives });
-        narratives = r.output.narratives;
+        narratives = r.output?.narratives ?? narratives;
       } catch (e: any) { console.error('[trigger] phase failed:', e.message); }
     }
 
@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
       console.log(`[trigger] step validator starting`);
       try {
         const r = await validatorAgent({ loop_id, iteration: 1, narratives, max_iterations: 1 });
-        narratives = r.output.narratives;
+        narratives = r.output?.narratives ?? narratives;
       } catch (e: any) { console.error('[trigger] validator failed:', e.message); }
     }
 
@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
       console.log(`[trigger] step evaluator starting`);
       try {
         const r = await evaluatorAgent({ loop_id, iteration: 1, narratives });
-        narratives = r.output.narratives;
+        narratives = r.output?.narratives ?? narratives;
       } catch (e: any) { console.error('[trigger] evaluator failed:', e.message); }
     }
 
