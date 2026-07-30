@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FOGÓN · Mención Detallada — Spec</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  /* ─────────────────────────────────────────────────────────────
+     FOGÓN design tokens (mirror of src/app/globals.css .dark)
+     ───────────────────────────────────────────────────────────── */
+  :root {
+    --fogon-bg:        #0A0E14;   /* app shell */
+    --fogon-panel:     #0D1117;   /* panel / card surface */
+    --fogon-elevated:  #161B22;   /* raised surface */
+    --fogon-elevated2: #1C2128;   /* hover surface */
+    --fogon-border:    #21262D;
+    --fogon-border2:   #30363D;
+    --fogon-text:      #E6EDF3;   /* primary text */
+    --fogon-text-soft: #C9D1D9;   /* body copy */
+    --fogon-text-mut:  #94A3B8;   /* secondary */
+    --fogon-text-dim:  #7D8590;   /* tertiary / meta */
+    --fogon-text-faint:#484F58;   /* disabled */
+    --fogon-accent:    #2DD4BF;   /* signature teal */
+    --fogon-accent-2:  #5EEAD4;
+    --fogon-link:      #58A6FF;
+    --fogon-amber:     #FBBF24;
+    --fogon-red:       #F87171;
+
+    --src-bluesky: #38BDF8;
+    --src-reddit:  #FB923C;
+    --src-hn:      #F87171;
+
+    --font-sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+
+  html, body {
+    background: var(--fogon-bg);
+    color: var(--fogon-text);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  .font-mono { font-family: var(--font-mono); }
+  .font-sans { font-family: var(--font-sans); }
+
+  /* ─── Panel chrome ─── */
+  .panel {
+    background: var(--fogon-panel);
+    border: 1px solid var(--fogon-border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .panel-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--fogon-border);
+    background: linear-gradient(180deg, #11161D 0%, #0D1117 100%);
+  }
+
+  /* ─── Mention card ─── */
+  .mention {
+    position: relative;
+    padding: 20px;
+    border-bottom: 1px solid var(--fogon-border);
+    transition: background .18s ease, box-shadow .18s ease;
+    cursor: default;
+  }
+  .mention:last-child { border-bottom: none; }
+  .mention::before {
+    content: ""; position: absolute; left: 0; top: 10px; bottom: 10px;
+    width: 2px; border-radius: 0 2px 2px 0;
+    background: transparent; transition: background .18s ease;
+  }
+  .mention:hover { background: #0F141B; }
+  .mention:hover::before { background: var(--src); opacity: .9; }
+  .mention:hover .open-original { color: var(--fogon-accent); }
+  .mention:hover .open-original svg { transform: translate(1px,-1px); }
+
+  /* ─── Source badge ─── */
+  .src-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: var(--font-mono); font-size: 10px; font-weight: 600;
+    letter-spacing: .08em; text-transform: uppercase;
+    padding: 3px 8px 3px 6px; border-radius: 5px;
+    border: 1px solid color-mix(in srgb, var(--src) 38%, transparent);
+    background: color-mix(in srgb, var(--src) 12%, transparent);
+    color: var(--src);
+  }
+  .src-badge svg { width: 13px; height: 13px; flex: none; }
+
+  /* ─── Date stamp ─── */
+  .date-stamp {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: var(--font-mono); font-size: 11px;
+    color: var(--fogon-text-dim);
+  }
+  .date-stamp svg { width: 12px; height: 12px; opacity: .75; }
+  .date-stamp .abs { color: var(--fogon-text-mut); }
+  .date-stamp .sep { opacity: .4; }
+
+  /* ─── Author ─── */
+  .author { display: flex; align-items: center; gap: 12px; }
+  .avatar {
+    width: 42px; height: 42px; border-radius: 50%; flex: none;
+    display: grid; place-items: center; overflow: hidden;
+    border: 1px solid var(--fogon-border2);
+    background: var(--fogon-elevated);
+    position: relative;
+  }
+  .avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .avatar.initials { font-family: var(--font-mono); font-weight: 700; font-size: 15px; color: #0D1117; }
+  .author-name {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 14px; font-weight: 600; color: var(--fogon-text);
+    letter-spacing: -0.01em; line-height: 1.2;
+  }
+  .author-name .verified { color: var(--fogon-accent); display: inline-flex; }
+  .author-name .verified svg { width: 14px; height: 14px; }
+  .author-handle {
+    display: flex; align-items: center; gap: 6px; margin-top: 2px;
+    font-family: var(--font-mono); font-size: 11.5px; color: var(--fogon-text-dim);
+  }
+  .author-handle .dot { width: 2px; height: 2px; border-radius: 50%; background: var(--fogon-text-faint); }
+  .author-handle .karma { color: var(--fogon-text-mut); }
+
+  /* ─── Quote / reply context ─── */
+  .context {
+    margin-top: 14px;
+    padding: 10px 12px 11px;
+    border-left: 2px solid var(--fogon-border2);
+    background: #0B1016;
+    border-radius: 0 6px 6px 0;
+  }
+  .context .ctx-label {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-family: var(--font-mono); font-size: 10px; font-weight: 600;
+    letter-spacing: .04em; color: var(--fogon-text-mut); margin-bottom: 4px;
+  }
+  .context .ctx-label svg { width: 11px; height: 11px; color: var(--fogon-text-dim); }
+  .context .ctx-author { font-family: var(--font-mono); font-size: 11px; color: var(--fogon-link); margin-bottom: 2px; }
+  .context .ctx-text { font-size: 12.5px; color: var(--fogon-text-mut); line-height: 1.5; }
+
+  /* ─── Content ─── */
+  .content { margin-top: 14px; font-size: 14px; line-height: 1.6; color: var(--fogon-text-soft); }
+  .content .title { font-size: 15px; font-weight: 600; color: var(--fogon-text); line-height: 1.4; margin-bottom: 6px; letter-spacing: -0.01em; }
+  .content .domain { display: inline-flex; align-items: center; gap: 4px; font-family: var(--font-mono); font-size: 11px; color: var(--fogon-text-dim); margin-top: 4px; }
+  .content .domain svg { width: 11px; height: 11px; }
+  .content.clamped { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+  .expand-toggle {
+    margin-top: 8px; display: inline-flex; align-items: center; gap: 4px;
+    font-family: var(--font-mono); font-size: 11px; color: var(--fogon-link);
+    cursor: pointer; background: none; border: none; padding: 2px 0;
+  }
+  .expand-toggle svg { width: 12px; height: 12px; transition: transform .2s ease; }
+  .expand-toggle.expanded svg { transform: rotate(180deg); }
+  .expand-toggle:hover { text-decoration: underline; }
+
+  /* ─── Tags / entities ─── */
+  .tags { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .tag {
+    font-family: var(--font-mono); font-size: 10.5px;
+    padding: 2px 7px; border-radius: 3px;
+    background: #11161D; color: var(--fogon-text-mut);
+    border: 1px solid var(--fogon-border);
+  }
+  .tag.hashtag { color: var(--fogon-link); border-color: #182030; }
+
+  /* ─── Interactions row ─── */
+  .stats {
+    margin-top: 16px;
+    display: flex; align-items: stretch; gap: 0;
+    border-top: 1px solid var(--fogon-border);
+    padding-top: 14px;
+  }
+  .stat {
+    flex: 1; display: flex; flex-direction: column; gap: 3px;
+    padding: 2px 12px; position: relative; cursor: default;
+    border-right: 1px solid var(--fogon-border);
+  }
+  .stat:first-child { padding-left: 0; }
+  .stat:last-child { border-right: none; padding-right: 0; }
+  .stat .stat-top { display: flex; align-items: center; gap: 6px; }
+  .stat svg { width: 14px; height: 14px; flex: none; color: var(--fogon-text-dim); transition: color .15s ease; }
+  .stat .val {
+    font-family: var(--font-mono); font-size: 13px; font-weight: 600;
+    color: var(--fogon-text); font-variant-numeric: tabular-nums; line-height: 1;
+  }
+  .stat .lbl {
+    font-family: var(--font-mono); font-size: 9px; font-weight: 500;
+    letter-spacing: .08em; text-transform: uppercase; color: var(--fogon-text-faint);
+  }
+  .stat:hover { background: transparent; }
+  .stat:hover svg { color: var(--src); }
+  .stat:hover .val { color: var(--fogon-text); }
+  /* highlight the dominant metric */
+  .stat.primary svg { color: var(--src); }
+  .stat.primary .val { color: var(--fogon-text); }
+
+  /* tooltip */
+  .stat[data-tip]:hover::after {
+    content: attr(data-tip);
+    position: absolute; bottom: calc(100% + 8px); left: 0;
+    font-family: var(--font-mono); font-size: 10px; white-space: nowrap;
+    background: #1C2128; color: var(--fogon-text);
+    border: 1px solid var(--fogon-border2); border-radius: 5px;
+    padding: 4px 8px; pointer-events: none; z-index: 20;
+    box-shadow: 0 6px 20px -6px rgba(0,0,0,.7);
+  }
+  .stat[data-tip]:hover::before {
+    content: ""; position: absolute; bottom: calc(100% + 3px); left: 14px;
+    border: 5px solid transparent; border-top-color: var(--fogon-border2);
+    z-index: 20;
+  }
+  @keyframes stat-pulse {
+    0% { transform: scale(1); } 40% { transform: scale(1.14); } 100% { transform: scale(1); }
+  }
+  .stat.pulsed .val { animation: stat-pulse .34s ease; }
+
+  /* reddit upvote ratio bar */
+  .ratio-bar {
+    margin-top: 2px; height: 3px; width: 100%; max-width: 52px;
+    background: var(--fogon-border); border-radius: 2px; overflow: hidden;
+  }
+  .ratio-bar > i { display: block; height: 100%; background: var(--src); }
+
+  /* ─── Footer ─── */
+  .foot {
+    margin-top: 14px; display: flex; align-items: center; justify-content: space-between;
+  }
+  .open-original {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: var(--font-mono); font-size: 11px; font-weight: 500;
+    color: var(--fogon-link); text-decoration: none; letter-spacing: .02em;
+    transition: color .15s ease;
+  }
+  .open-original svg { width: 12px; height: 12px; transition: transform .15s ease; }
+  .foot-actions { display: flex; gap: 4px; }
+  .icon-btn {
+    width: 28px; height: 28px; display: grid; place-items: center;
+    border-radius: 6px; border: 1px solid transparent; background: transparent;
+    color: var(--fogon-text-dim); cursor: pointer; transition: all .15s ease;
+  }
+  .icon-btn:hover { background: var(--fogon-elevated); border-color: var(--fogon-border); color: var(--fogon-text-mut); }
+  .icon-btn.copied { color: var(--fogon-accent); border-color: color-mix(in srgb, var(--fogon-accent) 40%, transparent); }
+  .icon-btn svg { width: 14px; height: 14px; }
+
+  /* ─── Misc ─── */
+  .legend { font-family: var(--font-mono); font-size: 10.5px; color: var(--fogon-text-dim); line-height: 1.7; }
+  .legend b { color: var(--fogon-text-mut); font-weight: 600; }
+  .legend .kbd {
+    font-family: var(--font-mono); font-size: 9px; padding: 1px 5px; border-radius: 3px;
+    background: var(--fogon-elevated); border: 1px solid var(--fogon-border); color: var(--fogon-text-mut);
+  }
+
+  /* selected-state ring (used to show "click to select" affordance) */
+  .mention.selected { background: #0F141B; box-shadow: inset 2px 0 0 var(--src); }
+  .mention.selected::before { background: var(--src); }
+</style>
+</head>
+<body class="min-h-screen">
+
+<div class="max-w-[600px] mx-auto px-5 py-10">
+
+  <!-- Spec header -->
+  <div class="mb-6">
+    <div class="flex items-center gap-2 mb-1.5">
+      <span class="font-mono text-[11px] font-semibold tracking-[.2em]" style="color:var(--fogon-accent)">FOGÓN</span>
+      <span class="font-mono text-[10px]" style="color:var(--fogon-text-faint)">/</span>
+      <span class="font-mono text-[10px] tracking-[.15em]" style="color:var(--fogon-text-dim)">AGENTE #2 · Mención Detallada</span>
+    </div>
+    <h1 class="text-[19px] font-semibold tracking-[-0.01em]" style="color:var(--fogon-text)">Componente de mención con interacciones, fecha exacta y contexto</h1>
+    <p class="text-[12.5px] mt-1.5 leading-relaxed" style="color:var(--fogon-text-dim)">
+      Panel lateral que aparece al clickear una tendencia. Tres fuentes, mismo sistema de color.
+      Hover · click para expandir · tooltips en métricas.
+    </p>
+  </div>
+
+  <!-- The panel -->
+  <div class="panel">
+    <div class="panel-head">
+      <div class="flex items-center gap-2">
+        <span class="font-mono text-[11px] font-semibold tracking-[.15em]" style="color:var(--fogon-text)">MENCIONES</span>
+        <span class="font-mono text-[9px] px-1.5 py-0.5 rounded" style="background:color-mix(in srgb,var(--fogon-accent) 14%,transparent);color:var(--fogon-accent)">3</span>
+      </div>
+      <span class="font-mono text-[9px]" style="color:var(--fogon-text-dim)">tendencia · “AI agents autonomía”</span>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════════════
+         VARIANTE A — BLUESKY (post con quote + interacciones completas)
+         ════════════════════════════════════════════════════════════ -->
+    <article class="mention" style="--src:var(--src-bluesky)" data-mention="bluesky">
+
+      <div class="flex items-start justify-between gap-3">
+        <span class="src-badge">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M12 10.4c-1.4-2.1-3-3.4-4.8-3.4-2.1 0-3.4 1.5-3.4 3.2 0 2.4 1.9 4.5 3.7 5.5 1.6.9 3.1.8 4.5-1.1 1.4 1.9 2.9 2 4.5 1.1 1.8-1 3.7-3.1 3.7-5.5 0-1.7-1.3-3.2-3.4-3.2-1.8 0-3.4 1.3-4.8 3.4z"/>
+          </svg>
+          Bluesky
+        </span>
+        <div class="date-stamp" title="2025-07-30T14:32:00Z">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>
+          <span class="rel">hace 2h</span>
+          <span class="sep">·</span>
+          <span class="abs">30 jul, 14:32</span>
+        </div>
+      </div>
+
+      <div class="author mt-3">
+        <div class="avatar">
+          <img src="https://i.pravatar.cc/96?img=47" alt="" loading="lazy" />
+        </div>
+        <div class="min-w-0">
+          <div class="author-name">
+            Lucía Marín
+            <span class="verified" title="Cuenta verificada">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 1.8 3 .2.9 2.8 2.3 2-1 2.8 1 2.8-2.3 2-.9 2.8-3 .2L12 22l-2.4-1.8-3-.2-.9-2.8-2.3-2 1-2.8-1-2.8 2.3-2 .9-2.8 3-.2z" opacity=".22"/><path d="M8.5 12.5l2.3 2.3 4.7-4.9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </span>
+          </div>
+          <div class="author-handle">
+            <span>@lucia.bsky.social</span>
+            <span class="dot"></span>
+            <span>12,4K seguidores</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quote context -->
+      <div class="context">
+        <div class="ctx-label">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.76-2.02-2-2H4c-1.25 0-2 .75-2 1.97V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .01-1 1.03z"/><path d="M15 21c3 0 7-1 7-8V5c0-1.25-.76-2.02-2-2h-4c-1.25 0-2 .75-2 1.97V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .01-1 1.03z"/></svg>
+          CITANDO A @karpathy.bsky.social
+        </div>
+        <div class="ctx-author">Andrej Karpathy · 28 jul</div>
+        <div class="ctx-text">"Lo que cambia todo no es el modelo, es cuánto puede operar solo antes de pedirte algo. Ese número sube cada trimestre."</div>
+      </div>
+
+      <div class="content">
+        Esto lo vengo diciendo desde marzo: el cuello de botella ya no es la inferencia, es el <strong style="color:var(--fogon-text)">costo del error en autonomía</strong>. Mientras cheaper-error sea el norte del diseño, los agentes van a comerse tareas de a bloque. El año que viene ya no pedís "escribí el endpoint", pedís "publicá la feature".
+      </div>
+
+      <div class="tags">
+        <span class="tag hashtag">#AIagents</span>
+        <span class="tag hashtag">#autonomía</span>
+        <span class="tag">arxiv.org/2410.04738</span>
+      </div>
+
+      <!-- Interactions -->
+      <div class="stats">
+        <div class="stat primary" data-tip="1,243 me gusta">
+          <div class="stat-top">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+            <span class="val">1.243</span>
+          </div>
+          <span class="lbl">likes</span>
+        </div>
+        <div class="stat" data-tip="284 reposts">
+          <div class="stat-top">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg>
+            <span class="val">284</span>
+          </div>
+          <span class="lbl">reposts</span>
+        </div>
+        <div class="stat" data-tip="97 respuestas">
+          <div class="stat-top">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>
+            <span class="val">97</span>
+          </div>
+          <span class="lbl">replies</span>
+        </div>
+        <div class="stat" data-tip="18,421 impresiones">
+          <div class="stat-top">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 16l4-5 3 3 5-7"/></svg>
+            <span class="val">18,4K</span>
+          </div>
+          <span class="lbl">views</span>
+        </div>
+      </div>
+
+      <div class="foot">
+        <a class="open-original" href="https://bsky.app/profile/lucia.bsky.social/post/3kxt" target="_blank" rel="noopener">
+          Abrir original
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
+        </a>
+        <div class="foot-actions">
+          <button class="icon-btn" title="Copiar enlace" data-copy>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="14" height="14" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+          </button>
+          <button class="icon-btn" title="Compartir">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="m16 6-4-4-4 4"/><path d="M12 2v13"/></svg>
+          </button>
+          <button class="icon-btn" title="Marcar para seguimiento">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+          </button>
+        </div>
+      </div>
+    </article>
+
+    <!-- ════════════════════════════════════════════════════════════
+         VARIANTE B — REDDIT (post con score + upvote ratio + comentarios)
+         ════════════════════════════════════════════════════════════ -->
+    <article class="mention" style="--src:var(--src-reddit)" data-mention="reddit">
+
+      <div class="flex items-start justify-between gap-3">
+        <span class="src-badge">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <circle cx="16" cy="5" r="1.6"/>
+            <path d="M15.2 6.2 13.4 9.3" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+            <ellipse cx="12" cy="13" rx="7" ry="5.6"/>
+            <circle cx="9.4" cy="12.6" r="1.5" fill="#0D1117"/>
+            <circle cx="14.6" cy="12.6" r="1.5" fill="#0D1117"/>
+            <path d="M9.4 14.8c.9 1 4.3 1 5.2 0" stroke="#0D1117" stroke-width="1.1" fill="none" stroke-linecap="round"/>
+          </svg>
+          Reddit
+        </span>
+        <div class="date-stamp" title="2025-07-30T11:18:00Z">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>
+          <span class="rel">hace 5h</span>
+          <span class="sep">·</span>
+          <span class="abs">30 jul, 11:18</span>
+        </div>
+      </div>
+
+      <div class="author mt-3">
+        <div class="avatar initials" style="background:linear-gradient(135deg,#FB923C,#F97316)">DL</div>
+        <div class="min-w-0">
+          <div class="author-name">u/dev_in_lisbon</div>
+          <div class="author-handle">
+            <span style="color:var(--src-reddit)">r/MachineLearning</span>
+            <span class="dot"></span>
+            <span>4,200 karma</span>
+            <span class="dot"></span>
+            <span class="karma">post · discusión</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="content clamped">
+        <div class="title">Mi equipo pasó 6 semanas midiendo "autonomía" de agentes y esto es lo que aprendimos</div>
+        Definimos autonomía como "tareas consecutivas completadas sin intervención humana". Probamos 4 stacks sobre un benchmark interno (120 tareas tipo dev). Spoiler: el costo por error bajó 3x en 5 meses, pero el <em>tiempo de recuperación</em> cuando el agente se equivoca es lo que realmente frena producción. Adjuntamos los logs y el script de evaluación. ¿Alguien midió recovery-time de forma reproducible?
+        <div class="domain">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/></svg>
+          github.com/dev-in-lisbon/agent-autonomy-bench
+        </div>
+      </div>
+
+      <button class="expand-toggle" data-expand>
+        Ver discusión completa
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
+
+      <!-- Interactions: Reddit-specific (score + ratio + comments + crossposts) -->
+      <div class="stats">
+        <div class="stat primary" data-tip="847 upvotes · ratio 94%">
+          <div class="stat-top">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg>
+            <span class="val">847</span>
+          </div>
+          <span class="lbl">score</span>
+          <div class="ratio-bar" title="Upvote ratio 94%"><i style="width:94%"></i></div>
+        </div>
+        <div class="stat" data-tip="213 comentarios · top: u/ml_eng_22">
+          <div class="stat-top">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span class="val">213</span>
+          </div>
+          <span class="lbl">comentarios</span>
+        </div>
+        <div class="stat" data-tip="4 crossposts · r/LocalLLaMA, r/singularity…">
+          <div class="stat-top">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+            <span class="val">4</span>
+          </div>
+          <span class="lbl">crossposts</span>
+        </div>
+        <div class="stat" data-tip="94% ratio positivo">
+          <div class="stat-top">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            <span class="val">94%</span>
+          </div>
+          <span class="lbl">upvote ratio</span>
+        </div>
+      </div>
+
+      <div class="foot">
+        <a class="open-original" href="https://reddit.com/r/MachineLearning/comments/1d8x" target="_blank" rel="noopener">
+          Abrir en Reddit
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
+        </a>
+        <div class="foot-actions">
+          <button class="icon-btn" title="Copiar enlace" data-copy>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="14" height="14" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+          </button>
+          <button class="icon-btn" title="Compartir">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="m16 6-4-4-4 4"/><path d="M12 2v13"/></svg>
+          </button>
+          <button class="icon-btn" title="Marcar para seguimiento">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+          </button>
+        </div>
+      </div>
+    </article>
+
+    <!-- ════════════════════════════════════════════════════════════
+         VARIANTE C — HACKER NEWS (story con points + comentarios + rank)
+         ════════════════════════════════════════════════════════════ -->
+    <article class="mention" style="--src:var(--src-hn)" data-mention="hackernews">
+
+      <div class="flex items-start justify-between gap-3">
+        <span class="src-badge">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect width="24" height="24" rx="5" fill="#FF6600"/>
+            <path d="M5 6.5 12 13.5 19 6.5" stroke="#fff" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            <line x1="12" y1="13.5" x2="12" y2="18.5" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/>
+          </svg>
+          Hacker News
+        </span>
+        <div class="date-stamp" title="2025-07-30T12:45:00Z">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg>
+          <span class="rel">hace 4h</span>
+          <span class="sep">·</span>
+          <span class="abs">30 jul, 12:45</span>
+        </div>
+      </div>
+
+      <div class="author mt-3">
+        <div class="avatar initials" style="background:linear-gradient(135deg,#F87171,#EF4444)">PG</div>
+        <div class="min-w-0">
+          <div class="author-name">pg</div>
+          <div class="author-handle">
+            <span>1,284 karma</span>
+            <span class="dot"></span>
+            <span class="karma">story · front page</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="title">Show HN: Open-source agent that ships a PR end-to-end (benchmark included)</div>
+        <div class="domain">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/></svg>
+          github.com/autodev/ship-pr-agent
+        </div>
+      </div>
+
+      <div class="tags">
+        <span class="tag">show-hn</span>
+        <span class="tag">agents</span>
+        <span class="tag">benchmark</span>
+      </div>
+
+      <!-- Interactions: HN-specific (points + comments + rank) -->
+      <div class="stats">
+        <div class="stat primary" data-tip="342 points (upvotes)">
+          <div class="stat-top">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg>
+            <span class="val">342</span>
+          </div>
+          <span class="lbl">points</span>
+        </div>
+        <div class="stat" data-tip="128 comentarios · top: dang">
+          <div class="stat-top">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span class="val">128</span>
+          </div>
+          <span class="lbl">comments</span>
+        </div>
+        <div class="stat" data-tip="Rank #4 en front page">
+          <div class="stat-top">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg>
+            <span class="val">#4</span>
+          </div>
+          <span class="lbl">rank</span>
+        </div>
+        <div class="stat" data-tip="8h en front page">
+          <div class="stat-top">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+            <span class="val">8h</span>
+          </div>
+          <span class="lbl">on front</span>
+        </div>
+      </div>
+
+      <div class="foot">
+        <a class="open-original" href="https://news.ycombinator.com/item?id=41023456" target="_blank" rel="noopener">
+          Abrir en HN
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
+        </a>
+        <div class="foot-actions">
+          <button class="icon-btn" title="Copiar enlace" data-copy>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="14" height="14" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+          </button>
+          <button class="icon-btn" title="Compartir">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="m16 6-4-4-4 4"/><path d="M12 2v13"/></svg>
+          </button>
+          <button class="icon-btn" title="Marcar para seguimiento">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+          </button>
+        </div>
+      </div>
+    </article>
+
+  </div><!-- /panel -->
+
+  <!-- Microinteraction legend -->
+  <div class="mt-6 panel" style="padding:16px 18px">
+    <div class="font-mono text-[10px] font-semibold tracking-[.15em] mb-2" style="color:var(--fogon-text-mut)">MICROINTERACCIONES</div>
+    <div class="legend">
+      <div><b>Hover en card</b> · fondo sutil + barra lateral del color de la fuente · link “Abrir original” pasa a teal y el ícono se desplaza ↗</div>
+      <div><b>Hover en métrica</b> · el ícono toma el color de la fuente + tooltip con el valor exacto y contexto</div>
+      <div><b>Click en métrica</b> · pulso (scale 1→1.14→1) y emite evento para filtrar menciones por esa interacción</div>
+      <div><b>Click en contenido</b> · expande el texto recortado a 4 líneas · botón “Ver discusión completa” gira 180°</div>
+      <div><b>Click en card</b> · marca como <span class="kbd">selected</span> (ring lateral sólido) — usable para multi-select de menciones</div>
+      <div><b>Copiar enlace</b> · el botón pasa a teal con check por 1.4s</div>
+      <div><b>Keyboard</b> · <span class="kbd">j</span>/<span class="kbd">k</span> navega, <span class="kbd">enter</span> abre original, <span class="kbd">c</span> copia</div>
+    </div>
+  </div>
+
+  <div class="mt-4 font-mono text-[9.5px] text-center" style="color:var(--fogon-text-faint)">
+    FOGÓN · Agente #2 — Product Designer · sistema de color idéntico a <span style="color:var(--fogon-text-dim)">globals.css .dark</span>
+  </div>
+</div>
+
+<script>
+  // Expand / collapse content
+  document.querySelectorAll('[data-expand]').forEach(btn => {
+    const content = btn.previousElementSibling;
+    btn.addEventListener('click', () => {
+      const expanded = btn.classList.toggle('expanded');
+      content.classList.toggle('clamped', !expanded);
+      btn.firstChild.textContent = expanded ? 'Contraer ' : 'Ver discusión completa ';
+    });
+  });
+
+  // Stat pulse on click
+  document.querySelectorAll('.stat').forEach(s => {
+    s.addEventListener('click', () => {
+      s.classList.remove('pulsed');
+      void s.offsetWidth; // force reflow to restart animation
+      s.classList.add('pulsed');
+      setTimeout(() => s.classList.remove('pulsed'), 360);
+    });
+  });
+
+  // Copy feedback
+  document.querySelectorAll('[data-copy]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const card = btn.closest('.mention');
+      const link = card.querySelector('.open-original').href;
+      navigator.clipboard?.writeText(link).catch(()=>{});
+      const original = btn.innerHTML;
+      btn.classList.add('copied');
+      btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+      setTimeout(() => { btn.classList.remove('copied'); btn.innerHTML = original; }, 1400);
+    });
+  });
+
+  // Card select toggle
+  const mentions = [...document.querySelectorAll('.mention')];
+  mentions.forEach(m => {
+    m.addEventListener('click', (e) => {
+      if (e.target.closest('a, button, .stat')) return; // ignore interactive children
+      mentions.forEach(x => { if (x !== m) x.classList.remove('selected'); });
+      m.classList.toggle('selected');
+    });
+  });
+
+  // Keyboard nav
+  let idx = -1;
+  document.addEventListener('keydown', (e) => {
+    if (e.target.matches('input,textarea')) return;
+    if (e.key === 'j' || e.key === 'k') {
+      e.preventDefault();
+      idx = Math.max(-1, Math.min(mentions.length - 1, idx + (e.key === 'j' ? 1 : -1)));
+      mentions.forEach(m => m.classList.remove('selected'));
+      if (idx >= 0) { mentions[idx].classList.add('selected'); mentions[idx].scrollIntoView({behavior:'smooth', block:'center'}); }
+    } else if (e.key === 'Enter' && idx >= 0) {
+      mentions[idx].querySelector('.open-original')?.click();
+    } else if (e.key.toLowerCase() === 'c' && idx >= 0) {
+      mentions[idx].querySelector('[data-copy]')?.click();
+    }
+  });
+</script>
+</body>
+</html>

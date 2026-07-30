@@ -60,4 +60,22 @@ Stage Summary:
 - Entregable: documento Markdown con sistema de diseño completo (24 hex, 2 escalas tipográficas, spacing 4px, radius pequeño), 3 wireframes ASCII, tabla de 4 fases con UI, reglas de real-time (SSE throttle 100ms, cap 50 menciones, visibility API), catálogo de charts (visx principal + SVG custom), 4 flujos user, 14 microinteracciones, 3 snippets TypeScript (NarrativeRow/useLiveStream/PhaseBadge), 7 principios, 7 anti-patrones, 12 keyboard shortcuts, accesibilidad WCAG.
 - Decisiones clave para alinear con equipo: (1) mis 4 fases visuales se mapean 1:1 con HMM del Agent #2 (forming→forming, growing→rising, mature→peaked, decaying→decaying); (2) necesito confirmación de Agent #1 sobre latencia P99 para throttle; (3) necesito OK del PM sobre no-optimizar mobile <1280px.
 
+Task ID: 6
+Agent: Product Strategist (Agent #3 — contexto FOGÓN)
+Task: Proponer 10 features concretas para mejorar funcionalidad de FOGÓN manteniendo UX simple
+
+Work Log:
+- Leí worklog.md, README.md, src/lib/agents/phase.ts y public/fogon-ui-mockup.html (570 líneas) para entender el estado actual de FOGÓN: grilla de 6 cards con 4 estados (por nacer/nacida/creciendo/muriendo), panel de detalle lateral con briefing Nemotron + velocity + sparkline + sources + mentions, acciones atizar/guardar (ahogar mencionado en el prompt pero no visible en mockup).
+- Mapeé las 5 preguntas del brief a features específicas: (P1 decisión → #2 baseline absoluto + #3 originator + #10 explicación de fase; P2 acciones → #7 snooze + #8 exportar + #9 semillas; P3 linaje → #1 transiciones en sparkline + #5 lead time vs medios; P4 datos no mostrados → URLs verificables, karma/seguidores originador, subreddit/instancia, delay pub→detección; P5 anti-loss → #4 "casi la atizaste" con flag peekedAt en localStorage).
+- Filtré features genéricas: descarté "notificaciones", "filtros avanzados", "AI chat", "social/comentarios", "dashboard de analytics", "históricos infinitos", "bookmarking con tags". Las clasifiqué en sección "LO QUE NO AGREGAR" con justificación por cada una.
+- Escribí entregable agent3_funcionalidad_mejorada.md con: tabla de 10 features (#/feature/problema/implementación/prioridad), TOP 3 must-have (#5 lead time, #2 baseline absoluto, #4 revival), TOP 3 nice-to-have (#1 transiciones sparkline, #3 originator, #8 exportar), LO QUE NO AGREGAR (7 features vetadas), notas de implementación (cuáles son cero-costo en infra, cuáles añaden llamadas Nemotron, cuál requiere migración DB).
+
+Stage Summary:
+- Postura: FOGÓN no necesita más features, necesita evidencia (lead time verificable vs. medios), contexto (baseline absoluto + cuentas únicas + originator attribution) y memoria (revival de trends vistas pero no atizadas). Sin estas 3, el producto no completa la promesa "detectar antes que nadie".
+- 4 de las 10 features son cero-costo en infra (#1 transiciones sparkline, #2 baseline, #4 revival, #10 explicación fase) — recomendé hacerlas como "fase 1.5" si hay que cortar alcance.
+- Solo 2 features añaden llamadas a Nemotron (#3 originator, #9 semillas), ambas 1-shot con cache y fallback barato.
+- Único cambio de DB no trivial: tracking de `media_first_seen` para #5 lead time. Resto son frontend + queries a tablas existentes.
+- Ninguna feature añade endpoint nuevo — protección intencional de la simplicidad de la API.
+- Anti-patterns vetados: push notifications, social/comentarios, dashboard analytics, filtros multi-dimensión, bookmarking con tags, históricos infinitos, AI chat. Cada uno con justificación específica de por qué rompe el contrato "abrir, ver 6 cards, entender, decidir en 30s".
+
 ---
