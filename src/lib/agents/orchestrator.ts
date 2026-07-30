@@ -193,10 +193,10 @@ async function executeLoop(cfg: OrchestratorConfig, loop_id: string, loop_start:
 
     // Persist ALL narratives at the end of the loop (in case they weren't already)
     for (const n of narratives) {
-      store.upsert(n);
+      await store.upsert(n);
     }
 
-    store.logActivity({
+    await store.logActivity({
       id: crypto.randomUUID(),
       agent: 'orchestrator',
       status: 'success',

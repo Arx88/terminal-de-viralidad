@@ -120,7 +120,7 @@ Respondé con JSON:
     );
   } catch (err: any) {
     // Fallback: approve all if LLM fails (better than blocking the loop)
-    store.logActivity({
+    await store.logActivity({
       id: crypto.randomUUID(),
       agent: 'evaluator',
       status: 'failed',
@@ -166,7 +166,7 @@ Respondé con JSON:
 
     if (e.is_useful) {
       approved_ids.push(n.id);
-      store.logActivity({
+      await store.logActivity({
         id: crypto.randomUUID(),
         agent: 'evaluator',
         status: 'success',
@@ -182,7 +182,7 @@ Respondé con JSON:
       if (!reloop_with_feedback) {
         reloop_with_feedback = { narrative_id: n.id, feedback: e.feedback };
       }
-      store.logActivity({
+      await store.logActivity({
         id: crypto.randomUUID(),
         agent: 'evaluator',
         status: 'failed',

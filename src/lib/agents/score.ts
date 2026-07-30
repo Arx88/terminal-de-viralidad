@@ -116,7 +116,7 @@ Para cada una, devolvé scores. JSON:
       };
       scored.push(updated);
       if (s.current_score > top_score) top_score = s.current_score;
-      store.upsert(updated);
+      await store.upsert(updated);
     }
     reasoning = result.data.reasoning;
   } else {
@@ -139,12 +139,12 @@ Para cada una, devolvé scores. JSON:
       };
       scored.push(updated);
       if (score > top_score) top_score = score;
-      store.upsert(updated);
+      await store.upsert(updated);
     }
     reasoning = `Fallback (LLM error: ${result.error?.slice(0, 60)})`;
   }
 
-  store.logActivity({
+  await store.logActivity({
     id: crypto.randomUUID(),
     agent: 'score',
     status: 'success',

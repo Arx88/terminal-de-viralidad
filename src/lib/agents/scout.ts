@@ -162,7 +162,7 @@ JSON: {"plan":"...","sub_queries":["..."],"reasoning":"...","mentions":[...]}`,
   const reasoning = plan.reasoning || (combinedResult.raw?.reasoning ?? 'Plan generado');
   const sources_used = Array.from(new Set(collected.map(m => m.source)));
 
-  store.logActivity({
+  await store.logActivity({
     id: crypto.randomUUID(),
     agent: 'scout',
     status: 'success',

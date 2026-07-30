@@ -1,4 +1,5 @@
 // REST: list narratives (snapshot for initial UI load).
+// Reads from Redis (shared across all Vercel instances).
 
 import { NextRequest, NextResponse } from 'next/server';
 import { store } from '@/lib/eventbus';
@@ -11,7 +12,7 @@ export async function GET(req: NextRequest) {
   const minScore = Number(req.nextUrl.searchParams.get('minScore') ?? 0);
   const limit = Number(req.nextUrl.searchParams.get('limit') ?? 50);
 
-  const narratives = store.list({
+  const narratives = await store.list({
     status: status || undefined,
     min_score: minScore || undefined,
     limit,

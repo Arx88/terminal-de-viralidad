@@ -176,7 +176,7 @@ Agrupá las menciones en narrativas. JSON:
     }
   }
 
-  store.logActivity({
+  await store.logActivity({
     id: crypto.randomUUID(),
     agent: 'cluster',
     status: 'success',

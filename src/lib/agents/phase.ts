@@ -112,7 +112,7 @@ Para cada una asigná fase. JSON:
           : null,
       };
       classified.push(updated);
-      store.upsert(updated);
+      await store.upsert(updated);
     }
   } else {
     // Fallback: heuristic phase classification
@@ -137,11 +137,11 @@ Para cada una asigná fase. JSON:
           : null,
       };
       classified.push(updated);
-      store.upsert(updated);
+      await store.upsert(updated);
     }
   }
 
-  store.logActivity({
+  await store.logActivity({
     id: crypto.randomUUID(),
     agent: 'phase',
     status: 'success',

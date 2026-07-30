@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
 
     // Run all 6 agents sequentially in this invocation
     let mentions: NormalizedMention[] = [];
-    let narratives: Narrative[] = store.list({ limit: 50 }) ?? [];
+    let narratives: Narrative[] = await store.list({ limit: 50 }) ?? [];
 
     // 1. Scout
     console.log(`[trigger] step scout starting`);
@@ -82,13 +82,17 @@ export async function POST(req: NextRequest) {
     const duration = Date.now() - start;
     console.log(`[trigger] loop completed in ${duration}ms | ${narratives.length} narratives`);
 
+    // Fetch fresh state from Redis (agents may have updated narratives)
+    const finalNarratives = await store.list({ limit: 20 });
+    const finalActivities = await store.getActivities(20);
+
     return NextResponse.json({
       status: 'completed',
       loop_id,
       query,
       duration_ms: duration,
-      narratives: narratives.slice(0, 20),
-      activities: store.getActivities(20),
+      narratives: finalNarratives,
+      activities: finalActivities,
       ts: Date.now(),
     });
   } catch (err: any) {

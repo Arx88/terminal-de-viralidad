@@ -125,14 +125,14 @@ JSON:
         briefing_pending: false,
       };
       validated.push(updated);
-      store.upsert(updated);
+      await store.upsert(updated);
       if (should_converge) {
         converged_ids.push(updated.id);
       } else {
         reloop_narrative_ids.push(updated.id);
         (v.need_more_sources ?? []).forEach(s => need_more_set.add(s));
       }
-      store.logActivity({
+      await store.logActivity({
         id: crypto.randomUUID(),
         agent: 'validator',
         status: should_converge ? 'success' : 'waiting',
@@ -155,7 +155,7 @@ JSON:
         briefing_pending: false,
       };
       validated.push(updated);
-      store.upsert(updated);
+      await store.upsert(updated);
       converged_ids.push(updated.id);
     }
   }
