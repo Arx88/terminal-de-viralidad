@@ -30,7 +30,7 @@ function getClient(): OpenAI {
     client = new OpenAI({
       apiKey,
       baseURL: NIM_BASE_URL,
-      timeout: 15_000, // 15s — fail fast, use fallbacks
+      timeout: 8_000, // 8s — fail very fast, almost always use fallbacks
       maxRetries: 0,
     });
   }
