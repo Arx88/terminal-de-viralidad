@@ -7,400 +7,526 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700;9..144,800;9..144,900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script>
 tailwind.config = {
   theme: {
     extend: {
       colors: {
-        bgbase: '#0F0A08',
-        bgcard: 'rgba(255,255,255,0.03)',
-        bordercard: 'rgba(255,255,255,0.06)',
-        textmain: '#F4EFE3',
-        textsec: '#9CA3AF',
-        textmute: '#6B7280',
-        ember: '#F59E0B',
-        violet: '#A78BFA',
-        emerald: '#34D399',
-        ash: '#6B7280',
+        bgbase:    '#0A0B0D',
+        bgsurface: '#101216',
+        bginset:   '#08090B',
+        textmain:  '#E8EAED',
+        textsec:   '#9BA1AB',
+        textmute:  '#5C6370',
+        ember:     '#E8804B',
+        lavender:  '#8B92B8',
+        sage:      '#8FA77D',
+        ash:       '#5C6370',
+        flame:     '#FF6B35',
       },
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
-        serif: ['Fraunces', 'serif'],
-        mono: ['JetBrains Mono', 'monospace'],
+        sans:   ['Inter', 'system-ui', 'sans-serif'],
+        serif:  ['Instrument Serif', 'Georgia', 'serif'],
+        mono:   ['JetBrains Mono', 'ui-monospace', 'monospace'],
       }
     }
   }
 }
 </script>
 <style>
-  * { -webkit-font-smoothing: antialiased; }
-  body {
-    background: #0F0A08;
-    background-image:
-      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(245,158,11,0.08), transparent),
-      radial-gradient(ellipse 60% 40% at 80% 50%, rgba(167,139,250,0.05), transparent),
-      radial-gradient(ellipse 60% 40% at 20% 80%, rgba(52,211,153,0.04), transparent);
-    min-height: 100vh;
-  }
+:root {
+  --bg:        #0A0B0D;
+  --surface:   #101216;
+  --inset:     #08090B;
+  --hairline:  rgba(255,255,255,0.06);
+  --hairline-strong: rgba(255,255,255,0.10);
+  --text:      #E8EAED;
+  --text-sec:  #9BA1AB;
+  --text-mute: #5C6370;
+  /* Spring easings */
+  --ease-soft:    cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-snappy:  cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-bounce:  cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-power:   cubic-bezier(0.05, 0.7, 0.1, 1);
+  /* Shadow layers */
+  --shadow-xs: inset 0 1px 0 0 rgba(255,255,255,0.04), 0 1px 2px 0 rgba(0,0,0,0.4);
+  --shadow-sm: inset 0 1px 0 0 rgba(255,255,255,0.05), 0 1px 2px 0 rgba(0,0,0,0.3), 0 2px 4px -1px rgba(0,0,0,0.35);
+  --shadow-md: inset 0 1px 0 0 rgba(255,255,255,0.06), 0 4px 8px -2px rgba(0,0,0,0.4), 0 2px 4px -2px rgba(0,0,0,0.3);
+  --shadow-lg: inset 0 1px 0 0 rgba(255,255,255,0.06), 0 12px 24px -6px rgba(0,0,0,0.5), 0 4px 8px -4px rgba(0,0,0,0.3);
+}
+* { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+html { text-rendering: optimizeLegibility; font-feature-settings: "kern","liga","calt"; scroll-behavior: smooth; }
 
-  /* Glassmorphism card */
-  .glass {
-    background: rgba(255,255,255,0.03);
-    backdrop-filter: blur(12px) saturate(1.4);
-    -webkit-backdrop-filter: blur(12px) saturate(1.4);
-    border: 1px solid rgba(255,255,255,0.06);
-  }
+body {
+  background-color: var(--bg);
+  background-image: radial-gradient(ellipse 60% 40% at 50% -8%, rgba(255,107,53,0.05), transparent 70%);
+  min-height: 100vh;
+  font-feature-settings: 'ss01';
+}
+body::before {
+  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 100;
+  opacity: 0.022; mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 1 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+}
+.surface {
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--hairline), inset 0 1px 0 0 rgba(255,255,255,0.04), 0 1px 2px 0 rgba(0,0,0,0.4);
+}
+.surface-inset {
+  background: var(--inset);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+}
+.glass { background: var(--surface); box-shadow: inset 0 0 0 1px var(--hairline), inset 0 1px 0 0 rgba(255,255,255,0.04); }
 
-  /* Glow effects */
-  .glow-ember { box-shadow: 0 0 30px -8px rgba(245,158,11,0.25), 0 0 60px -20px rgba(245,158,11,0.15); }
-  .glow-violet { box-shadow: 0 0 30px -8px rgba(167,139,250,0.2), 0 0 60px -20px rgba(167,139,250,0.1); }
-  .glow-emerald { box-shadow: 0 0 30px -8px rgba(52,211,153,0.2), 0 0 60px -20px rgba(52,211,153,0.1); }
-  .glow-ash { box-shadow: none; opacity: 0.7; }
+/* Status accent (1px top edge) */
+.accent-ember   { box-shadow: inset 0 1px 0 0 #E8804B, inset 0 0 0 1px var(--hairline), inset 0 0 0 1px rgba(232,128,75,0.10); }
+.accent-lavender{ box-shadow: inset 0 1px 0 0 #8B92B8, inset 0 0 0 1px var(--hairline); }
+.accent-sage    { box-shadow: inset 0 1px 0 0 #8FA77D, inset 0 0 0 1px var(--hairline); }
+.accent-ash     { box-shadow: inset 0 1px 0 0 rgba(92,99,112,0.5), inset 0 0 0 1px var(--hairline); opacity: 0.92; }
 
-  /* Status dot pulse */
-  .pulse-dot {
-    position: relative;
-  }
-  .pulse-dot::before {
-    content: '';
-    position: absolute;
-    inset: -4px;
-    border-radius: 50%;
-    border: 2px solid #34D399;
-    opacity: 0.4;
-    animation: pulseRing 2s ease-out infinite;
-  }
-  @keyframes pulseRing {
-    0% { transform: scale(0.8); opacity: 0.6; }
-    100% { transform: scale(2); opacity: 0; }
-  }
+/* Motor dot — blip cada 4s */
+.motor-dot { position: relative; }
+.motor-dot::after {
+  content: ''; position: absolute; inset: -3px; border-radius: 50%;
+  background: #8FA77D; opacity: 0; transform: scale(1);
+  animation: blip 4s var(--ease-soft) infinite;
+}
+@keyframes blip {
+  0%, 70%, 100% { opacity: 0; transform: scale(1); }
+  72% { opacity: 0.5; transform: scale(1.6); }
+  85% { opacity: 0; transform: scale(2.2); }
+}
 
-  /* Card hover */
-  .trend-card {
-    transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
-  }
-  .trend-card:hover {
-    transform: translateY(-4px);
-    border-color: rgba(255,255,255,0.12);
-  }
-  .trend-card:hover.glow-ember { box-shadow: 0 8px 40px -8px rgba(245,158,11,0.35), 0 0 80px -20px rgba(245,158,11,0.2); }
-  .trend-card:hover.glow-violet { box-shadow: 0 8px 40px -8px rgba(167,139,250,0.3), 0 0 80px -20px rgba(167,139,250,0.15); }
-  .trend-card:hover.glow-emerald { box-shadow: 0 8px 40px -8px rgba(52,211,153,0.3), 0 0 80px -20px rgba(52,211,153,0.15); }
+/* Card hover — 1px lift + accent brightens */
+.trend-card {
+  transition: box-shadow 220ms var(--ease-soft), transform 220ms var(--ease-soft);
+  position: relative;
+}
+.trend-card:hover { transform: translateY(-1px); }
+.trend-card:hover.accent-ember   { box-shadow: inset 0 1px 0 0 #FF9B6B, inset 0 0 0 1px var(--hairline-strong), 0 4px 12px -4px rgba(232,128,75,0.20); }
+.trend-card:hover.accent-lavender{ box-shadow: inset 0 1px 0 0 #A8AFCD, inset 0 0 0 1px var(--hairline-strong), 0 4px 12px -4px rgba(139,146,184,0.18); }
+.trend-card:hover.accent-sage    { box-shadow: inset 0 1px 0 0 #A6BD95, inset 0 0 0 1px var(--hairline-strong), 0 4px 12px -4px rgba(143,167,125,0.18); }
+.trend-card:hover.accent-ash     { box-shadow: inset 0 1px 0 0 rgba(92,99,112,0.8), inset 0 0 0 1px var(--hairline-strong); }
 
-  /* Fade in animation */
-  @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  .fade-up { animation: fadeUp 0.6s ease-out backwards; }
+/* Hover reveal — métricas ocultas aparecen */
+.reveal-on-hover {
+  max-height: 0; opacity: 0; overflow: hidden;
+  transition: max-height 0.4s var(--ease-soft), opacity 0.3s var(--ease-soft) 0.05s, margin-top 0.3s var(--ease-soft);
+  margin-top: 0;
+}
+.trend-card:hover .reveal-on-hover, .trend-card:focus-within .reveal-on-hover {
+  max-height: 40px; opacity: 1; margin-top: 12px;
+}
 
-  /* Ember pulse for "creciendo" */
-  @keyframes emberPulse {
-    0%, 100% { box-shadow: 0 0 30px -8px rgba(245,158,11,0.25), 0 0 60px -20px rgba(245,158,11,0.15); }
-    50% { box-shadow: 0 0 40px -8px rgba(245,158,11,0.4), 0 0 80px -20px rgba(245,158,11,0.25); }
-  }
-  .ember-pulse { animation: emberPulse 3s ease-in-out infinite; }
+/* Fade in */
+@keyframes cardEnter {
+  0%   { opacity: 0; transform: translateY(6px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.fade-up { animation: cardEnter 0.5s var(--ease-soft) backwards; }
 
-  /* Sparkline draw */
-  @keyframes drawSpark {
-    from { stroke-dashoffset: 200; }
-    to { stroke-dashoffset: 0; }
-  }
-  .spark-line {
-    stroke-dasharray: 200;
-    animation: drawSpark 1.5s ease-out forwards;
-  }
+/* Status bar */
+.bar-ember    { background: linear-gradient(90deg, #E8804B 0%, #E8804B 30%, transparent 100%); opacity: 0.85; }
+.bar-lavender { background: linear-gradient(90deg, #8B92B8 0%, #8B92B8 30%, transparent 100%); opacity: 0.75; }
+.bar-sage     { background: linear-gradient(90deg, #8FA77D 0%, #8FA77D 30%, transparent 100%); opacity: 0.75; }
+.bar-ash      { background: linear-gradient(90deg, #5C6370 0%, #5C6370 30%, transparent 100%); opacity: 0.4; }
+.bar-violet   { background: linear-gradient(90deg, #8B92B8 0%, #8B92B8 30%, transparent 100%); opacity: 0.75; }
+.bar-emerald  { background: linear-gradient(90deg, #8FA77D 0%, #8FA77D 30%, transparent 100%); opacity: 0.75; }
 
-  /* Status bar gradient */
-  .bar-ember { background: linear-gradient(90deg, transparent, #F59E0B, transparent); }
-  .bar-violet { background: linear-gradient(90deg, transparent, #A78BFA, transparent); }
-  .bar-emerald { background: linear-gradient(90deg, transparent, #34D399, transparent); }
-  .bar-ash { background: linear-gradient(90deg, transparent, #6B7280, transparent); opacity: 0.3; }
+/* Sparkline */
+@keyframes drawSpark {
+  0%   { stroke-dashoffset: 200; opacity: 0; }
+  20%  { opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+.spark-line {
+  stroke-dasharray: 200; stroke-dashoffset: 200;
+  animation: drawSpark 1.2s var(--ease-power) forwards;
+  animation-delay: 0.15s;
+}
+@keyframes dotLand {
+  0%   { transform: scale(0); opacity: 0; }
+  60%  { transform: scale(1.4); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.spark-dot { transform-origin: center; animation: dotLand 0.3s var(--ease-bounce) 1.2s backwards; }
 
-  /* Scrollbar */
-  ::-webkit-scrollbar { width: 6px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
-  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+/* Scrollbar */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 4px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.16); background-clip: padding-box; }
+* { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.1) transparent; }
 
-  /* Panel slide */
-  .panel-slide {
-    transition: transform 0.4s cubic-bezier(0.4,0,0.2,1);
-  }
+::selection { background: rgba(255,107,53,0.25); color: #FFF; }
+
+/* Typography */
+.display { font-family: 'Instrument Serif', Georgia, serif; letter-spacing: -0.015em; font-weight: 400; }
+.mono-num { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; font-feature-settings: 'tnum'; }
+.caps { text-transform: uppercase; letter-spacing: 0.08em; font-size: 10px; font-weight: 500; }
+
+/* Panel */
+.panel-slide { transition: transform 400ms var(--ease-soft); }
+
+/* Focus ring */
+*:focus { outline: none; }
+*:focus-visible { box-shadow: 0 0 0 2px var(--bg), 0 0 0 3px rgba(255,107,53,0.6); border-radius: inherit; }
+
+/* Filter pills */
+.pill { transition: background 180ms, box-shadow 180ms, color 180ms; cursor: pointer; }
+.pill:hover { background: rgba(255,255,255,0.04); }
+.pill[data-active="true"] { background: rgba(255,255,255,0.06); box-shadow: inset 0 0 0 1px var(--hairline-strong); }
+
+/* Skeleton shimmer */
+.skeleton {
+  background: linear-gradient(90deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0.05) 50%, rgba(255,255,255,0.02) 100%);
+  background-size: 200% 100%; animation: shimmer 1.6s var(--ease-power) infinite; border-radius: 4px;
+}
+@keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+
+/* Toast */
+.toast-enter { animation: toastIn 0.4s var(--ease-bounce) backwards; }
+@keyframes toastIn { 0% { opacity: 0; transform: translateY(20px) scale(0.95); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
+
+/* Mention card hover */
+.mention-card { transition: background 200ms var(--ease-soft), box-shadow 200ms var(--ease-soft); }
+.mention-card:hover { background: rgba(255,255,255,0.025); box-shadow: inset 0 0 0 1px var(--hairline-strong); }
+
+/* Metric hover */
+.mention-metric { transition: color 150ms; cursor: default; }
+.mention-metric:hover .metric-icon { color: inherit; opacity: 1; }
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}
+
+/* Keyboard nav */
+body.keyboard-nav .trend-card:focus-visible { box-shadow: var(--shadow-md), inset 3px 0 0 0 var(--state-color, #E8804B); }
 </style>
 </head>
 <body class="text-textmain font-sans">
 
+<a href="#main" class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[200] focus:px-3 focus:py-2 focus:rounded-md focus:surface focus:text-sm">Saltar al contenido</a>
+
 <!-- HEADER -->
-<header class="sticky top-0 z-40 glass border-b border-white/5">
-  <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-    <div class="flex items-center gap-3">
-      <svg width="32" height="32" viewBox="0 0 32 32" class="drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]">
+<header class="sticky top-0 z-40 surface border-b border-white/[0.04]" id="siteHeader">
+  <div class="max-w-7xl mx-auto px-6 py-3.5 flex items-center justify-between">
+    <div class="flex items-center gap-2.5">
+      <svg width="22" height="22" viewBox="0 0 32 32" aria-hidden="true" style="animation: logoBreath 6s var(--ease-soft) infinite; transform-origin: 50% 80%;">
         <defs>
-          <radialGradient id="logoFire" cx="50%" cy="80%">
-            <stop offset="0%" stop-color="#FBBF24"/>
-            <stop offset="50%" stop-color="#F59E0B"/>
-            <stop offset="100%" stop-color="#C2410C"/>
+          <radialGradient id="logoFire" cx="50%" cy="75%" r="65%">
+            <stop offset="0%" stop-color="#FFD4A8"/>
+            <stop offset="45%" stop-color="#FF6B35"/>
+            <stop offset="100%" stop-color="#7A2A0A"/>
           </radialGradient>
         </defs>
         <path d="M16 30 C8 26, 6 18, 12 10 C10 16, 14 20, 16 16 C14 8, 20 4, 22 2 C24 10, 28 14, 26 22 C28 18, 30 26, 26 28 C28 30, 22 31, 16 30 Z" fill="url(#logoFire)"/>
       </svg>
-      <div>
-        <h1 class="font-serif font-bold text-xl tracking-tight">FOGÓN</h1>
-        <p class="text-xs text-textsec -mt-0.5">detector personal de tendencias</p>
+      <div class="flex items-baseline gap-2">
+        <h1 class="display text-[20px] leading-none">FOGÓN</h1>
+        <span class="text-[11px] text-textmute leading-none hidden sm:inline">detector personal</span>
       </div>
     </div>
-
-    <div class="flex items-center gap-6">
-      <div class="hidden md:flex items-center gap-2 text-xs text-textsec">
-        <div class="pulse-dot w-2 h-2 rounded-full bg-emerald"></div>
-        <span>Motor Nemotron activo</span>
+    <div class="flex items-center gap-5">
+      <div class="hidden md:flex items-center gap-2 text-[11px] text-textsec">
+        <div class="motor-dot w-1.5 h-1.5 rounded-full bg-sage"></div>
+        <span>Nemotron activo</span>
       </div>
-      <div class="hidden md:block text-xs text-textsec">
-        <span class="text-textmute">última actualización:</span> <span class="font-mono">hace 12 min</span>
+      <div class="hidden lg:block text-[11px] text-textsec">
+        <span class="text-textmute">upd</span> <span class="mono-num ml-1">12m</span>
       </div>
-      <button class="px-4 py-2 glass rounded-lg text-sm text-textsec hover:text-textmain hover:border-white/20 transition-all">
+      <button class="px-3 py-1.5 rounded-md text-[12px] text-textsec hover:text-textmain transition surface-inset flex items-center gap-1.5" onclick="showToast('Re-escaneando fuentes…')">
+        <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="group-hover:rotate-180 transition-transform duration-500"><path d="M10 6a4 4 0 1 1-1.2-2.8M10 2v2.5H7.5"/></svg>
         Re-escanear
       </button>
     </div>
   </div>
-
-  <!-- Filter pills -->
-  <div class="max-w-7xl mx-auto px-6 pb-3 flex items-center gap-2 overflow-x-auto">
-    <button class="px-3 py-1.5 rounded-full text-xs font-medium bg-white/10 text-textmain border border-white/10 whitespace-nowrap">Todas <span class="text-textsec ml-1">6</span></button>
-    <button class="px-3 py-1.5 rounded-full text-xs font-medium glass text-violet border border-violet/20 hover:border-violet/40 transition whitespace-nowrap">Por nacer <span class="text-textmute ml-1">2</span></button>
-    <button class="px-3 py-1.5 rounded-full text-xs font-medium glass text-emerald border border-emerald/20 hover:border-emerald/40 transition whitespace-nowrap">Nacida <span class="text-textmute ml-1">1</span></button>
-    <button class="px-3 py-1.5 rounded-full text-xs font-medium glass text-ember border border-ember/20 hover:border-ember/40 transition whitespace-nowrap">Creciendo <span class="text-textmute ml-1">2</span></button>
-    <button class="px-3 py-1.5 rounded-full text-xs font-medium glass text-ash border border-ash/20 hover:border-ash/40 transition whitespace-nowrap">Muriendo <span class="text-textmute ml-1">1</span></button>
-    <div class="ml-auto flex items-center gap-2 text-xs text-textsec">
-      <button class="hover:text-textmain transition">Relevancia ▾</button>
+  <div class="max-w-7xl mx-auto px-6 pb-3 flex items-center gap-1 overflow-x-auto">
+    <button class="pill px-2.5 py-1 rounded-md text-[12px] text-textmain whitespace-nowrap" data-active="true" onclick="filterPills(this)">Todas <span class="mono-num text-textmute ml-1">6</span></button>
+    <button class="pill px-2.5 py-1 rounded-md text-[12px] text-textsec hover:text-lavender whitespace-nowrap" onclick="filterPills(this)">Por nacer <span class="mono-num text-textmute ml-1">2</span></button>
+    <button class="pill px-2.5 py-1 rounded-md text-[12px] text-textsec hover:text-sage whitespace-nowrap" onclick="filterPills(this)">Nacida <span class="mono-num text-textmute ml-1">1</span></button>
+    <button class="pill px-2.5 py-1 rounded-md text-[12px] text-textsec hover:text-ember whitespace-nowrap" onclick="filterPills(this)">Creciendo <span class="mono-num text-textmute ml-1">2</span></button>
+    <button class="pill px-2.5 py-1 rounded-md text-[12px] text-textsec hover:text-textmain whitespace-nowrap" onclick="filterPills(this)">Muriendo <span class="mono-num text-textmute ml-1">1</span></button>
+    <div class="ml-auto flex items-center gap-2 text-[11px] text-textsec">
+      <button class="hover:text-textmain transition flex items-center gap-1">Relevancia <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><path d="M2 4l3 3 3-3"/></svg></button>
     </div>
   </div>
 </header>
 
 <!-- MAIN GRID -->
-<main class="max-w-7xl mx-auto px-6 py-8">
+<main id="main" class="max-w-7xl mx-auto px-6 py-8">
   <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" id="trendsGrid"></div>
 </main>
 
 <!-- FOOTER -->
-<footer class="border-t border-white/5 mt-12">
-  <div class="max-w-7xl mx-auto px-6 py-6 flex items-center justify-between text-xs text-textmute">
-    <div class="flex items-center gap-4">
-      <span>FOGÓN · experimental</span>
-      <span>·</span>
-      <span>Nemotron-3-Ultra-550B · thinking:false</span>
+<footer class="border-t border-white/[0.04] mt-16">
+  <div class="max-w-7xl mx-auto px-6 py-5 flex items-center justify-between text-[11px] text-textmute">
+    <div class="flex items-center gap-3">
+      <span class="mono-num">FOGÓN · experimental</span>
+      <span class="text-textmute/50">/</span>
+      <span class="mono-num">Nemotron-3-Ultra-550B · thinking:false</span>
     </div>
-    <div class="flex items-center gap-4">
-      <span>fuentes: Bluesky · Mastodon · HN · GDELT · RSS</span>
+    <div class="flex items-center gap-3">
+      <span class="mono-num">Bluesky · Mastodon · HN · GDELT · RSS</span>
     </div>
   </div>
 </footer>
 
 <!-- DETAIL PANEL -->
-<div id="overlay" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 opacity-0 pointer-events-none transition-opacity duration-300" onclick="closePanel()"></div>
-<aside id="detailPanel" class="panel-slide fixed right-0 top-0 bottom-0 w-full max-w-md z-50 glass border-l border-white/10 translate-x-full overflow-y-auto">
+<div id="overlay" class="fixed inset-0 bg-black/70 z-50 opacity-0 pointer-events-none transition-opacity duration-300" onclick="closePanel()"></div>
+<aside id="detailPanel" class="panel-slide fixed right-0 top-0 bottom-0 w-full max-w-md z-50 surface border-l border-white/[0.06] translate-x-full overflow-y-auto">
   <div class="p-6" id="panelContent"></div>
 </aside>
+
+<!-- TOAST -->
+<div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] opacity-0 pointer-events-none transition-all duration-300">
+  <div class="surface rounded-[10px] px-4 py-2.5 flex items-center gap-2 text-[13px] text-textmain" style="box-shadow: var(--shadow-lg);">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#8FA77D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7l3.5 3.5L12 4"/></svg>
+    <span id="toastText"></span>
+  </div>
+</div>
+
+<style>
+@keyframes logoBreath {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 4px rgba(245,158,11,0.3)); }
+  50%      { transform: scale(1.04); filter: drop-shadow(0 0 6px rgba(245,158,11,0.45)); }
+}
+</style>
 
 <script>
 const trends = [
   {
-    id: 1,
-    title: "Regulación de IA en la UE",
-    state: "creciendo",
-    stateColor: "ember",
+    id: 1, title: "Regulación de IA en la UE", state: "creciendo",
     metric: "+312% / 24h",
     briefing: "Borrador filtrado de la Comisión Europea genera debate en Bluesky y r/spain. 14 posts en 2h, sin cobertura en medios tradicionales aún.",
-    sources: ["Bluesky", "Reddit"],
-    time: "hace 2h",
+    sources: ["Bluesky", "Reddit"], time: "hace 2h",
     sparkData: [2, 3, 2, 5, 8, 12, 18, 25, 38, 52, 68, 82],
-    velocity: "82 menc/h",
-    confidence: "82%",
-    firstSeen: "hace 2h 14min",
-    sourcesDetail: [{name:"Bluesky", count:9, icon:"bsky"}, {name:"Reddit", count:5, icon:"reddit"}],
+    velocity: "82 menc/h", confidence: "82%", firstSeen: "hace 2h 14min",
+    leadTime: "1h 36min antes que El Confidencial",
+    sourcesDetail: [{name:"Bluesky", count:9}, {name:"Reddit", count:5}],
     mentions: [
-      {author:"@ia_policy_es", source:"Bluesky", text:"El borrador filtrado sobre IA general del artículo 7 es preocupante...", time:"hace 2h"},
-      {author:"@dev_es", source:"Bluesky", text:"Hilo sobre implicaciones del artículo 7 para devs independientes", time:"hace 1h"},
-      {author:"u/tech_observer", source:"Reddit", text:"¿Alguien leyó el borrador de la UE? r/spain", time:"hace 45min"},
+      {author:"@ia_policy_es", name:"IA Policy España", source:"Bluesky", text:"El borrador filtrado sobre IA general del artículo 7 es preocupante. Define 'modelo de uso general' de forma demasiado amplia y podría afectar a devs independientes que fine-tunean modelos open source.", time:"hace 2h", date:"30 jul, 14:32", likes:1243, reposts:284, replies:97, views:"18,4K", verified:true, avatar:"#38BDF8"},
+      {author:"@dev_es", name:"Dev España", source:"Bluesky", text:"Hilo sobre implicaciones del artículo 7 para devs independientes. Si se aprueba tal cual, cualquier dev que use un modelo de >10^9 params tendría que registrar el uso. Absurdo.", time:"hace 1h", date:"30 jul, 15:18", likes:456, reposts:112, replies:43, views:"7,2K", verified:false, avatar:"#8B92B8"},
+      {author:"u/tech_observer", name:"Tech Observer", source:"Reddit", text:"¿Alguien leyó el borrador de la UE sobre IA? Lo subí a r/spain pero pasó desaparecido. Ahora está explotando en Bluesky.", time:"hace 45min", date:"30 jul, 15:47", score:847, comments:213, upvoteRatio:94, crossposts:4, avatar:"#FB923C"},
     ]
   },
   {
-    id: 2,
-    title: "Brote de actividad solar",
-    state: "por nacer",
-    stateColor: "violet",
+    id: 2, title: "Brote de actividad solar", state: "por nacer",
     metric: "señal débil",
     briefing: "Preprint de arXiv sobre tormenta solar mencionado por 3 cuentas técnicas. Señal débil pero de calidad alta en el originador.",
-    sources: ["arXiv", "Bluesky"],
-    time: "hace 45min",
+    sources: ["arXiv", "Bluesky"], time: "hace 45min",
     sparkData: [0, 0, 1, 0, 1, 2, 1, 2, 3, 2, 3, 4],
-    velocity: "4 menc/h",
-    confidence: "65%",
-    firstSeen: "hace 45min",
-    sourcesDetail: [{name:"arXiv", count:1, icon:"arxiv"}, {name:"Bluesky", count:3, icon:"bsky"}],
+    velocity: "4 menc/h", confidence: "65%", firstSeen: "hace 45min",
+    sourcesDetail: [{name:"arXiv", count:1}, {name:"Bluesky", count:3}],
     mentions: [
-      {author:"@solar_physics", source:"Bluesky", text:"Nuevo preprint sobre ciclo solar 25 — los datos son significativos", time:"hace 45min"},
-      {author:"@astro_es", source:"Bluesky", text:"Si esto se confirma, las auroras van a ser visibles mucho más al sur", time:"hace 30min"},
+      {author:"@solar_physics", name:"Solar Physics Daily", source:"Bluesky", text:"Nuevo preprint sobre ciclo solar 25 — los datos son significativos. Tormenta clase X9.3 detectada, la mayor del año. Si se confirma, las auroras van a ser visibles mucho más al sur de lo habitual.", time:"hace 45min", date:"30 jul, 15:45", likes:89, reposts:34, replies:12, views:"2,1K", verified:true, avatar:"#38BDF8"},
+      {author:"@astro_es", name:"Astro España", source:"Bluesky", text:"Si esto se confirma, las auroras van a ser visibles mucho más al sur. Estar atentos al KP index esta noche.", time:"hace 30min", date:"30 jul, 16:00", likes:67, reposts:28, replies:8, views:"1,8K", verified:false, avatar:"#8B92B8"},
     ]
   },
   {
-    id: 3,
-    title: "Despidos en tech",
-    state: "muriendo",
-    stateColor: "ash",
+    id: 3, title: "Despidos en tech", state: "muriendo",
     metric: "−40% velocity",
     briefing: "Tema de despidos tech pierde tracción después de 3 días. Velocity decreciendo 40% vs ayer. Ya no genera conversación nueva.",
-    sources: ["HN", "Reddit"],
-    time: "hace 3 días",
+    sources: ["HN", "Reddit"], time: "hace 3 días",
     sparkData: [45, 52, 48, 40, 35, 28, 22, 18, 15, 12, 10, 8],
-    velocity: "8 menc/h",
-    confidence: "85%",
-    firstSeen: "hace 3 días",
-    sourcesDetail: [{name:"HN", count:12, icon:"hn"}, {name:"Reddit", count:8, icon:"reddit"}],
+    velocity: "8 menc/h", confidence: "85%", firstSeen: "hace 3 días",
+    sourcesDetail: [{name:"HN", count:12}, {name:"Reddit", count:8}],
     mentions: [
-      {author:"throwaway_dev", source:"HN", text:"Another round of layoffs at big tech", time:"hace 1 día"},
+      {author:"throwaway_dev", name:"anonymous", source:"HN", text:"Another round of layoffs at big tech. This time hitting senior engineers. The pattern is clear: AI is replacing mid-level work.", time:"hace 1 día", date:"29 jul, 11:22", points:342, comments:128, rank:4, timeOnFront:"8h en portada", avatar:"#F87171"},
     ]
   },
   {
-    id: 4,
-    title: "Cripto recupera",
-    state: "nacida",
-    stateColor: "emerald",
+    id: 4, title: "Cripto recupera", state: "nacida",
     metric: "recién detectada",
     briefing: "Subreddit r/CryptoCurrency muestra aumento de actividad positiva tras semana de baja. Sentimiento cambiando de negativo a neutral.",
-    sources: ["Reddit"],
-    time: "hace 1h",
+    sources: ["Reddit"], time: "hace 1h",
     sparkData: [5, 4, 3, 4, 6, 8, 10, 14, 18, 22, 28, 35],
-    velocity: "35 menc/h",
-    confidence: "70%",
-    firstSeen: "hace 1h",
-    sourcesDetail: [{name:"Reddit", count:14, icon:"reddit"}],
+    velocity: "35 menc/h", confidence: "70%", firstSeen: "hace 1h",
+    sourcesDetail: [{name:"Reddit", count:14}],
     mentions: [
-      {author:"u/crypto_watch", source:"Reddit", text:"BTC sube 5% en 1h — primero en 2 semanas", time:"hace 50min"},
-      {author:"u/satoshi_es", source:"Reddit", text:"¿Cambió el sentimiento o es pump?", time:"hace 30min"},
+      {author:"u/crypto_watch", name:"Crypto Watch", source:"Reddit", text:"BTC sube 5% en 1h — primero en 2 semanas. ¿Cambio de tendencia o bounce muerto? Volume está 40% por encima de la media de 7d.", time:"hace 50min", date:"30 jul, 15:40", score:1247, comments:389, upvoteRatio:91, crossposts:2, avatar:"#FB923C"},
+      {author:"u/satoshi_es", name:"Satoshi ES", source:"Reddit", text:"¿Cambió el sentimiento o es pump? Mirando los wallets grandes, hay acumulación en las últimas 4h. Pero con este market todo puede ser fake.", time:"hace 30min", date:"30 jul, 16:00", score:456, comments:98, upvoteRatio:87, crossposts:0, avatar:"#FB923C"},
     ]
   },
   {
-    id: 5,
-    title: "Cumbre climática",
-    state: "creciendo",
-    stateColor: "ember",
+    id: 5, title: "Cumbre climática", state: "creciendo",
     metric: "+184% / 24h",
     briefing: "Decisión de la ONU sobre fondos climáticos empieza a viralizar en Mastodon y medios ES. Cobertura cruzada emergiendo.",
-    sources: ["Mastodon", "RSS"],
-    time: "hace 5h",
+    sources: ["Mastodon", "RSS"], time: "hace 5h",
     sparkData: [3, 4, 3, 5, 7, 6, 9, 14, 20, 28, 35, 42],
-    velocity: "42 menc/h",
-    confidence: "78%",
-    firstSeen: "hace 5h",
-    sourcesDetail: [{name:"Mastodon", count:18, icon:"mastodon"}, {name:"RSS", count:8, icon:"rss"}],
+    velocity: "42 menc/h", confidence: "78%", firstSeen: "hace 5h",
+    leadTime: "2h antes que El Mundo",
+    sourcesDetail: [{name:"Mastodon", count:18}, {name:"RSS", count:8}],
     mentions: [
-      {author:"@climate_es@masto.es", source:"Mastodon", text:"La ONU aprobó fondos climáticos — esto es enorme", time:"hace 5h"},
-      {author:"El Confidencial", source:"RSS", text:"La ONU reached agreement on climate funds", time:"hace 4h"},
+      {author:"@climate_es@masto.es", name:"Climate España", source:"Mastodon", text:"La ONU aprobó fondos climáticos — esto es enorme. $300B anual para países en desarrollo. La conversación empezó en Mastodon 2h antes de que El Mundo lo publique.", time:"hace 5h", date:"30 jul, 11:30", likes:234, reposts:89, replies:34, views:"5,6K", verified:false, avatar:"#8B92B8"},
+      {author:"El Confidencial", name:"El Confidencial", source:"RSS", text:"La ONU reached agreement on climate funds after 36h of negotiations", time:"hace 4h", date:"30 jul, 12:45", likes:0, reposts:0, replies:0, views:"", verified:true, avatar:"#A89A85"},
     ]
   },
   {
-    id: 6,
-    title: "Nueva API de Bluesky",
-    state: "por nacer",
-    stateColor: "violet",
+    id: 6, title: "Nueva API de Bluesky", state: "por nacer",
     metric: "47 ★ / 24h",
     briefing: "GitHub trending: nuevo SDK para Bluesky firehose. 47 stars en 1 día. Mencionado en HN por 2 usuarios técnicos.",
-    sources: ["GitHub", "HN"],
-    time: "hace 30min",
+    sources: ["GitHub", "HN"], time: "hace 30min",
     sparkData: [0, 0, 5, 8, 12, 18, 22, 28, 35, 40, 44, 47],
-    velocity: "47 ★/24h",
-    confidence: "68%",
-    firstSeen: "hace 30min",
-    sourcesDetail: [{name:"GitHub", count:1, icon:"github"}, {name:"HN", count:2, icon:"hn"}],
+    velocity: "47 ★/24h", confidence: "68%", firstSeen: "hace 30min",
+    sourcesDetail: [{name:"GitHub", count:1}, {name:"HN", count:2}],
     mentions: [
-      {author:"@bluesky-dev", source:"GitHub", text:"New firehose SDK — 3x faster than official", time:"hace 30min"},
-      {author:"tptacek", source:"HN", text:"This is actually well designed", time:"hace 15min"},
+      {author:"@bluesky-dev", name:"Bluesky Dev", source:"GitHub", text:"New firehose SDK — 3x faster than official, handles backpressure automatically. Open source, MIT license.", time:"hace 30min", date:"30 jul, 16:00", stars:47, forks:3, language:"TypeScript", avatar:"#A8AFCD"},
+      {author:"tptacek", name:"tptacek", source:"HN", text:"This is actually well designed. The backpressure handling alone makes it worth using over the official client.", time:"hace 15min", date:"30 jul, 16:15", points:89, comments:23, rank:12, timeOnFront:"subiendo", avatar:"#F87171"},
     ]
   }
 ];
 
 const stateConfig = {
-  'creciendo': { label: 'Creciendo', color: '#F59E0B', bgClass: 'glow-ember', barClass: 'bar-ember', pulse: true },
-  'por nacer': { label: 'Por nacer', color: '#A78BFA', bgClass: 'glow-violet', barClass: 'bar-violet', pulse: false },
-  'nacida':    { label: 'Nacida',    color: '#34D399', bgClass: 'glow-emerald', barClass: 'bar-emerald', pulse: false },
-  'muriendo':  { label: 'Muriendo',  color: '#6B7280', bgClass: 'glow-ash', barClass: 'bar-ash', pulse: false },
+  'creciendo': { label: 'Creciendo', color: '#E8804B', accent: 'accent-ember',   barClass: 'bar-ember',    pulse: true  },
+  'por nacer': { label: 'Por nacer', color: '#8B92B8', accent: 'accent-lavender',barClass: 'bar-lavender', pulse: false },
+  'nacida':    { label: 'Nacida',    color: '#8FA77D', accent: 'accent-sage',    barClass: 'bar-sage',     pulse: false },
+  'muriendo':  { label: 'Muriendo',  color: '#5C6370', accent: 'accent-ash',     barClass: 'bar-ash',      pulse: false },
 };
 
-const sourceIcons = {
-  'Bluesky':  `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 10.8c-1.6-3.1-5.9-8.9-9.9-8.9C.5 1.9 0 4.4 0 6.3c0 1.6.8 7.9 1.3 9.1.6 1.4 2.4 2.2 3.7 1.4 2-1.2 3.9-4.3 5.1-6.1 1.6 2.7 3.1 5.4 5.1 6.1 1.3.6 3.1-.2 3.7-1.4.5-1.2 1.3-7.5 1.3-9.1 0-1.9-.5-4.4-2.1-4.4-4 0-8.3 5.8-9.9 8.9z"/></svg>`,
-  'Reddit':    `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.6 0 12 0zm5.01 4.74c.69 0 1.25.56 1.25 1.25s-.56 1.25-1.25 1.25-1.25-.56-1.25-1.25.56-1.25 1.25-1.25zM12 19.5c-3.86 0-7-2.69-7-6 0-.31.03-.62.08-.92-.55-.31-.92-.89-.92-1.56 0-.99.81-1.8 1.8-1.8.48 0 .92.19 1.24.49 1.05-.7 2.48-1.15 4.06-1.21l.87-4.1c.04-.18.21-.3.39-.26l2.87.61c.2-.42.62-.71 1.12-.71.69 0 1.25.56 1.25 1.25s-.56 1.25-1.25 1.25-1.21-.5-1.25-1.13l-2.57-.55-.78 3.67c1.55.07 2.95.52 3.98 1.21.32-.3.76-.49 1.24-.49.99 0 1.8.81 1.8 1.8 0 .67-.37 1.25-.92 1.56.05.3.08.61.08.92 0 3.31-3.14 6-7 6zm-3.5-4.5c-.69 0-1.25.56-1.25 1.25S7.81 17.5 8.5 17.5s1.25-.56 1.25-1.25-.56-1.25-1.25-1.25zm7 0c-.69 0-1.25.56-1.25 1.25s.56 1.25 1.25 1.25 1.25-.56 1.25-1.25-.56-1.25-1.25-1.25z"/></svg>`,
-  'arXiv':     `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M8 8l8 8M16 8l-8 8"/></svg>`,
-  'HN':        `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3 1h18v22H3z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M7 7l3 6-3 4M17 7l-3 6 3 4" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>`,
-  'Mastodon':  `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M23.27 5.33c-.36-2.67-2.7-4.77-5.47-5.18C17.33.07 15.55 0 12.04 0H12c-3.51 0-4.26.07-5.7.15C3.55.56 1.21 2.66.85 5.33.69 6.62.68 8.02.69 9.27c.02 2.03.05 3.38.09 4.75.15 5.32 1.07 7.69 2.4 8.93 1.7 1.58 4.5 1.74 6.49 1.84 1.7.08 7.04.12 8.83-.04 1.79-.16 3.5-.55 4.84-1.84 1.33-1.24 2.25-3.61 2.4-8.93.04-1.37.07-2.72.09-4.75.01-1.25 0-2.65-.16-3.94z"/></svg>`,
-  'RSS':       `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M4 4v3.5C13.17 7.5 16.5 10.83 16.5 20H20C20 8.5 15.5 4 4 4zm0 6v3.5c3.59 0 6.5 2.91 6.5 6.5H14c0-5.52-4.48-10-10-10zm2 8a2 2 0 11-4 0 2 2 0 014 0z"/></svg>`,
-  'GitHub':    `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.44 9.8 8.21 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.75.08-.73.08-.73 1.21.09 1.84 1.24 1.84 1.24 1.07 1.84 2.81 1.31 3.5 1 .11-.78.42-1.31.76-1.61-2.67-.3-5.47-1.34-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.12-.3-.54-1.52.12-3.18 0 0 1.01-.32 3.3 1.23.96-.27 1.98-.4 3-.41 1.02.01 2.04.14 3 .41 2.29-1.55 3.3-1.23 3.3-1.23.66 1.66.24 2.88.12 3.18.77.84 1.24 1.91 1.24 3.22 0 4.61-2.81 5.63-5.49 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.22.7.83.58C20.57 21.8 24 17.3 24 12c0-6.63-5.37-12-12-12z"/></svg>`,
+const sourceConfig = {
+  'Bluesky':  { color: '#38BDF8', icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 10.8c-1.6-3.1-5.9-8.9-9.9-8.9C.5 1.9 0 4.4 0 6.3c0 1.6.8 7.9 1.3 9.1.6 1.4 2.4 2.2 3.7 1.4 2-1.2 3.9-4.3 5.1-6.1 1.6 2.7 3.1 5.4 5.1 6.1 1.3.6 3.1-.2 3.7-1.4.5-1.2 1.3-7.5 1.3-9.1 0-1.9-.5-4.4-2.1-4.4-4 0-8.3 5.8-9.9 8.9z"/></svg>` },
+  'Reddit':    { color: '#FB923C', icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.6 0 12 0zm5.01 4.74c.69 0 1.25.56 1.25 1.25s-.56 1.25-1.25 1.25-1.25-.56-1.25-1.25.56-1.25 1.25-1.25zM12 19.5c-3.86 0-7-2.69-7-6 0-.31.03-.62.08-.92-.55-.31-.92-.89-.92-1.56 0-.99.81-1.8 1.8-1.8.48 0 .92.19 1.24.49 1.05-.7 2.48-1.15 4.06-1.21l.87-4.1c.04-.18.21-.3.39-.26l2.87.61c.2-.42.62-.71 1.12-.71.69 0 1.25.56 1.25 1.25s-.56 1.25-1.25 1.25-1.21-.5-1.25-1.13l-2.57-.55-.78 3.67c1.55.07 2.95.52 3.98 1.21.32-.3.76-.49 1.24-.49.99 0 1.8.81 1.8 1.8 0 .67-.37 1.25-.92 1.56.05.3.08.61.08.92 0 3.31-3.14 6-7 6zm-3.5-4.5c-.69 0-1.25.56-1.25 1.25S7.81 17.5 8.5 17.5s1.25-.56 1.25-1.25-.56-1.25-1.25-1.25zm7 0c-.69 0-1.25.56-1.25 1.25s.56 1.25 1.25 1.25 1.25-.56 1.25-1.25-.56-1.25-1.25-1.25z"/></svg>` },
+  'arXiv':     { color: '#B31B1B', icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M8 8l8 8M16 8l-8 8"/></svg>` },
+  'HN':        { color: '#F87171', icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3 1h18v22H3z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M7 7l3 6-3 4M17 7l-3 6 3 4" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>` },
+  'Mastodon':  { color: '#8B92B8', icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M23.27 5.33c-.36-2.67-2.7-4.77-5.47-5.18C17.33.07 15.55 0 12.04 0H12c-3.51 0-4.26.07-5.7.15C3.55.56 1.21 2.66.85 5.33.69 6.62.68 8.02.69 9.27c.02 2.03.05 3.38.09 4.75.15 5.32 1.07 7.69 2.4 8.93 1.7 1.58 4.5 1.74 6.49 1.84 1.7.08 7.04.12 8.83-.04 1.79-.16 3.5-.55 4.84-1.84 1.33-1.24 2.25-3.61 2.4-8.93.04-1.37.07-2.72.09-4.75.01-1.25 0-2.65-.16-3.94z"/></svg>` },
+  'RSS':       { color: '#F59E0B', icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M4 4v3.5C13.17 7.5 16.5 10.83 16.5 20H20C20 8.5 15.5 4 4 4zm0 6v3.5c3.59 0 6.5 2.91 6.5 6.5H14c0-5.52-4.48-10-10-10zm2 8a2 2 0 11-4 0 2 2 0 014 0z"/></svg>` },
+  'GitHub':    { color: '#A8AFCD', icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.44 9.8 8.21 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.75.08-.73.08-.73 1.21.09 1.84 1.24 1.84 1.24 1.07 1.84 2.81 1.31 3.5 1 .11-.78.42-1.31.76-1.61-2.67-.3-5.47-1.34-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.12-.3-.54-1.52.12-3.18 0 0 1.01-.32 3.3 1.23.96-.27 1.98-.4 3-.41 1.02.01 2.04.14 3 .41 2.29-1.55 3.3-1.23 3.3-1.23.66 1.66.24 2.88.12 3.18.77.84 1.24 1.91 1.24 3.22 0 4.61-2.81 5.63-5.49 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.22.7.83.58C20.57 21.8 24 17.3 24 12c0-6.63-5.37-12-12-12z"/></svg>` },
+};
+
+// Interaction icons (Lucide-style, stroke 1.6, currentColor)
+const intIcons = {
+  like:    `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`,
+  repost:  `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>`,
+  reply:   `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>`,
+  views:   `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`,
+  score:   `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>`,
+  comment: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`,
+  star:    `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`,
+  fork:    `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" y1="9" x2="6" y2="21"/></svg>`,
 };
 
 function renderSparkline(data, color) {
   const max = Math.max(...data, 1);
-  const w = 100, h = 32;
+  const w = 100, h = 28;
   const stepX = w / (data.length - 1);
   const points = data.map((v, i) => `${i * stepX},${h - (v / max) * (h - 4) - 2}`).join(' ');
   const areaPoints = `0,${h} ${points} ${w},${h}`;
   const gradId = `grad-${Math.random().toString(36).slice(2,8)}`;
+  const lastX = (data.length-1)*stepX;
+  const lastY = h - (data[data.length-1]/max)*(h-4) - 2;
   return `
-    <svg width="100%" height="32" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" class="overflow-visible">
-      <defs>
-        <linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="${color}" stop-opacity="0.25"/>
-          <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
-        </linearGradient>
-      </defs>
+    <svg width="100%" height="28" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" class="overflow-visible">
+      <defs><linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${color}" stop-opacity="0.18"/><stop offset="100%" stop-color="${color}" stop-opacity="0"/></linearGradient></defs>
       <polygon points="${areaPoints}" fill="url(#${gradId})"/>
-      <polyline points="${points}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="spark-line"/>
-      <circle cx="${(data.length-1)*stepX}" cy="${h - (data[data.length-1]/max)*(h-4) - 2}" r="2.5" fill="${color}"/>
+      <polyline points="${points}" fill="none" stroke="${color}" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" class="spark-line"/>
+      <circle cx="${lastX}" cy="${lastY}" r="1.75" fill="${color}" class="spark-dot"/>
+      <circle cx="${lastX}" cy="${lastY}" r="3" fill="none" stroke="${color}" stroke-width="1" opacity="0.25" class="spark-dot"/>
     </svg>
+  `;
+}
+
+function renderMention(m, stateColor) {
+  const sc = sourceConfig[m.source] || { color: stateColor, icon: '' };
+  const initials = (m.name || m.author || '?').replace(/^[@u/]+/, '').slice(0, 2).toUpperCase();
+
+  let metrics = '';
+  if (m.likes !== undefined) {
+    metrics = `
+      <div class="flex items-center gap-3.5 mt-2.5 text-textmute">
+        <span class="mention-metric flex items-center gap-1 text-[11px] hover:text-textsec" title="${m.likes.toLocaleString()} me gusta"><span class="metric-icon opacity-60">${intIcons.like}</span><span class="mono-num">${m.likes > 999 ? (m.likes/1000).toFixed(1)+'K' : m.likes}</span></span>
+        ${m.reposts !== undefined ? `<span class="mention-metric flex items-center gap-1 text-[11px] hover:text-textsec" title="${m.reposts} reposts"><span class="metric-icon opacity-60">${intIcons.repost}</span><span class="mono-num">${m.reposts}</span></span>` : ''}
+        ${m.replies !== undefined ? `<span class="mention-metric flex items-center gap-1 text-[11px] hover:text-textsec" title="${m.replies} respuestas"><span class="metric-icon opacity-60">${intIcons.reply}</span><span class="mono-num">${m.replies}</span></span>` : ''}
+        ${m.views ? `<span class="mention-metric flex items-center gap-1 text-[11px] hover:text-textsec" title="${m.views} vistas"><span class="metric-icon opacity-60">${intIcons.views}</span><span class="mono-num">${m.views}</span></span>` : ''}
+      </div>`;
+  } else if (m.score !== undefined) {
+    metrics = `
+      <div class="flex items-center gap-3.5 mt-2.5 text-textmute">
+        <span class="mention-metric flex items-center gap-1 text-[11px] hover:text-textsec" title="Score ${m.score}"><span class="metric-icon opacity-60" style="color:#FB923C;">${intIcons.score}</span><span class="mono-num">${m.score}</span></span>
+        <span class="mention-metric flex items-center gap-1 text-[11px] hover:text-textsec" title="${m.comments} comentarios"><span class="metric-icon opacity-60">${intIcons.comment}</span><span class="mono-num">${m.comments}</span></span>
+        ${m.upvoteRatio ? `<span class="mention-metric flex items-center gap-1 text-[11px] hover:text-textsec" title="Upvote ratio ${m.upvoteRatio}%"><div class="w-8 h-1 rounded-full bg-white/10 overflow-hidden"><div class="h-full rounded-full" style="width:${m.upvoteRatio}%; background:#FB923C;"></div></div><span class="mono-num">${m.upvoteRatio}%</span></span>` : ''}
+        ${m.crossposts ? `<span class="mention-metric flex items-center gap-1 text-[11px] hover:text-textsec" title="${m.crossposts} crossposts"><span class="metric-icon opacity-60">${intIcons.repost}</span><span class="mono-num">${m.crossposts}</span></span>` : ''}
+      </div>`;
+  } else if (m.points !== undefined) {
+    metrics = `
+      <div class="flex items-center gap-3.5 mt-2.5 text-textmute">
+        <span class="mention-metric flex items-center gap-1 text-[11px] hover:text-textsec" title="${m.points} points"><span class="metric-icon opacity-60" style="color:#F87171;">${intIcons.score}</span><span class="mono-num">${m.points}</span></span>
+        <span class="mention-metric flex items-center gap-1 text-[11px] hover:text-textsec" title="${m.comments} comentarios"><span class="metric-icon opacity-60">${intIcons.comment}</span><span class="mono-num">${m.comments}</span></span>
+        ${m.rank ? `<span class="mention-metric flex items-center gap-1 text-[11px] hover:text-textsec" title="Rank #${m.rank} en front page"><span class="metric-icon opacity-60">${intIcons.star}</span><span class="mono-num">#${m.rank}</span></span>` : ''}
+        ${m.timeOnFront ? `<span class="text-[10px] text-textmute ml-auto">${m.timeOnFront}</span>` : ''}
+      </div>`;
+  } else if (m.stars !== undefined) {
+    metrics = `
+      <div class="flex items-center gap-3.5 mt-2.5 text-textmute">
+        <span class="mention-metric flex items-center gap-1 text-[11px] hover:text-textsec" title="${m.stars} stars"><span class="metric-icon opacity-60" style="color:#A8AFCD;">${intIcons.star}</span><span class="mono-num">${m.stars} ★</span></span>
+        ${m.forks !== undefined ? `<span class="mention-metric flex items-center gap-1 text-[11px] hover:text-textsec" title="${m.forks} forks"><span class="metric-icon opacity-60">${intIcons.fork}</span><span class="mono-num">${m.forks}</span></span>` : ''}
+        ${m.language ? `<span class="text-[10px] text-textmute ml-auto">${m.language}</span>` : ''}
+      </div>`;
+  }
+
+  return `
+    <div class="mention-card p-3.5 surface-inset rounded-[6px]">
+      <div class="flex items-start gap-3">
+        <!-- Avatar -->
+        <div class="w-7 h-7 rounded-full shrink-0 flex items-center justify-center text-[10px] font-semibold text-white" style="background: linear-gradient(135deg, ${m.avatar || sc.color}, ${sc.color}80);">
+          ${initials}
+        </div>
+        <div class="flex-1 min-w-0">
+          <!-- Author + source + date -->
+          <div class="flex items-center gap-1.5 mb-1 flex-wrap">
+            <span class="text-[12px] font-medium text-textmain">${m.name || m.author}</span>
+            ${m.verified ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="${sc.color}" class="shrink-0"><path d="M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.71-3.998-3.818-3.998-.47 0-.92.084-1.336.25C14.818 2.415 13.51 1.5 12 1.5s-2.816.917-3.437 2.25c-.415-.165-.866-.25-1.336-.25-2.11 0-3.818 1.79-3.818 4 0 .494.083.964.237 1.4-1.272.65-2.147 2.018-2.147 3.6 0 1.495.782 2.798 1.942 3.486-.02.17-.032.34-.032.514 0 2.21 1.708 4 3.818 4 .47 0 .92-.086 1.335-.25.62 1.334 1.926 2.25 3.437 2.25 1.512 0 2.818-.916 3.437-2.25.415.164.866.25 1.336.25 2.11 0 3.818-1.79 3.818-4 0-.174-.012-.344-.033-.514 1.16-.688 1.943-1.99 1.943-3.486z"/><path d="M9.5 16.5l-3-3 1.5-1.5 1.5 1.5 4.5-4.5 1.5 1.5z" fill="#0A0B0D"/></svg>` : ''}
+            <span class="text-[11px] text-textmute">${m.author}</span>
+            <span class="flex items-center gap-0.5 ml-auto text-[10px] text-textmute">
+              <span style="color:${sc.color}; opacity:0.7;">${sc.icon}</span>
+              <span class="mono-num">${m.time}</span>
+            </span>
+          </div>
+          <!-- Content -->
+          <p class="text-[13px] text-textsec leading-relaxed mb-1">${m.text}</p>
+          <!-- Date exact -->
+          <p class="mono-num text-[10px] text-textmute/70">${m.date}</p>
+          ${metrics}
+        </div>
+      </div>
+    </div>
   `;
 }
 
 function renderCard(t, index) {
   const cfg = stateConfig[t.state];
-  const glowClass = t.state === 'creciendo' ? `${cfg.bgClass} ember-pulse` : cfg.bgClass;
   return `
-    <article class="trend-card glass ${glowClass} rounded-2xl overflow-hidden cursor-pointer fade-up"
-             style="animation-delay: ${index * 0.08}s"
-             onclick="openPanel(${t.id})">
-      <!-- Status bar -->
-      <div class="h-0.5 ${cfg.barClass}"></div>
-
+    <article class="trend-card surface ${cfg.accent} rounded-[10px] overflow-hidden cursor-pointer fade-up"
+             style="animation-delay: ${Math.min(index, 6) * 0.06}s; --state-color: ${cfg.color};"
+             onclick="openPanel(${t.id})"
+             tabindex="0"
+             onkeydown="if(event.key==='Enter')openPanel(${t.id})">
+      <div class="h-[2px] ${cfg.barClass}"></div>
       <div class="p-5">
-        <!-- Header: state + metric -->
         <div class="flex items-center justify-between mb-3">
-          <div class="flex items-center gap-2">
-            <span class="w-2 h-2 rounded-full" style="background:${cfg.color}; box-shadow: 0 0 8px ${cfg.color}80;"></span>
-            <span class="text-xs font-medium uppercase tracking-wider" style="color:${cfg.color}">${cfg.label}</span>
+          <div class="flex items-center gap-1.5">
+            <span class="w-1 h-1 rounded-full" style="background:${cfg.color};"></span>
+            <span class="caps" style="color:${cfg.color}">${cfg.label}</span>
           </div>
-          <span class="font-mono text-xs text-textsec">${t.metric}</span>
+          <span class="mono-num text-[11px] text-textsec">${t.metric}</span>
         </div>
-
-        <!-- Title -->
-        <h3 class="font-serif font-bold text-lg leading-tight mb-2 text-textmain">${t.title}</h3>
-
-        <!-- Briefing -->
-        <p class="text-sm text-textsec leading-relaxed mb-4">${t.briefing}</p>
-
-        <!-- Sparkline -->
-        <div class="mb-4">${renderSparkline(t.sparkData, cfg.color)}</div>
-
-        <!-- Footer: sources + time -->
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-2">
-            ${t.sources.map(s => `
-              <span class="flex items-center gap-1 px-2 py-1 rounded-md bg-white/5 text-xs text-textsec">
-                <span style="color:${cfg.color}; opacity:0.7;">${sourceIcons[s] || ''}</span>
-                ${s}
-              </span>
-            `).join('')}
+        <h3 class="display text-[20px] leading-[1.15] mb-2 text-textmain">${t.title}</h3>
+        <p class="text-[13px] text-textsec leading-relaxed mb-4">${t.briefing}</p>
+        <div class="mb-1 -mx-1">${renderSparkline(t.sparkData, cfg.color)}</div>
+        <!-- Hover reveal: velocity + confidence -->
+        <div class="reveal-on-hover flex items-center gap-3 text-[10px] text-textmute mono-num">
+          <span>vel: ${t.velocity}</span><span>·</span><span>conf: ${t.confidence}</span>
+        </div>
+        <div class="flex items-center justify-between pt-3 border-t border-white/[0.04]">
+          <div class="flex items-center gap-1.5">
+            ${t.sources.map(s => {
+              const sc = sourceConfig[s] || {color:cfg.color, icon:''};
+              return `<span class="flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] text-textsec surface-inset"><span style="color:${sc.color}; opacity:0.7;">${sc.icon}</span>${s}</span>`;
+            }).join('')}
           </div>
-          <span class="text-xs text-textmute">${t.time}</span>
+          <span class="mono-num text-[11px] text-textmute">${t.time}</span>
         </div>
       </div>
     </article>
@@ -412,82 +538,70 @@ function openPanel(id) {
   if (!t) return;
   const cfg = stateConfig[t.state];
   document.getElementById('panelContent').innerHTML = `
-    <div class="flex items-center justify-between mb-6">
+    <div class="flex items-center justify-between mb-7">
       <div class="flex items-center gap-2">
-        <span class="w-2.5 h-2.5 rounded-full" style="background:${cfg.color}; box-shadow: 0 0 12px ${cfg.color};"></span>
-        <span class="text-sm font-medium uppercase tracking-wider" style="color:${cfg.color}">${cfg.label}</span>
+        <span class="w-1.5 h-1.5 rounded-full" style="background:${cfg.color};"></span>
+        <span class="caps" style="color:${cfg.color}">${cfg.label}</span>
       </div>
-      <button onclick="closePanel()" class="text-textmute hover:text-textmain transition">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      <button onclick="closePanel()" class="text-textmute hover:text-textmain transition p-1 -mr-1" aria-label="Cerrar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
       </button>
     </div>
+    <h2 class="display text-[28px] leading-[1.1] mb-2">${t.title}</h2>
+    <p class="caps text-textmute mb-5">primera detección · <span class="mono-num normal-case tracking-normal text-textsec ml-1">${t.firstSeen}</span></p>
 
-    <h2 class="font-serif font-bold text-2xl leading-tight mb-3">${t.title}</h2>
-    <p class="text-xs text-textmute mb-6 font-mono">primera detección: ${t.firstSeen}</p>
-
-    <!-- Briefing -->
-    <div class="mb-6 p-4 rounded-xl bg-white/[0.02] border border-white/5">
-      <p class="text-xs uppercase tracking-wider text-textmute mb-2 font-medium">Briefing de Nemotron</p>
-      <p class="text-sm text-textsec leading-relaxed">${t.briefing}</p>
-      <p class="text-xs text-textmute mt-3 font-mono">Nemotron-3-Ultra-550B · 4.2s · 312 tokens</p>
-    </div>
-
-    <!-- Metrics -->
-    <div class="grid grid-cols-2 gap-3 mb-6">
-      <div class="p-3 rounded-xl bg-white/[0.02] border border-white/5">
-        <p class="text-xs text-textmute mb-1">Velocity</p>
-        <p class="font-mono text-lg" style="color:${cfg.color}">${t.velocity}</p>
+    ${t.leadTime ? `
+    <div class="mb-5 p-3 rounded-[8px] flex items-center gap-3" style="background: rgba(143,167,125,0.06); box-shadow: inset 0 0 0 1px rgba(143,167,125,0.15);">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8FA77D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <div>
+        <p class="text-[12px] text-textsec">Detectaste esto <strong class="text-sage">${t.leadTime}</strong></p>
+        <p class="text-[10px] text-textmute mt-0.5">comparado con cobertura en medios tradicionales</p>
       </div>
-      <div class="p-3 rounded-xl bg-white/[0.02] border border-white/5">
-        <p class="text-xs text-textmute mb-1">Confianza</p>
-        <p class="font-mono text-lg text-textmain">${t.confidence}</p>
+    </div>` : ''}
+
+    <div class="mb-5 p-4 surface-inset rounded-[8px]">
+      <p class="caps text-textmute mb-2">Briefing de Nemotron</p>
+      <p class="text-[13px] text-textsec leading-relaxed">${t.briefing}</p>
+      <p class="mono-num text-[10px] text-textmute mt-3 pt-3 border-t border-white/[0.04]">Nemotron-3-Ultra-550B · 4.2s · 312 tokens</p>
+    </div>
+    <div class="grid grid-cols-2 gap-2 mb-5">
+      <div class="p-3.5 surface-inset rounded-[8px]">
+        <p class="caps text-textmute mb-1.5">Velocity</p>
+        <p class="mono-num text-[18px]" style="color:${cfg.color}">${t.velocity}</p>
+      </div>
+      <div class="p-3.5 surface-inset rounded-[8px]">
+        <p class="caps text-textmute mb-1.5">Confianza</p>
+        <p class="mono-num text-[18px] text-textmain">${t.confidence}</p>
       </div>
     </div>
-
-    <!-- Sparkline large -->
-    <div class="mb-6 p-4 rounded-xl bg-white/[0.02] border border-white/5">
-      <p class="text-xs uppercase tracking-wider text-textmute mb-3 font-medium">Evolución 24h</p>
+    <div class="mb-5 p-4 surface-inset rounded-[8px]">
+      <p class="caps text-textmute mb-3">Evolución 24h</p>
       ${renderSparkline(t.sparkData, cfg.color)}
     </div>
-
-    <!-- Sources -->
+    <div class="mb-5">
+      <p class="caps text-textmute mb-3">Fuentes verificables</p>
+      <div class="space-y-1">
+        ${t.sourcesDetail.map(s => {
+          const sc = sourceConfig[s.name] || {color:cfg.color, icon:''};
+          return `<div class="flex items-center gap-3 p-2.5 surface-inset rounded-[6px]">
+            <span style="color:${sc.color}; opacity:0.8;">${sc.icon}</span>
+            <span class="text-[13px] text-textsec flex-1">${s.name}</span>
+            <span class="mono-num text-[11px] text-textmute">${s.count} menciones</span>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
     <div class="mb-6">
-      <p class="text-xs uppercase tracking-wider text-textmute mb-3 font-medium">Fuentes verificables</p>
+      <p class="caps text-textmute mb-3">Menciones recientes</p>
       <div class="space-y-2">
-        ${t.sourcesDetail.map(s => `
-          <div class="flex items-center gap-3 p-2 rounded-lg bg-white/[0.02]">
-            <span style="color:${cfg.color}; opacity:0.8;">${sourceIcons[s.name] || ''}</span>
-            <span class="text-sm text-textsec flex-1">${s.name}</span>
-            <span class="font-mono text-xs text-textmute">${s.count} menciones</span>
-          </div>
-        `).join('')}
+        ${t.mentions.map(m => renderMention(m, cfg.color)).join('')}
       </div>
     </div>
-
-    <!-- Recent mentions -->
-    <div class="mb-6">
-      <p class="text-xs uppercase tracking-wider text-textmute mb-3 font-medium">Menciones recientes</p>
-      <div class="space-y-3">
-        ${t.mentions.map(m => `
-          <div class="p-3 rounded-lg bg-white/[0.02] border border-white/5">
-            <div class="flex items-center gap-2 mb-1">
-              <span style="color:${cfg.color}; opacity:0.7; font-size:12px;">${sourceIcons[m.source] || ''}</span>
-              <span class="text-xs text-textsec font-medium">${m.author}</span>
-              <span class="text-xs text-textmute ml-auto">${m.time}</span>
-            </div>
-            <p class="text-sm text-textsec leading-relaxed">${m.text}</p>
-          </div>
-        `).join('')}
-      </div>
-    </div>
-
-    <!-- Actions -->
-    <div class="flex gap-2">
-      <button class="flex-1 py-2.5 rounded-xl text-sm font-semibold transition" style="background:${cfg.color}; color:#0F0A08;">Atizar (seguir)</button>
-      <button class="px-4 py-2.5 rounded-xl text-sm glass text-textsec hover:text-textmain transition">Guardar</button>
+    <div class="flex gap-2 sticky bottom-0 -mx-6 px-6 py-3 mt-2 surface border-t border-white/[0.04]" style="background:rgba(16,18,22,0.92);">
+      <button class="flex-1 py-2.5 rounded-[8px] text-[13px] font-semibold transition hover:brightness-110" style="background:${cfg.color}; color:#0A0B0D;" onclick="showToast('Tendencia atizada — la seguirás')">Atizar (seguir)</button>
+      <button class="px-4 py-2.5 rounded-[8px] text-[13px] surface-inset text-textsec hover:text-textmain transition" onclick="showToast('Guardada como brasa')">Guardar</button>
     </div>
   `;
-
   document.getElementById('overlay').classList.remove('opacity-0', 'pointer-events-none');
   document.getElementById('overlay').classList.add('opacity-100');
   document.getElementById('detailPanel').classList.remove('translate-x-full');
@@ -499,7 +613,40 @@ function closePanel() {
   document.getElementById('detailPanel').classList.add('translate-x-full');
 }
 
+function filterPills(el) {
+  document.querySelectorAll('.pill').forEach(p => p.dataset.active = 'false');
+  el.dataset.active = 'true';
+}
+
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  document.getElementById('toastText').textContent = msg;
+  toast.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-2');
+  toast.classList.add('opacity-100', 'toast-enter');
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(() => {
+    toast.classList.add('opacity-0', 'pointer-events-none');
+    toast.classList.remove('opacity-100', 'toast-enter');
+  }, 2200);
+}
+
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePanel(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Tab') document.body.classList.add('keyboard-nav'); });
+document.addEventListener('mousedown', () => document.body.classList.remove('keyboard-nav'));
+
+// Scroll header elevation
+const header = document.getElementById('siteHeader');
+let ticking = false;
+window.addEventListener('scroll', () => {
+  if (!ticking) {
+    requestAnimationFrame(() => {
+      if (window.scrollY > 8) header.style.boxShadow = 'var(--shadow-sm)';
+      else header.style.boxShadow = '';
+      ticking = false;
+    });
+    ticking = true;
+  }
+}, { passive: true });
 
 // Render
 document.getElementById('trendsGrid').innerHTML = trends.map(renderCard).join('');
