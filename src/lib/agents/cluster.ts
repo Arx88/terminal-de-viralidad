@@ -176,6 +176,11 @@ Agrupá las menciones en narrativas. JSON:
     }
   }
 
+  // Persist ALL narratives to Redis (including new + updated)
+  for (const n of updated.values()) {
+    try { await store.upsert(n); } catch (e: any) { console.error('[cluster] upsert failed:', e.message); }
+  }
+
   await store.logActivity({
     id: crypto.randomUUID(),
     agent: 'cluster',
