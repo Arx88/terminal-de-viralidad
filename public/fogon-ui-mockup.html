@@ -7,28 +7,30 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
 <script>
 tailwind.config = {
   theme: {
     extend: {
       colors: {
-        bgbase:    '#0A0D18',
-        bgsurface: '#111624',
-        bginset:   '#060810',
-        textmain:  '#E8EAED',
-        textsec:   '#9BA1AB',
-        textmute:  '#5C6370',
-        ember:     '#FF8C5C',
-        lavender:  '#9CA5DC',
-        sage:      '#9DC288',
-        ash:       '#6E7785',
+        bgbase:    '#070912',
+        bgsurface: '#121724',
+        bginset:   '#0A0D18',
+        bgelev:    '#161C2C',
+        textmain:  '#EEF1F6',
+        textsec:   '#A2A9B5',
+        textmute:  '#5E6675',
+        ember:     '#EE7C3F',
+        emberglow: '#F5A875',
+        lavender:  '#8E9BE8',
+        sage:      '#2DBE85',
+        ash:       '#7B8595',
         flame:     '#FF6B35',
       },
       fontFamily: {
-        sans:   ['Inter', 'system-ui', 'sans-serif'],
+        sans:   ['Geist', 'Inter', 'system-ui', 'sans-serif'],
         serif:  ['Instrument Serif', 'Georgia', 'serif'],
-        mono:   ['JetBrains Mono', 'ui-monospace', 'monospace'],
+        mono:   ['Geist Mono', 'JetBrains Mono', 'ui-monospace', 'monospace'],
       }
     }
   }
@@ -36,97 +38,172 @@ tailwind.config = {
 </script>
 <style>
 :root {
-  --bg:        #0A0D18;
-  --surface:   #111624;
-  --inset:     #060810;
-  --hairline:  rgba(255,255,255,0.07);
-  --hairline-strong: rgba(255,255,255,0.11);
-  --text:      #E8EAED;
-  --text-sec:  #9BA1AB;
-  --text-mute: #5C6370;
+  --bg:        #070912;
+  --surface:   #121724;
+  --surface-2: #161C2C;
+  --inset:     #0A0D18;
+  --hairline:  rgba(255,255,255,0.06);
+  --hairline-2:rgba(255,255,255,0.09);
+  --hairline-strong: rgba(255,255,255,0.14);
+  --text:      #EEF1F6;
+  --text-sec:  #A2A9B5;
+  --text-mute: #5E6675;
   /* Spring easings */
   --ease-soft:    cubic-bezier(0.16, 1, 0.3, 1);
   --ease-snappy:  cubic-bezier(0.22, 1, 0.36, 1);
   --ease-bounce:  cubic-bezier(0.34, 1.56, 0.64, 1);
   --ease-power:   cubic-bezier(0.05, 0.7, 0.1, 1);
+  /* Status colors (vibrant but calibrated — slightly desaturated from Tailwind defaults) */
+  --c-ember:    #EE7C3F;
+  --c-ember-glow: #F5A875;
+  --c-lavender: #8E9BE8;
+  --c-sage:     #2DBE85;
+  --c-ash:      #7B8595;
   /* Shadow layers */
   --shadow-xs: inset 0 1px 0 0 rgba(255,255,255,0.04), 0 1px 2px 0 rgba(0,0,0,0.4);
   --shadow-sm: inset 0 1px 0 0 rgba(255,255,255,0.05), 0 1px 2px 0 rgba(0,0,0,0.3), 0 2px 4px -1px rgba(0,0,0,0.35);
-  --shadow-md: inset 0 1px 0 0 rgba(255,255,255,0.06), 0 4px 8px -2px rgba(0,0,0,0.4), 0 2px 4px -2px rgba(0,0,0,0.3);
-  --shadow-lg: inset 0 1px 0 0 rgba(255,255,255,0.06), 0 12px 24px -6px rgba(0,0,0,0.5), 0 4px 8px -4px rgba(0,0,0,0.3);
+  --shadow-md: inset 0 1px 0 0 rgba(255,255,255,0.06), 0 4px 12px -2px rgba(0,0,0,0.45), 0 2px 4px -2px rgba(0,0,0,0.3);
+  --shadow-lg: inset 0 1px 0 0 rgba(255,255,255,0.07), 0 16px 32px -8px rgba(0,0,0,0.55), 0 4px 8px -4px rgba(0,0,0,0.35);
 }
 * { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
 html { text-rendering: optimizeLegibility; font-feature-settings: "kern","liga","calt"; scroll-behavior: smooth; }
 
 body {
   background-color: var(--bg);
+  /* 2 gradients max (NOT 3 — that's AI slop). One cool top vignette + one warm ember glow bottom. */
   background-image:
-    radial-gradient(ellipse 70% 50% at 50% -10%, rgba(90, 130, 220, 0.07), transparent 70%),
-    radial-gradient(ellipse 50% 35% at 85% 105%, rgba(255, 130, 80, 0.045), transparent 70%);
+    radial-gradient(ellipse 80% 55% at 50% -8%, rgba(110, 145, 230, 0.10), transparent 65%),
+    radial-gradient(ellipse 60% 40% at 12% 110%, rgba(255, 110, 60, 0.07), transparent 70%);
+  background-attachment: fixed;
   min-height: 100vh;
   font-feature-settings: 'ss01';
+  position: relative;
 }
+/* Fine dot grid overlay — adds texture, very Linear/Raycast */
+body::after {
+  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 1;
+  opacity: 0.4;
+  background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.022) 1px, transparent 0);
+  background-size: 32px 32px;
+}
+/* Film grain — only on body, subtle */
 body::before {
   content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 100;
-  opacity: 0.022; mix-blend-mode: overlay;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 1 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  opacity: 0.028; mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 1 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
 }
+
+/* Page content above overlays */
+header, main, footer, #detailPanel, #overlay, #toast { position: relative; z-index: 2; }
+
+/* Surfaces */
 .surface {
   background: var(--surface);
   box-shadow: inset 0 0 0 1px var(--hairline), inset 0 1px 0 0 rgba(255,255,255,0.04), 0 1px 2px 0 rgba(0,0,0,0.4);
+}
+.surface-2 {
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 1px var(--hairline-2), inset 0 1px 0 0 rgba(255,255,255,0.05);
 }
 .surface-inset {
   background: var(--inset);
   box-shadow: inset 0 0 0 1px var(--hairline);
 }
 .glass {
-  background: rgba(17, 22, 36, 0.72);
-  backdrop-filter: blur(14px) saturate(160%);
-  -webkit-backdrop-filter: blur(14px) saturate(160%);
-  box-shadow: inset 0 0 0 1px var(--hairline), inset 0 1px 0 0 rgba(255,255,255,0.05);
+  background: rgba(14, 18, 30, 0.78);
+  backdrop-filter: blur(18px) saturate(180%);
+  -webkit-backdrop-filter: blur(18px) saturate(180%);
+  box-shadow: inset 0 0 0 1px var(--hairline), inset 0 1px 0 0 rgba(255,255,255,0.06);
 }
 
-/* Status accent (1px top edge) */
-.accent-ember   { box-shadow: inset 0 1px 0 0 #FF8C5C, inset 0 0 0 1px var(--hairline), inset 0 0 0 1px rgba(255,140,92,0.12); }
-.accent-lavender{ box-shadow: inset 0 1px 0 0 #9CA5DC, inset 0 0 0 1px var(--hairline); }
-.accent-sage    { box-shadow: inset 0 1px 0 0 #9DC288, inset 0 0 0 1px var(--hairline); }
-.accent-ash     { box-shadow: inset 0 1px 0 0 rgba(110,119,133,0.55), inset 0 0 0 1px var(--hairline); opacity: 0.92; }
+/* ===== Trend card — gradient surface with depth, top accent rail ===== */
+.trend-card {
+  background: linear-gradient(180deg, #141A28 0%, #111621 100%);
+  border-radius: 10px;
+  position: relative;
+  overflow: hidden;
+  transition: box-shadow 280ms var(--ease-soft), background 280ms var(--ease-soft), border-color 280ms var(--ease-soft);
+  border: 1px solid rgba(255,255,255,0.06);
+  box-shadow:
+    0 1px 2px 0 rgba(0,0,0,0.35),
+    0 4px 16px -6px rgba(0,0,0,0.4);
+}
+/* Hero card treatment: subtle left border accent only (not aggressive glow) */
+.trend-card.is-hero {
+  background: linear-gradient(180deg, #141B2A 0%, #111621 100%);
+  box-shadow:
+    inset 2px 0 0 0 rgba(238,124,63,0.55),
+    0 1px 2px 0 rgba(0,0,0,0.35),
+    0 4px 16px -6px rgba(0,0,0,0.4);
+  border-color: rgba(238,124,63,0.15);
+}
+.trend-card.is-hero .top-rail { height: 3px; }
+.trend-card.is-hero .hero-badge { display: inline-flex; }
+.hero-badge { display: none; }
 
-/* Motor dot — blip cada 4s */
+/* Muriendo card: desaturated, lower opacity (signals decay) */
+.trend-card[data-state="muriendo"] { opacity: 0.78; }
+.trend-card[data-state="muriendo"] .src-pill svg { filter: saturate(0.4); }
+.trend-card[data-state="muriendo"]:hover { opacity: 1; }
+
+/* Top accent rail — 2px solid bar (no gradient = cleaner, more Linear-like) */
+.trend-card .top-rail {
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: var(--state-color, #EE7C3F);
+  opacity: 0.95;
+}
+/* LIVE badge — only for creciendo with high momentum */
+.trend-card.is-live .top-rail::after {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: inherit; opacity: 0.5; filter: blur(4px);
+}
+
+/* Card hover — border brightens + shadow grows (NO transform, NO layout shift) */
+.trend-card:hover {
+  border-color: rgba(255,255,255,0.12);
+  box-shadow:
+    0 1px 2px 0 rgba(0,0,0,0.4),
+    0 8px 28px -8px rgba(0,0,0,0.5);
+}
+.trend-card[data-state="creciendo"]:hover    { box-shadow: inset 0 0 0 1px rgba(255,122,61,0.30), inset 0 1px 0 0 rgba(255,255,255,0.06); }
+.trend-card[data-state="por nacer"]:hover    { box-shadow: inset 0 0 0 1px rgba(142,155,232,0.28), inset 0 1px 0 0 rgba(255,255,255,0.06); }
+.trend-card[data-state="nacida"]:hover       { box-shadow: inset 0 0 0 1px rgba(111,207,106,0.28), inset 0 1px 0 0 rgba(255,255,255,0.06); }
+.trend-card[data-state="muriendo"]:hover     { box-shadow: inset 0 0 0 1px var(--hairline-strong), inset 0 1px 0 0 rgba(255,255,255,0.05); }
+
+/* Left accent line that brightens on hover (premium "rail" detail) */
+.trend-card::before {
+  content: ''; position: absolute; left: 0; top: 14px; bottom: 14px; width: 2px;
+  background: var(--state-color, #FF7A3D);
+  opacity: 0; border-radius: 0 2px 2px 0;
+  transition: opacity 280ms var(--ease-soft);
+}
+.trend-card:hover::before { opacity: 0.55; }
+
+/* Status dot with glow for active state */
+.status-dot { position: relative; width: 6px; height: 6px; border-radius: 50%; background: var(--state-color); }
+.status-dot[data-active="true"]::after {
+  content: ''; position: absolute; inset: -4px; border-radius: 50%;
+  background: var(--state-color); opacity: 0; transform: scale(0.8);
+  animation: dotBlip 2.8s var(--ease-soft) infinite;
+}
+@keyframes dotBlip {
+  0%, 70%, 100% { opacity: 0; transform: scale(0.8); }
+  72% { opacity: 0.45; transform: scale(1.6); }
+  85% { opacity: 0; transform: scale(2.2); }
+}
+
+/* Motor dot — same concept for header */
 .motor-dot { position: relative; }
 .motor-dot::after {
   content: ''; position: absolute; inset: -3px; border-radius: 50%;
-  background: #9DC288; opacity: 0; transform: scale(1);
-  animation: blip 4s var(--ease-soft) infinite;
+  background: var(--c-sage); opacity: 0; transform: scale(1);
+  animation: motorBlip 4s var(--ease-soft) infinite;
 }
-@keyframes blip {
+@keyframes motorBlip {
   0%, 70%, 100% { opacity: 0; transform: scale(1); }
   72% { opacity: 0.5; transform: scale(1.6); }
   85% { opacity: 0; transform: scale(2.2); }
 }
-
-/* Slow pulse for "creciendo" state — visible but restrained */
-@keyframes dotPulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(255,140,92,0); }
-  50%      { box-shadow: 0 0 0 3px rgba(255,140,92,0.22); }
-}
-.dot-pulse { animation: dotPulse 2.8s var(--ease-soft) infinite; }
-
-@keyframes barBreath {
-  0%, 100% { opacity: 0.72; }
-  50%      { opacity: 1; }
-}
-.bar-ember-pulse { animation: barBreath 3.6s var(--ease-soft) infinite; }
-
-/* Card hover — box-shadow ONLY, no transform (prevents layout shift bug) */
-.trend-card {
-  transition: box-shadow 280ms var(--ease-soft);
-  position: relative;
-}
-.trend-card:hover.accent-ember   { box-shadow: inset 0 1px 0 0 #FFA478, inset 0 0 0 1px var(--hairline-strong), inset 0 0 0 1px rgba(255,140,92,0.15), 0 8px 24px -8px rgba(255,140,92,0.28); }
-.trend-card:hover.accent-lavender{ box-shadow: inset 0 1px 0 0 #B4BBE8, inset 0 0 0 1px var(--hairline-strong), 0 8px 24px -8px rgba(156,165,220,0.22); }
-.trend-card:hover.accent-sage    { box-shadow: inset 0 1px 0 0 #B5D5A0, inset 0 0 0 1px var(--hairline-strong), 0 8px 24px -8px rgba(157,194,136,0.22); }
-.trend-card:hover.accent-ash     { box-shadow: inset 0 1px 0 0 rgba(110,119,133,0.85), inset 0 0 0 1px var(--hairline-strong); }
 
 /* Hover reveal — métricas ocultas aparecen */
 .reveal-on-hover {
@@ -138,64 +215,64 @@ body::before {
   max-height: 40px; opacity: 1; margin-top: 12px;
 }
 
-/* Fade in */
+/* Fade in on load */
 @keyframes cardEnter {
   0%   { opacity: 0; transform: translateY(6px); }
   100% { opacity: 1; transform: translateY(0); }
 }
-.fade-up { animation: cardEnter 0.5s var(--ease-soft) backwards; }
+.fade-up { animation: cardEnter 0.55s var(--ease-soft) backwards; }
 
-/* Status bar */
-.bar-ember    { background: linear-gradient(90deg, #FF8C5C 0%, #FF8C5C 30%, transparent 100%); opacity: 0.9; }
-.bar-lavender { background: linear-gradient(90deg, #9CA5DC 0%, #9CA5DC 30%, transparent 100%); opacity: 0.8; }
-.bar-sage     { background: linear-gradient(90deg, #9DC288 0%, #9DC288 30%, transparent 100%); opacity: 0.8; }
-.bar-ash      { background: linear-gradient(90deg, #6E7785 0%, #6E7785 30%, transparent 100%); opacity: 0.5; }
-.bar-violet   { background: linear-gradient(90deg, #9CA5DC 0%, #9CA5DC 30%, transparent 100%); opacity: 0.8; }
-.bar-emerald  { background: linear-gradient(90deg, #9DC288 0%, #9DC288 30%, transparent 100%); opacity: 0.8; }
-
-/* Sparkline */
+/* ===== Sparkline — clean, solid line, no AI-slop glow ===== */
 @keyframes drawSpark {
-  0%   { stroke-dashoffset: 200; opacity: 0; }
-  20%  { opacity: 1; }
+  0%   { stroke-dashoffset: 240; opacity: 0; }
+  18%  { opacity: 1; }
   100% { stroke-dashoffset: 0; opacity: 1; }
 }
 .spark-line {
-  stroke-dasharray: 200; stroke-dashoffset: 200;
-  animation: drawSpark 1.2s var(--ease-power) forwards;
-  animation-delay: 0.15s;
+  stroke-dasharray: 240; stroke-dashoffset: 240;
+  animation: drawSpark 1.3s var(--ease-power) forwards;
+  animation-delay: 0.2s;
 }
 @keyframes dotLand {
   0%   { transform: scale(0); opacity: 0; }
-  60%  { transform: scale(1.4); opacity: 1; }
+  60%  { transform: scale(1.3); opacity: 1; }
   100% { transform: scale(1); opacity: 1; }
 }
-.spark-dot { transform-origin: center; animation: dotLand 0.3s var(--ease-bounce) 1.2s backwards; }
+.spark-dot { transform-origin: center; transform-box: fill-box; animation: dotLand 0.3s var(--ease-bounce) 1.35s backwards; }
 
 /* Scrollbar */
-::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar { width: 9px; height: 9px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 4px; border: 2px solid transparent; background-clip: padding-box; }
-::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.16); background-clip: padding-box; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 5px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.18); background-clip: padding-box; }
 * { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.1) transparent; }
 
-::selection { background: rgba(255,107,53,0.25); color: #FFF; }
+::selection { background: rgba(255,107,53,0.28); color: #FFF; }
 
 /* Typography */
-.display { font-family: 'Instrument Serif', Georgia, serif; letter-spacing: -0.015em; font-weight: 400; }
-.mono-num { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; font-feature-settings: 'tnum'; }
-.caps { text-transform: uppercase; letter-spacing: 0.08em; font-size: 10px; font-weight: 500; }
+.display { font-family: 'Instrument Serif', Georgia, serif; letter-spacing: -0.022em; font-weight: 400; }
+.mono-num { font-family: 'Geist Mono', 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; font-feature-settings: 'tnum'; font-weight: 500; }
+.caps { text-transform: uppercase; letter-spacing: 0.12em; font-size: 10px; font-weight: 600; }
+/* Card titles: Geist Semibold (Vercel/Linear-grade sans) */
+.card-title {
+  font-family: 'Geist', 'Inter', system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.028em;
+  font-feature-settings: 'ss01', 'cv11';
+}
 
 /* Panel */
-.panel-slide { transition: transform 400ms var(--ease-soft); }
+.panel-slide { transition: transform 420ms var(--ease-power); }
 
 /* Focus ring */
 *:focus { outline: none; }
-*:focus-visible { box-shadow: 0 0 0 2px var(--bg), 0 0 0 3px rgba(255,107,53,0.6); border-radius: inherit; }
+*:focus-visible { box-shadow: 0 0 0 2px var(--bg), 0 0 0 3px rgba(255,122,61,0.65); border-radius: inherit; }
 
-/* Filter pills */
+/* Filter pills — more presence */
 .pill { transition: background 180ms, box-shadow 180ms, color 180ms; cursor: pointer; }
-.pill:hover { background: rgba(255,255,255,0.04); }
-.pill[data-active="true"] { background: rgba(255,255,255,0.06); box-shadow: inset 0 0 0 1px var(--hairline-strong); }
+.pill:hover { background: rgba(255,255,255,0.045); color: var(--text); }
+.pill[data-active="true"] { background: rgba(255,255,255,0.07); box-shadow: inset 0 0 0 1px var(--hairline-strong), inset 0 1px 0 0 rgba(255,255,255,0.04); color: var(--text); }
+.pill[data-active="true"] .pill-count { color: var(--text-sec); }
 
 /* Skeleton shimmer */
 .skeleton {
@@ -210,9 +287,8 @@ body::before {
 
 /* Mention card hover */
 .mention-card { transition: background 200ms var(--ease-soft), box-shadow 200ms var(--ease-soft); }
-.mention-card:hover { background: rgba(255,255,255,0.025); box-shadow: inset 0 0 0 1px var(--hairline-strong); }
+.mention-card:hover { background: rgba(255,255,255,0.03); box-shadow: inset 0 0 0 1px var(--hairline-strong); }
 
-/* Metric hover */
 .mention-metric { transition: color 150ms; cursor: default; }
 .mention-metric:hover .metric-icon { color: inherit; opacity: 1; }
 
@@ -222,7 +298,34 @@ body::before {
 }
 
 /* Keyboard nav */
-body.keyboard-nav .trend-card:focus-visible { box-shadow: var(--shadow-md), inset 3px 0 0 0 var(--state-color, #FF8C5C); }
+body.keyboard-nav .trend-card:focus-visible { box-shadow: var(--shadow-md), inset 3px 0 0 0 var(--state-color, #FF7A3D); }
+
+/* Header logo */
+@keyframes logoBreath {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 4px rgba(255,122,61,0.35)); }
+  50%      { transform: scale(1.04); filter: drop-shadow(0 0 7px rgba(255,122,61,0.55)); }
+}
+
+/* Header scroll elevation */
+header.scrolled {
+  box-shadow: 0 1px 0 0 rgba(255,122,61,0.18), 0 8px 24px -8px rgba(0,0,0,0.5);
+}
+
+/* Source pill — colored hover */
+.src-pill { transition: background 180ms, box-shadow 180ms; }
+.src-pill:hover { background: rgba(255,255,255,0.04); box-shadow: inset 0 0 0 1px var(--hairline-strong); }
+
+/* Panel stat tiles */
+.stat-tile {
+  background: linear-gradient(180deg, #161C2C 0%, #121724 100%);
+  box-shadow: inset 0 0 0 1px var(--hairline-2), inset 0 1px 0 0 rgba(255,255,255,0.05);
+  position: relative; overflow: hidden;
+}
+.stat-tile::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px;
+  background: var(--tile-accent, var(--text-mute));
+  opacity: 0.85;
+}
 </style>
 </head>
 <body class="text-textmain font-sans">
@@ -230,44 +333,51 @@ body.keyboard-nav .trend-card:focus-visible { box-shadow: var(--shadow-md), inse
 <a href="#main" class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[200] focus:px-3 focus:py-2 focus:rounded-md focus:surface focus:text-sm">Saltar al contenido</a>
 
 <!-- HEADER -->
-<header class="sticky top-0 z-40 glass border-b border-white/[0.05]" id="siteHeader">
-  <div class="max-w-7xl mx-auto px-6 py-3.5 flex items-center justify-between">
-    <div class="flex items-center gap-2.5">
-      <svg width="22" height="22" viewBox="0 0 32 32" aria-hidden="true" style="animation: logoBreath 6s var(--ease-soft) infinite; transform-origin: 50% 80%;">
-        <defs>
-          <radialGradient id="logoFire" cx="50%" cy="75%" r="65%">
-            <stop offset="0%" stop-color="#FFD4A8"/>
-            <stop offset="45%" stop-color="#FF6B35"/>
-            <stop offset="100%" stop-color="#7A2A0A"/>
-          </radialGradient>
-        </defs>
-        <path d="M16 30 C8 26, 6 18, 12 10 C10 16, 14 20, 16 16 C14 8, 20 4, 22 2 C24 10, 28 14, 26 22 C28 18, 30 26, 26 28 C28 30, 22 31, 16 30 Z" fill="url(#logoFire)"/>
-      </svg>
-      <div class="flex items-baseline gap-2">
-        <h1 class="display text-[20px] leading-none">FOGÓN</h1>
-        <span class="text-[11px] text-textmute leading-none hidden sm:inline">detector personal</span>
+<header class="sticky top-0 z-40 glass border-b border-white/[0.06]" id="siteHeader">
+  <!-- Top accent line — subtle ember -->
+  <div class="absolute top-0 left-0 right-0 h-px" style="background: linear-gradient(90deg, transparent 0%, rgba(255,122,61,0.45) 35%, rgba(142,155,232,0.35) 70%, transparent 100%);"></div>
+  <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="relative">
+        <!-- Refined geometric mark: ring + ember dot (replaces flame SVG which read as "emoji-like") -->
+        <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" style="animation: logoBreath 6s var(--ease-soft) infinite; transform-origin: 50% 50%;">
+          <defs>
+            <radialGradient id="logoFire" cx="50%" cy="50%" r="55%">
+              <stop offset="0%" stop-color="#FFD4A8"/>
+              <stop offset="55%" stop-color="#EE7C3F"/>
+              <stop offset="100%" stop-color="#7A2A0A"/>
+            </radialGradient>
+          </defs>
+          <circle cx="12" cy="12" r="10" fill="none" stroke="rgba(255,255,255,0.10)" stroke-width="1"/>
+          <circle cx="12" cy="12" r="5.5" fill="url(#logoFire)"/>
+          <circle cx="12" cy="12" r="2.2" fill="#FFE4C4" opacity="0.9"/>
+        </svg>
+      </div>
+      <div class="flex items-baseline gap-2.5">
+        <h1 class="display text-[26px] leading-none tracking-tight text-textmain">FOGÓN</h1>
+        <span class="text-[11px] text-textmute leading-none hidden sm:inline" style="letter-spacing:0.02em;">detector personal</span>
       </div>
     </div>
-    <div class="flex items-center gap-5">
-      <div class="hidden md:flex items-center gap-2 text-[11px] text-textsec">
-        <div class="motor-dot w-1.5 h-1.5 rounded-full bg-sage"></div>
+    <div class="flex items-center gap-4">
+      <!-- Nemotron status as a pill with subtle pulse -->
+      <div class="hidden md:flex items-center gap-2 px-2.5 py-1 rounded-full text-[11px] text-textsec" style="background: rgba(45,190,133,0.06); box-shadow: inset 0 0 0 1px rgba(45,190,133,0.20);">
+        <div class="motor-dot w-1.5 h-1.5 rounded-full" style="background: var(--c-sage);"></div>
         <span>Nemotron activo</span>
+        <span class="mono-num text-textmute ml-0.5">· 12m</span>
       </div>
-      <div class="hidden lg:block text-[11px] text-textsec">
-        <span class="text-textmute">upd</span> <span class="mono-num ml-1">12m</span>
-      </div>
-      <button class="px-3 py-1.5 rounded-md text-[12px] text-textsec hover:text-textmain transition surface-inset flex items-center gap-1.5" onclick="showToast('Re-escaneando fuentes…')">
-        <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="group-hover:rotate-180 transition-transform duration-500"><path d="M10 6a4 4 0 1 1-1.2-2.8M10 2v2.5H7.5"/></svg>
+      <!-- Re-escanear: ghost button (no surface bg, just icon + text) -->
+      <button class="px-2.5 py-1.5 rounded-md text-[12px] text-textsec hover:text-textmain transition flex items-center gap-1.5 hover:bg-white/[0.04]" onclick="showToast('Re-escaneando fuentes…')">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="group-hover:rotate-180 transition-transform duration-500"><path d="M10 6a4 4 0 1 1-1.2-2.8M10 2v2.5H7.5"/></svg>
         Re-escanear
       </button>
     </div>
   </div>
   <div class="max-w-7xl mx-auto px-6 pb-3 flex items-center gap-1 overflow-x-auto">
-    <button class="pill px-2.5 py-1 rounded-md text-[12px] text-textmain whitespace-nowrap" data-active="true" onclick="filterPills(this)">Todas <span class="mono-num text-textmute ml-1">6</span></button>
-    <button class="pill px-2.5 py-1 rounded-md text-[12px] text-textsec hover:text-lavender whitespace-nowrap" onclick="filterPills(this)">Por nacer <span class="mono-num text-textmute ml-1">2</span></button>
-    <button class="pill px-2.5 py-1 rounded-md text-[12px] text-textsec hover:text-sage whitespace-nowrap" onclick="filterPills(this)">Nacida <span class="mono-num text-textmute ml-1">1</span></button>
-    <button class="pill px-2.5 py-1 rounded-md text-[12px] text-textsec hover:text-ember whitespace-nowrap" onclick="filterPills(this)">Creciendo <span class="mono-num text-textmute ml-1">2</span></button>
-    <button class="pill px-2.5 py-1 rounded-md text-[12px] text-textsec hover:text-textmain whitespace-nowrap" onclick="filterPills(this)">Muriendo <span class="mono-num text-textmute ml-1">1</span></button>
+    <button class="pill px-2.5 py-1 rounded-md text-[12px] text-textmain whitespace-nowrap" data-active="true" onclick="filterPills(this)">Todas <span class="pill-count mono-num text-textmute ml-1">6</span></button>
+    <button class="pill px-2.5 py-1 rounded-md text-[12px] text-textsec hover:text-lavender whitespace-nowrap" onclick="filterPills(this)">Por nacer <span class="pill-count mono-num text-textmute ml-1">2</span></button>
+    <button class="pill px-2.5 py-1 rounded-md text-[12px] text-textsec hover:text-sage whitespace-nowrap" onclick="filterPills(this)">Nacida <span class="pill-count mono-num text-textmute ml-1">1</span></button>
+    <button class="pill px-2.5 py-1 rounded-md text-[12px] text-textsec hover:text-ember whitespace-nowrap" onclick="filterPills(this)">Creciendo <span class="pill-count mono-num text-textmute ml-1">2</span></button>
+    <button class="pill px-2.5 py-1 rounded-md text-[12px] text-textsec hover:text-textmain whitespace-nowrap" onclick="filterPills(this)">Muriendo <span class="pill-count mono-num text-textmute ml-1">1</span></button>
     <div class="ml-auto flex items-center gap-2 text-[11px] text-textsec">
       <button class="hover:text-textmain transition flex items-center gap-1">Relevancia <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><path d="M2 4l3 3 3-3"/></svg></button>
     </div>
@@ -275,44 +385,39 @@ body.keyboard-nav .trend-card:focus-visible { box-shadow: var(--shadow-md), inse
 </header>
 
 <!-- MAIN GRID -->
-<main id="main" class="max-w-7xl mx-auto px-6 py-8">
-  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" id="trendsGrid"></div>
+<main id="main" class="max-w-7xl mx-auto px-6 py-10">
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" id="trendsGrid" style="gap: 20px;"></div>
 </main>
 
-<!-- FOOTER -->
-<footer class="border-t border-white/[0.04] mt-16">
-  <div class="max-w-7xl mx-auto px-6 py-5 flex items-center justify-between text-[11px] text-textmute">
+<!-- FOOTER — VS Code status bar style: slim, monospaced, tiny -->
+<footer class="sticky bottom-0 mt-20" style="background: rgba(7,9,18,0.92); backdrop-filter: blur(12px); border-top: 1px solid rgba(255,255,255,0.06);">
+  <div class="max-w-7xl mx-auto px-6 py-2 flex items-center justify-between text-[10px] mono-num text-textmute" style="letter-spacing:0.02em;">
     <div class="flex items-center gap-3">
-      <span class="mono-num">FOGÓN · experimental</span>
-      <span class="text-textmute/50">/</span>
-      <span class="mono-num">Nemotron-3-Ultra-550B · thinking:false</span>
+      <span class="flex items-center gap-1.5" style="color:#2DBE85;"><span class="w-1.5 h-1.5 rounded-full" style="background:#2DBE85; box-shadow: 0 0 4px #2DBE85;"></span>ONLINE</span>
+      <span class="text-textmute/40">|</span>
+      <span>FOGÓN experimental</span>
+      <span class="text-textmute/40">|</span>
+      <span style="opacity:0.7;">Nemotron-3-Ultra-550B · thinking:false</span>
     </div>
-    <div class="flex items-center gap-3">
-      <span class="mono-num">Bluesky · Mastodon · HN · GDELT · RSS</span>
+    <div class="flex items-center gap-3" style="opacity:0.7;">
+      <span>Bluesky · Mastodon · HN · GDELT · RSS</span>
     </div>
   </div>
 </footer>
 
 <!-- DETAIL PANEL -->
-<div id="overlay" class="fixed inset-0 bg-black/70 z-50 opacity-0 pointer-events-none transition-opacity duration-300" onclick="closePanel()"></div>
-<aside id="detailPanel" class="panel-slide fixed right-0 top-0 bottom-0 w-full max-w-md z-50 glass border-l border-white/[0.07] translate-x-full overflow-y-auto">
+<div id="overlay" class="fixed inset-0 bg-black/75 z-50 opacity-0 pointer-events-none transition-opacity duration-300" onclick="closePanel()"></div>
+<aside id="detailPanel" class="panel-slide fixed right-0 top-0 bottom-0 w-full max-w-md z-50 glass border-l border-white/[0.08] translate-x-full overflow-y-auto">
   <div class="p-6" id="panelContent"></div>
 </aside>
 
 <!-- TOAST -->
 <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] opacity-0 pointer-events-none transition-all duration-300">
   <div class="surface rounded-[10px] px-4 py-2.5 flex items-center gap-2 text-[13px] text-textmain" style="box-shadow: var(--shadow-lg);">
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#9DC288" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7l3.5 3.5L12 4"/></svg>
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#6FCF6A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7l3.5 3.5L12 4"/></svg>
     <span id="toastText"></span>
   </div>
 </div>
-
-<style>
-@keyframes logoBreath {
-  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 3px rgba(255,140,92,0.25)); }
-  50%      { transform: scale(1.03); filter: drop-shadow(0 0 5px rgba(255,140,92,0.40)); }
-}
-</style>
 
 <script>
 const trends = [
@@ -399,10 +504,10 @@ const trends = [
 ];
 
 const stateConfig = {
-  'creciendo': { label: 'Creciendo', color: '#FF8C5C', accent: 'accent-ember',   barClass: 'bar-ember bar-ember-pulse', pulse: true  },
-  'por nacer': { label: 'Por nacer', color: '#9CA5DC', accent: 'accent-lavender',barClass: 'bar-lavender', pulse: false },
-  'nacida':    { label: 'Nacida',    color: '#9DC288', accent: 'accent-sage',    barClass: 'bar-sage',     pulse: false },
-  'muriendo':  { label: 'Muriendo',  color: '#6E7785', accent: 'accent-ash',     barClass: 'bar-ash',      pulse: false },
+  'creciendo': { label: 'Creciendo', color: '#EE7C3F', color2: '#F5A875', barClass: 'bar-ember', pulse: true  },
+  'por nacer': { label: 'Por nacer', color: '#8E9BE8', color2: '#A8B2EE', barClass: 'bar-lavender', pulse: false },
+  'nacida':    { label: 'Nacida',    color: '#2DBE85', color2: '#5DD4A4', barClass: 'bar-sage',     pulse: false },
+  'muriendo':  { label: 'Muriendo',  color: '#7B8595', color2: '#9AA3B0', barClass: 'bar-ash',      pulse: false },
 };
 
 const sourceConfig = {
@@ -427,22 +532,33 @@ const intIcons = {
   fork:    `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" y1="9" x2="6" y2="21"/></svg>`,
 };
 
-function renderSparkline(data, color) {
+function renderSparkline(data, color, opts = {}) {
   const max = Math.max(...data, 1);
-  const w = 100, h = 28;
+  const w = 100, h = opts.height || 38;
   const stepX = w / (data.length - 1);
-  const points = data.map((v, i) => `${i * stepX},${h - (v / max) * (h - 4) - 2}`).join(' ');
+  const points = data.map((v, i) => `${i * stepX},${h - (v / max) * (h - 6) - 3}`).join(' ');
   const areaPoints = `0,${h} ${points} ${w},${h}`;
   const gradId = `grad-${Math.random().toString(36).slice(2,8)}`;
   const lastX = (data.length-1)*stepX;
-  const lastY = h - (data[data.length-1]/max)*(h-4) - 2;
+  const lastY = h - (data[data.length-1]/max)*(h-6) - 3;
+  const strokeWidth = opts.stroke || 1.85;
+  const baselineY = h - 0.5;
   return `
-    <svg width="100%" height="28" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" class="overflow-visible">
-      <defs><linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${color}" stop-opacity="0.18"/><stop offset="100%" stop-color="${color}" stop-opacity="0"/></linearGradient></defs>
+    <svg width="100%" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" class="overflow-visible" style="display:block;">
+      <defs>
+        <linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="${color}" stop-opacity="0.10"/>
+          <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+      <!-- Subtle baseline grid -->
+      <line x1="0" y1="${baselineY}" x2="${w}" y2="${baselineY}" stroke="rgba(255,255,255,0.04)" stroke-width="0.5" stroke-dasharray="2 2"/>
+      <!-- Area fill (gradient from color to transparent — Linear/Arc signature) -->
       <polygon points="${areaPoints}" fill="url(#${gradId})"/>
-      <polyline points="${points}" fill="none" stroke="${color}" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" class="spark-line"/>
+      <!-- Solid line -->
+      <polyline points="${points}" fill="none" stroke="${color}" stroke-width="${strokeWidth}" stroke-linecap="round" stroke-linejoin="round" class="spark-line" vector-effect="non-scaling-stroke"/>
+      <!-- Single end dot -->
       <circle cx="${lastX}" cy="${lastY}" r="1.75" fill="${color}" class="spark-dot"/>
-      <circle cx="${lastX}" cy="${lastY}" r="3" fill="none" stroke="${color}" stroke-width="1" opacity="0.25" class="spark-dot"/>
     </svg>
   `;
 }
@@ -486,7 +602,7 @@ function renderMention(m, stateColor) {
   }
 
   return `
-    <div class="mention-card p-3.5 surface-inset rounded-[6px]">
+    <div class="mention-card p-3.5 surface-inset rounded-[8px]">
       <div class="flex items-start gap-3">
         <!-- Avatar -->
         <div class="w-7 h-7 rounded-full shrink-0 flex items-center justify-center text-[10px] font-semibold text-white" style="background: linear-gradient(135deg, ${m.avatar || sc.color}, ${sc.color}80);">
@@ -516,36 +632,39 @@ function renderMention(m, stateColor) {
 
 function renderCard(t, index) {
   const cfg = stateConfig[t.state];
+  const isHero = index === 0 && t.state === 'creciendo';
   return `
-    <article class="trend-card surface ${cfg.accent} rounded-[10px] overflow-hidden cursor-pointer fade-up"
-             style="animation-delay: ${Math.min(index, 6) * 0.06}s; --state-color: ${cfg.color};"
+    <article class="trend-card ${cfg.pulse ? 'is-live' : ''} ${isHero ? 'is-hero' : ''} rounded-[10px] overflow-hidden cursor-pointer fade-up"
+             data-state="${t.state}"
+             style="animation-delay: ${Math.min(index, 6) * 0.06}s; --state-color: ${cfg.color}; --state-color-2: ${cfg.color2};"
              onclick="openPanel(${t.id})"
              tabindex="0"
              onkeydown="if(event.key==='Enter')openPanel(${t.id})">
-      <div class="h-[2px] ${cfg.barClass}"></div>
-      <div class="p-5">
-        <div class="flex items-center justify-between mb-3">
-          <div class="flex items-center gap-1.5">
-            <span class="w-1 h-1 rounded-full ${cfg.pulse ? 'dot-pulse' : ''}" style="background:${cfg.color};"></span>
+      <div class="top-rail"></div>
+      <div class="p-6">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-2">
+            <span class="status-dot" data-active="${cfg.pulse}"></span>
             <span class="caps" style="color:${cfg.color}">${cfg.label}</span>
+            <span class="hero-badge items-center gap-1 ml-1 px-1.5 py-0.5 rounded text-[9px] font-semibold mono-num" style="background:rgba(238,124,63,0.15); color:${cfg.color}; box-shadow: inset 0 0 0 1px rgba(238,124,63,0.30); letter-spacing:0.06em;">● LIVE</span>
           </div>
-          <span class="mono-num text-[11px] text-textsec">${t.metric}</span>
+          <span class="mono-num text-[11px]" style="color:${cfg.color}; opacity:0.9;">${t.metric}</span>
         </div>
-        <h3 class="display text-[20px] leading-[1.15] mb-2 text-textmain">${t.title}</h3>
-        <p class="text-[13px] text-textsec leading-relaxed mb-4">${t.briefing}</p>
-        <div class="mb-1 -mx-1">${renderSparkline(t.sparkData, cfg.color)}</div>
+        <h3 class="card-title text-[24px] leading-[1.15] mb-1.5 text-textmain">${t.title}</h3>
+        <p class="text-[13px] text-textsec leading-[1.55] mb-5" style="opacity:0.75;">${t.briefing}</p>
+        <div class="mb-1 -mx-1 spark-wrap">${renderSparkline(t.sparkData, cfg.color, { height: 44, stroke: 1.85 })}</div>
         <!-- Hover reveal: velocity + confidence -->
         <div class="reveal-on-hover flex items-center gap-3 text-[10px] text-textmute mono-num">
-          <span>vel: ${t.velocity}</span><span>·</span><span>conf: ${t.confidence}</span>
+          <span>vel: ${t.velocity}</span><span class="opacity-40">·</span><span>conf: ${t.confidence}</span>
         </div>
-        <div class="flex items-center justify-between pt-3 border-t border-white/[0.04]">
-          <div class="flex items-center gap-1.5">
+        <div class="flex items-center justify-between pt-4 mt-4 border-t border-white/[0.05]">
+          <div class="flex items-center gap-1.5" style="opacity:0.55;">
             ${t.sources.map(s => {
               const sc = sourceConfig[s] || {color:cfg.color, icon:''};
-              return `<span class="flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] text-textsec surface-inset"><span style="color:${sc.color}; opacity:0.7;">${sc.icon}</span>${s}</span>`;
+              return `<span class="src-pill flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] text-textsec" style="background:rgba(255,255,255,0.02); box-shadow: inset 0 0 0 1px var(--hairline);"><span style="color:${sc.color}; opacity:0.8;">${sc.icon}</span>${s}</span>`;
             }).join('')}
           </div>
-          <span class="mono-num text-[11px] text-textmute">${t.time}</span>
+          <span class="mono-num text-[10px] text-textmute" style="opacity:0.5;">${t.time}</span>
         </div>
       </div>
     </article>
@@ -558,52 +677,57 @@ function openPanel(id) {
   const cfg = stateConfig[t.state];
   document.getElementById('panelContent').innerHTML = `
     <div class="flex items-center justify-between mb-7">
-      <div class="flex items-center gap-2">
-        <span class="w-1.5 h-1.5 rounded-full ${cfg.pulse ? 'dot-pulse' : ''}" style="background:${cfg.color};"></span>
+      <div class="flex items-center gap-2.5">
+        <span class="status-dot" data-active="${cfg.pulse}" style="background:${cfg.color};"></span>
         <span class="caps" style="color:${cfg.color}">${cfg.label}</span>
       </div>
       <button onclick="closePanel()" class="text-textmute hover:text-textmain transition p-1 -mr-1" aria-label="Cerrar">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
       </button>
     </div>
-    <h2 class="display text-[28px] leading-[1.1] mb-2">${t.title}</h2>
+    <h2 class="display text-[30px] leading-[1.08] mb-2 text-textmain">${t.title}</h2>
     <p class="caps text-textmute mb-5">primera detección · <span class="mono-num normal-case tracking-normal text-textsec ml-1">${t.firstSeen}</span></p>
 
     ${t.leadTime ? `
-    <div class="mb-5 p-3 rounded-[8px] flex items-center gap-3" style="background: rgba(157,194,136,0.07); box-shadow: inset 0 0 0 1px rgba(157,194,136,0.18);">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9DC288" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    <div class="mb-5 p-3.5 rounded-[10px] flex items-center gap-3" style="background: linear-gradient(135deg, rgba(111,207,106,0.10), rgba(111,207,106,0.04)); box-shadow: inset 0 0 0 1px rgba(111,207,106,0.22);">
+      <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style="background: rgba(111,207,106,0.15); box-shadow: inset 0 0 0 1px rgba(111,207,106,0.30);">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6FCF6A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      </div>
       <div>
         <p class="text-[12px] text-textsec">Detectaste esto <strong class="text-sage">${t.leadTime}</strong></p>
         <p class="text-[10px] text-textmute mt-0.5">comparado con cobertura en medios tradicionales</p>
       </div>
     </div>` : ''}
 
-    <div class="mb-5 p-4 surface-inset rounded-[8px]">
+    <div class="mb-5 p-4 surface-inset rounded-[10px]">
       <p class="caps text-textmute mb-2">Briefing de Nemotron</p>
       <p class="text-[13px] text-textsec leading-relaxed">${t.briefing}</p>
-      <p class="mono-num text-[10px] text-textmute mt-3 pt-3 border-t border-white/[0.04]">Nemotron-3-Ultra-550B · 4.2s · 312 tokens</p>
+      <p class="mono-num text-[10px] text-textmute mt-3 pt-3 border-t border-white/[0.05]">Nemotron-3-Ultra-550B · 4.2s · 312 tokens</p>
     </div>
-    <div class="grid grid-cols-2 gap-2 mb-5">
-      <div class="p-3.5 surface-inset rounded-[8px]">
+    <div class="grid grid-cols-2 gap-2.5 mb-5">
+      <div class="stat-tile p-3.5 rounded-[10px]" style="--tile-accent:${cfg.color}">
         <p class="caps text-textmute mb-1.5">Velocity</p>
-        <p class="mono-num text-[18px]" style="color:${cfg.color}">${t.velocity}</p>
+        <p class="mono-num text-[19px] font-semibold" style="color:${cfg.color}">${t.velocity}</p>
       </div>
-      <div class="p-3.5 surface-inset rounded-[8px]">
+      <div class="stat-tile p-3.5 rounded-[10px]" style="--tile-accent:${cfg.color2}">
         <p class="caps text-textmute mb-1.5">Confianza</p>
-        <p class="mono-num text-[18px] text-textmain">${t.confidence}</p>
+        <p class="mono-num text-[19px] font-semibold text-textmain">${t.confidence}</p>
       </div>
     </div>
-    <div class="mb-5 p-4 surface-inset rounded-[8px]">
-      <p class="caps text-textmute mb-3">Evolución 24h</p>
-      ${renderSparkline(t.sparkData, cfg.color)}
+    <div class="mb-5 p-4 surface-inset rounded-[10px]">
+      <div class="flex items-center justify-between mb-3">
+        <p class="caps text-textmute">Evolución 24h</p>
+        <span class="mono-num text-[10px] text-textmute">12 puntos · 2h interval</span>
+      </div>
+      ${renderSparkline(t.sparkData, cfg.color, { height: 56, stroke: 2, pulse: cfg.pulse })}
     </div>
     <div class="mb-5">
       <p class="caps text-textmute mb-3">Fuentes verificables</p>
-      <div class="space-y-1">
+      <div class="space-y-1.5">
         ${t.sourcesDetail.map(s => {
           const sc = sourceConfig[s.name] || {color:cfg.color, icon:''};
-          return `<div class="flex items-center gap-3 p-2.5 surface-inset rounded-[6px]">
-            <span style="color:${sc.color}; opacity:0.8;">${sc.icon}</span>
+          return `<div class="flex items-center gap-3 p-2.5 surface-inset rounded-[8px] src-pill">
+            <span style="color:${sc.color}; opacity:0.85;">${sc.icon}</span>
             <span class="text-[13px] text-textsec flex-1">${s.name}</span>
             <span class="mono-num text-[11px] text-textmute">${s.count} menciones</span>
           </div>`;
@@ -611,13 +735,16 @@ function openPanel(id) {
       </div>
     </div>
     <div class="mb-6">
-      <p class="caps text-textmute mb-3">Menciones recientes</p>
+      <div class="flex items-center justify-between mb-3">
+        <p class="caps text-textmute">Menciones recientes</p>
+        <span class="mono-num text-[10px] text-textmute">${t.mentions.length} capturadas</span>
+      </div>
       <div class="space-y-2">
         ${t.mentions.map(m => renderMention(m, cfg.color)).join('')}
       </div>
     </div>
-    <div class="flex gap-2 sticky bottom-0 -mx-6 px-6 py-3 mt-2 glass border-t border-white/[0.05]" style="background:rgba(10,13,24,0.88);">
-      <button class="flex-1 py-2.5 rounded-[8px] text-[13px] font-semibold transition hover:brightness-110" style="background:${cfg.color}; color:#0A0D18;" onclick="showToast('Tendencia atizada — la seguirás')">Atizar (seguir)</button>
+    <div class="flex gap-2 sticky bottom-0 -mx-6 px-6 py-3 mt-2 glass border-t border-white/[0.06]" style="background:rgba(10,13,24,0.92);">
+      <button class="flex-1 py-2.5 rounded-[8px] text-[13px] font-semibold transition hover:brightness-110" style="background:${cfg.color}; color:#0A0D18; box-shadow: 0 4px 12px -2px ${cfg.color}50, inset 0 1px 0 0 rgba(255,255,255,0.25);" onclick="showToast('Tendencia atizada — la seguirás')">Atizar (seguir)</button>
       <button class="px-4 py-2.5 rounded-[8px] text-[13px] surface-inset text-textsec hover:text-textmain transition" onclick="showToast('Guardada como brasa')">Guardar</button>
     </div>
   `;
@@ -659,8 +786,8 @@ let ticking = false;
 window.addEventListener('scroll', () => {
   if (!ticking) {
     requestAnimationFrame(() => {
-      if (window.scrollY > 8) header.style.boxShadow = 'var(--shadow-sm)';
-      else header.style.boxShadow = '';
+      if (window.scrollY > 8) header.classList.add('scrolled');
+      else header.classList.remove('scrolled');
       ticking = false;
     });
     ticking = true;
