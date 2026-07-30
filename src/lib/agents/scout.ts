@@ -59,37 +59,55 @@ export async function scoutAgent(input: ScoutInput): Promise<AgentResult<ScoutOu
 
   console.log(`[scout] starting iter=${iteration} query="${query}"`);
 
-  // 1. LLM decide el plan de búsqueda (prompt corto para evitar timeout)
-  console.log(`[scout] calling LLM for plan...`);
-  const planResult = await llmJsonSafe<ScoutLLMResponse>(
+  // UNA sola llamada LLM que genera plan + menciones simuladas (evita doble timeout)
+  console.log(`[scout] calling LLM for plan + mentions...`);
+  const combinedResult = await llmJsonSafe<{
+    plan: string;
+    sub_queries: string[];
+    reasoning: string;
+    mentions: SimulatedMention[];
+  }>(
     SYSTEM_PROMPT,
     `Tema: "${query}" | Iter: ${iteration} | Fuentes: ${sources.join(',')}
 ${feedback ? `Feedback: ${feedback.slice(0, 200)}` : ''}
 
-Generá plan de búsqueda + 4 sub-queries + razonamiento.
-JSON: {"plan":"...","sub_queries":["..."],"reasoning":"..."}`,
-    { temperature: 0.5, max_tokens: 600 }
+Generá en UN solo JSON:
+1. plan: plan de búsqueda breve
+2. sub_queries: 3-4 sub-queries
+3. reasoning: por qué este enfoque
+4. mentions: 5-8 menciones simuladas para las fuentes ${sources.join(', ')}
+
+Cada mention: {"source":"twitter|reddit|hackernews","author_handle":"@handle","body":"contenido verosímil","title":"null para tweets, string para reddit/hn","engagement":{"likes":N,"retweets":N,"score":N,"comments":N},"followers":N,"published_ago_minutes":N,"lang":"es|en"}
+
+Las menciones deben ser VEROSÍMILES y específicas al tema. Variá tono (informativo, opinión, reacción).
+
+JSON: {"plan":"...","sub_queries":["..."],"reasoning":"...","mentions":[...]}`,
+    { temperature: 0.6, max_tokens: 1500 }
   );
 
-  let plan: ScoutLLMResponse;
-  if (planResult.data) {
-    plan = planResult.data;
-  } else {
-    // Fallback: deterministic plan
+  let plan: { plan: string; sub_queries: string[]; reasoning: string };
+  if (combinedResult.data) {
     plan = {
-      plan: `Buscar información sobre "${query}" en las fuentes disponibles`,
-      sub_queries: [query, `${query} noticias`, `${query} análisis`, `${query} reacciones`],
-      reasoning: `Plan fallback generado porque el LLM no respondió: ${planResult.error?.slice(0, 60)}`,
+      plan: combinedResult.data.plan,
+      sub_queries: combinedResult.data.sub_queries,
+      reasoning: combinedResult.data.reasoning,
+    };
+  } else {
+    plan = {
+      plan: `Buscar información sobre "${query}"`,
+      sub_queries: [query, `${query} noticias`, `${query} análisis`],
+      reasoning: `Fallback: ${combinedResult.error?.slice(0, 60)}`,
     };
   }
   console.log(`[scout] plan received: ${plan.plan.slice(0, 80)}`);
+
   const existing_ids = new Set(existing_mentions.map(m => m.source_id));
   const collected: NormalizedMention[] = [];
 
-  // 2. Intentar GDELT real con la primera sub-query
+  // 2. Intentar GDELT real con la primera sub-query (si está disponible)
   if (sources.includes('gdelt')) {
     try {
-      const real_mentions = await adapters.gdelt.fetch(plan.sub_queries[0] ?? query, { maxResults: 8 });
+      const real_mentions = await adapters.gdelt.fetch(plan.sub_queries[0] ?? query, { maxResults: 5 });
       for (const m of real_mentions) {
         if (!existing_ids.has(m.source_id)) {
           collected.push(m);
@@ -97,90 +115,48 @@ JSON: {"plan":"...","sub_queries":["..."],"reasoning":"..."}`,
         }
       }
     } catch (err) {
-      // GDELT falló (típico en sandbox) — el LLM simulará
+      // GDELT falló — usamos las menciones del LLM
     }
   }
 
-  // 3. Para fuentes no-GDELT (o si GDELT no devolvió nada), el LLM simula menciones plausibles
-  const needed_sources = sources.filter(s => s !== 'gdelt');
-  const want_more = collected.length < 6;
-
-  if (needed_sources.length > 0 && (want_more || collected.length === 0)) {
-    const simPrompt = `Sos SCOUT. Ya tenés un plan: "${plan.plan}".
-Ahora SIMULÁ menciones plausibles para el tema "${query}" en las siguientes fuentes: ${needed_sources.join(', ')}.
-
-REQUISITOS:
-- Cada mención debe ser VEROSÍMIL (autores reales o plausibles del nicho, contenido coherente con el tema).
-- Variá el tono: algunos informativos, otros opinando, otros reaccionando.
-- Las métricas (likes, retweets, score) deben ser coherentes con el tipo de autor.
-- Tiempos de publicación: entre 5 min y 3 horas atrás.
-- No repitas contenido que ya tenés: ${existing_mentions.slice(0, 3).map(m => m.body.slice(0, 60)).join(' | ')}
-
-Generá entre 5 y 10 menciones. Respondé con JSON:
-{
-  "mentions": [
-    {
-      "source": "twitter|reddit|hackernews|googletrends",
-      "author_handle": "@handle o /u/user o hn-user",
-      "body": "contenido de la mención (1-2 oraciones)",
-      "title": "null para tweets, string para reddit/hn",
-      "engagement": { "likes": N, "retweets": N, "score": N, "comments": N },
-      "followers": N,
-      "published_ago_minutes": N,
-      "lang": "es|en"
-    }
-  ],
-  "reasoning": "por qué simulaste estas menciones específicas"
-}`;
-
-    try {
-      const simResult = await llmJsonSafe<{ mentions: SimulatedMention[]; reasoning: string }>(
-        SYSTEM_PROMPT,
-        simPrompt,
-        { temperature: 0.7, max_tokens: 1200 }
-      );
-
-      if (simResult.data && simResult.data.mentions) {
-        for (const sm of simResult.data.mentions) {
-          const id = crypto.randomUUID();
-          const mention: NormalizedMention = {
-            id,
-            source: sm.source,
-            source_id: `sim_${id.slice(0, 8)}`,
-            url: sm.source === 'twitter' ? `https://x.com/${sm.author_handle.replace('@','')}/status/${Math.floor(Math.random()*1e18)}` :
-                 sm.source === 'reddit' ? `https://reddit.com/r/${query.split(' ')[0].toLowerCase()}/comments/${id.slice(0,6)}` :
-                 sm.source === 'hackernews' ? `https://news.ycombinator.com/item?id=${Math.floor(Math.random()*1e7)}` :
-                 `https://trends.google.com/trends/explore?q=${encodeURIComponent(query)}`,
-            fetched_at: Date.now(),
-            published_at: Date.now() - sm.published_ago_minutes * 60_000,
-            type: sm.source === 'twitter' ? 'post' : sm.source === 'gdelt' ? 'article' : 'story',
-            title: sm.title,
-            body: sm.body,
-            lang: sm.lang,
-            author: {
-              handle: sm.author_handle,
-              name: sm.author_handle.replace('@','').replace('/u/','').replace('hn-',''),
-              followers: sm.followers,
-            },
-            engagement: sm.engagement,
-            entities: {
-              hashtags: (sm.body.match(/#\w+/g) ?? []),
-              urls: [],
-              domains: sm.source === 'gdelt' ? [sm.author_handle] : [],
-            },
-          };
-          if (!existing_ids.has(mention.source_id)) {
-            collected.push(mention);
-            existing_ids.add(mention.source_id);
-          }
-        }
+  // 3. Usar las menciones generadas por el LLM en el combined call
+  if (combinedResult.data && combinedResult.data.mentions) {
+    for (const sm of combinedResult.data.mentions) {
+      const id = crypto.randomUUID();
+      const mention: NormalizedMention = {
+        id,
+        source: sm.source,
+        source_id: `sim_${id.slice(0, 8)}`,
+        url: sm.source === 'twitter' ? `https://x.com/${sm.author_handle.replace('@','')}/status/${Math.floor(Math.random()*1e18)}` :
+             sm.source === 'reddit' ? `https://reddit.com/r/${query.split(' ')[0].toLowerCase()}/comments/${id.slice(0,6)}` :
+             sm.source === 'hackernews' ? `https://news.ycombinator.com/item?id=${Math.floor(Math.random()*1e7)}` :
+             `https://trends.google.com/trends/explore?q=${encodeURIComponent(query)}`,
+        fetched_at: Date.now(),
+        published_at: Date.now() - sm.published_ago_minutes * 60_000,
+        type: sm.source === 'twitter' ? 'post' : sm.source === 'gdelt' ? 'article' : 'story',
+        title: sm.title,
+        body: sm.body,
+        lang: sm.lang,
+        author: {
+          handle: sm.author_handle,
+          name: sm.author_handle.replace('@','').replace('/u/','').replace('hn-',''),
+          followers: sm.followers,
+        },
+        engagement: sm.engagement,
+        entities: {
+          hashtags: (sm.body.match(/#\w+/g) ?? []),
+          urls: [],
+          domains: sm.source === 'gdelt' ? [sm.author_handle] : [],
+        },
+      };
+      if (!existing_ids.has(mention.source_id)) {
+        collected.push(mention);
+        existing_ids.add(mention.source_id);
       }
-    } catch (err: any) {
-      // Si la simulación falla, usamos lo que tengamos
     }
   }
 
-  const reasoning = plan.reasoning || (planResult.raw?.reasoning ?? 'Plan generado');
+  const reasoning = plan.reasoning || (combinedResult.raw?.reasoning ?? 'Plan generado');
   const sources_used = Array.from(new Set(collected.map(m => m.source)));
 
   store.logActivity({
@@ -197,7 +173,7 @@ Generá entre 5 y 10 menciones. Respondé con JSON:
     metrics: {
       mentions: collected.length,
       sources: sources_used.length,
-      llm_fallback: planResult.data ? 0 : 1,
+      llm_fallback: combinedResult.data ? 0 : 1,
     },
   });
 
@@ -210,8 +186,8 @@ Generá entre 5 y 10 menciones. Respondé con JSON:
       plan: plan.plan,
       sources_used,
     },
-    summary: `Scout recolectó ${collected.length} menciones ${planResult.data ? '' : '(fallback)'}`,
-    metrics: { mentions: collected.length, sources: sources_used.length, fallback: planResult.data ? 0 : 1 },
+    summary: `Scout recolectó ${collected.length} menciones ${combinedResult.data ? '' : '(fallback)'}`,
+    metrics: { mentions: collected.length, sources: sources_used.length, fallback: combinedResult.data ? 0 : 1 },
     duration_ms: Date.now() - start,
     request_reloop: false,
   };
