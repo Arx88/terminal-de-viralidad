@@ -1,5 +1,6 @@
-// Trigger ONE agent step. Uses Vercel's waitUntil to run in background
-// after the response is sent, so the client doesn't wait for LLM.
+// Trigger runs ALL 6 agents in one invocation using waitUntil.
+// Returns the final narratives + activities.
+// Client waits for response (can take 30-60s).
 
 import { NextRequest, NextResponse } from 'next/server';
 import { waitUntil } from '@vercel/functions';
@@ -16,131 +17,82 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-interface LoopState {
-  query: string;
-  sources: SourceType[];
-  iteration: number;
-  step: number;
-  mentions: NormalizedMention[];
-  narratives: Narrative[];
-  loop_id: string;
-}
-
-const globalAny = globalThis as any;
-const loopStates: Map<string, LoopState> = globalAny.__loopStates ?? new Map();
-if (!globalAny.__loopStates) globalAny.__loopStates = loopStates;
-
-const STEP_NAMES = ['scout', 'cluster', 'score', 'phase', 'validator', 'evaluator'];
-
-// Background task runner — uses Vercel's waitUntil
-function runInBackground(promise: Promise<void>) {
-  try {
-    waitUntil(promise);
-  } catch {
-    // Fallback: just run it (will be killed when function returns in serverless)
-    promise.catch(console.error);
-  }
-}
-
 export async function POST(req: NextRequest) {
+  const start = Date.now();
   try {
     const body = await req.json().catch(() => ({}));
     const query = body.query || 'IA agentes autónomos';
     const sources: SourceType[] = body.sources || ['twitter', 'reddit', 'hackernews'];
-    const session_id = body.session_id || query;
+    const loop_id = `loop_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
-    let state = loopStates.get(session_id);
-    if (!state || body.reset) {
-      state = {
-        query, sources, iteration: 1, step: 0,
-        mentions: [], narratives: store.list({ limit: 50 }),
-        loop_id: `loop_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-      };
-      loopStates.set(session_id, state);
+    // Run all 6 agents sequentially in this invocation
+    let mentions: NormalizedMention[] = [];
+    let narratives: Narrative[] = store.list({ limit: 50 });
+
+    // 1. Scout
+    console.log(`[trigger] step scout starting`);
+    try {
+      const r = await scoutAgent({ loop_id, iteration: 1, query, sources, existing_mentions: mentions });
+      mentions = r.output.mentions;
+    } catch (e: any) { console.error('[trigger] scout failed:', e.message); }
+
+    // 2. Cluster
+    console.log(`[trigger] step cluster starting (${mentions.length} mentions)`);
+    try {
+      const r = await clusterAgent({ loop_id, iteration: 1, mentions, existing_narratives: narratives, query });
+      narratives = r.output.narratives;
+    } catch (e: any) { console.error('[trigger] cluster failed:', e.message); }
+
+    // 3. Score
+    if (narratives.length > 0) {
+      console.log(`[trigger] step score starting (${narratives.length} narratives)`);
+      try {
+        const r = await scoreAgent({ loop_id, iteration: 1, narratives });
+        narratives = r.output.narratives;
+      } catch (e: any) { console.error('[trigger] score failed:', e.message); }
     }
 
-    const stepName = STEP_NAMES[state.step];
-    const stepNum = state.step;
-    const loopId = state.loop_id;
-    const iter = state.iteration;
+    // 4. Phase
+    if (narratives.length > 0) {
+      console.log(`[trigger] step phase starting`);
+      try {
+        const r = await phaseAgent({ loop_id, iteration: 1, narratives });
+        narratives = r.output.narratives;
+      } catch (e: any) { console.error('[trigger] phase failed:', e.message); }
+    }
 
-    // Advance step counter IMMEDIATELY so next call runs next agent
-    state.step = (state.step + 1) % 6;
-    if (state.step === 0) state.iteration++;
+    // 5. Validator
+    if (narratives.length > 0) {
+      console.log(`[trigger] step validator starting`);
+      try {
+        const r = await validatorAgent({ loop_id, iteration: 1, narratives, max_iterations: 1 });
+        narratives = r.output.narratives;
+      } catch (e: any) { console.error('[trigger] validator failed:', e.message); }
+    }
 
-    // Run the agent in background
-    runInBackground(runStep(stepNum, loopId, iter, state).catch(err => {
-      console.error(`[trigger] step ${stepName} failed:`, err.message);
-    }));
+    // 6. Evaluator
+    if (narratives.length > 0) {
+      console.log(`[trigger] step evaluator starting`);
+      try {
+        const r = await evaluatorAgent({ loop_id, iteration: 1, narratives });
+        narratives = r.output.narratives;
+      } catch (e: any) { console.error('[trigger] evaluator failed:', e.message); }
+    }
 
-    // Also return current narratives snapshot so client can display immediately
-    const currentNarratives = store.list({ limit: 20 });
+    const duration = Date.now() - start;
+    console.log(`[trigger] loop completed in ${duration}ms | ${narratives.length} narratives`);
 
     return NextResponse.json({
-      status: 'step_started',
-      step: stepName,
-      next_step: STEP_NAMES[state.step],
-      iteration: state.iteration,
-      query: state.query,
-      narratives: currentNarratives,
-      activities: store.getActivities(10),
+      status: 'completed',
+      loop_id,
+      query,
+      duration_ms: duration,
+      narratives: narratives.slice(0, 20),
+      activities: store.getActivities(20),
       ts: Date.now(),
     });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
-  }
-}
-
-async function runStep(step: number, loop_id: string, iteration: number, state: LoopState) {
-  const stepName = STEP_NAMES[step];
-  console.log(`[trigger] running step ${stepName} iter=${iteration} query="${state.query}"`);
-
-  try {
-    switch (step) {
-      case 0: {
-        const r = await scoutAgent({
-          loop_id, iteration, query: state.query, sources: state.sources,
-          existing_mentions: state.mentions,
-        });
-        state.mentions = [...state.mentions, ...r.output.mentions];
-        break;
-      }
-      case 1: {
-        const r = await clusterAgent({
-          loop_id, iteration,
-          mentions: state.mentions.slice(-15),
-          existing_narratives: state.narratives,
-          query: state.query,
-        });
-        state.narratives = r.output.narratives;
-        break;
-      }
-      case 2: {
-        const r = await scoreAgent({ loop_id, iteration, narratives: state.narratives });
-        state.narratives = r.output.narratives;
-        break;
-      }
-      case 3: {
-        const r = await phaseAgent({ loop_id, iteration, narratives: state.narratives });
-        state.narratives = r.output.narratives;
-        break;
-      }
-      case 4: {
-        const r = await validatorAgent({
-          loop_id, iteration, narratives: state.narratives, max_iterations: 1,
-        });
-        state.narratives = r.output.narratives;
-        break;
-      }
-      case 5: {
-        const r = await evaluatorAgent({ loop_id, iteration, narratives: state.narratives });
-        state.narratives = r.output.narratives;
-        break;
-      }
-    }
-    console.log(`[trigger] step ${stepName} completed`);
-  } catch (err: any) {
-    console.error(`[trigger] step ${stepName} error:`, err.message);
+    return NextResponse.json({ error: err.message, duration_ms: Date.now() - start }, { status: 500 });
   }
 }
 

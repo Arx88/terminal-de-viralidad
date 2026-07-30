@@ -156,22 +156,22 @@ export function useTerminalStream() {
       })
       .catch(() => { /* */ });
 
-    // Trigger first agent step on mount
+    // Trigger first agent step on mount — waits for full loop (30-60s)
     const runTrigger = async (query?: string) => {
       try {
         const res = await fetch('/api/trigger', {
           method: 'POST',
           body: JSON.stringify({ query: query || 'IA agentes autónomos' }),
           headers: { 'Content-Type': 'application/json' },
+          signal: AbortSignal.timeout(90_000), // 90s timeout for full loop
         });
         const data = await res.json();
-        // If the response includes narratives, merge them into state
         if (data.narratives && Array.isArray(data.narratives)) {
           startTransition(() => {
             setState(prev => {
               const narratives = new Map(prev.narratives);
               for (const n of data.narratives) narratives.set(n.id, n);
-              return { ...prev, narratives };
+              return { ...prev, narratives, status: 'live' };
             });
           });
         }
@@ -185,12 +185,12 @@ export function useTerminalStream() {
 
     runTrigger();
 
-    // Poll /api/trigger every 8s to advance the loop step by step
+    // Poll /api/trigger every 30s (each call runs a full 6-agent loop)
     const triggerInterval = setInterval(() => {
       const queries = ['IA agentes autónomos', 'regulación cripto 2026', 'cumbre climática', 'despidos tech'];
       const q = queries[Math.floor(Math.random() * queries.length)];
       runTrigger(q);
-    }, 8_000);
+    }, 30_000);
 
     const onVisibility = () => {
       if (document.hidden) {
