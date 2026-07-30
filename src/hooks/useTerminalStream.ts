@@ -156,8 +156,19 @@ export function useTerminalStream() {
       })
       .catch(() => { /* */ });
 
-    fetch('/api/trigger', { method: 'POST', body: JSON.stringify({ query: 'AI agents' }), headers: { 'Content-Type': 'application/json' } })
+    fetch('/api/trigger', { method: 'POST', body: JSON.stringify({ query: 'IA agentes autónomos' }), headers: { 'Content-Type': 'application/json' } })
       .catch(() => { /* */ });
+
+    // Periodic re-triggers to keep the system alive (every 30s)
+    const triggerInterval = setInterval(() => {
+      const queries = ['IA agentes autónomos', 'regulación cripto 2026', 'cumbre climática', 'despidos tech'];
+      const q = queries[Math.floor(Math.random() * queries.length)];
+      fetch('/api/trigger', {
+        method: 'POST',
+        body: JSON.stringify({ query: q }),
+        headers: { 'Content-Type': 'application/json' },
+      }).catch(() => { /* */ });
+    }, 30_000);
 
     const onVisibility = () => {
       if (document.hidden) {
@@ -174,6 +185,7 @@ export function useTerminalStream() {
     return () => {
       esRef.current?.close();
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      clearInterval(triggerInterval);
       document.removeEventListener('visibilitychange', onVisibility);
     };
   }, []);
