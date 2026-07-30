@@ -13,16 +13,16 @@ tailwind.config = {
   theme: {
     extend: {
       colors: {
-        bgbase:    '#0A0B0D',
-        bgsurface: '#101216',
-        bginset:   '#08090B',
+        bgbase:    '#0A0D18',
+        bgsurface: '#111624',
+        bginset:   '#060810',
         textmain:  '#E8EAED',
         textsec:   '#9BA1AB',
         textmute:  '#5C6370',
-        ember:     '#E8804B',
-        lavender:  '#8B92B8',
-        sage:      '#8FA77D',
-        ash:       '#5C6370',
+        ember:     '#FF8C5C',
+        lavender:  '#9CA5DC',
+        sage:      '#9DC288',
+        ash:       '#6E7785',
         flame:     '#FF6B35',
       },
       fontFamily: {
@@ -36,11 +36,11 @@ tailwind.config = {
 </script>
 <style>
 :root {
-  --bg:        #0A0B0D;
-  --surface:   #101216;
-  --inset:     #08090B;
-  --hairline:  rgba(255,255,255,0.06);
-  --hairline-strong: rgba(255,255,255,0.10);
+  --bg:        #0A0D18;
+  --surface:   #111624;
+  --inset:     #060810;
+  --hairline:  rgba(255,255,255,0.07);
+  --hairline-strong: rgba(255,255,255,0.11);
   --text:      #E8EAED;
   --text-sec:  #9BA1AB;
   --text-mute: #5C6370;
@@ -60,7 +60,9 @@ html { text-rendering: optimizeLegibility; font-feature-settings: "kern","liga",
 
 body {
   background-color: var(--bg);
-  background-image: radial-gradient(ellipse 60% 40% at 50% -8%, rgba(255,107,53,0.05), transparent 70%);
+  background-image:
+    radial-gradient(ellipse 70% 50% at 50% -10%, rgba(90, 130, 220, 0.07), transparent 70%),
+    radial-gradient(ellipse 50% 35% at 85% 105%, rgba(255, 130, 80, 0.045), transparent 70%);
   min-height: 100vh;
   font-feature-settings: 'ss01';
 }
@@ -77,19 +79,24 @@ body::before {
   background: var(--inset);
   box-shadow: inset 0 0 0 1px var(--hairline);
 }
-.glass { background: var(--surface); box-shadow: inset 0 0 0 1px var(--hairline), inset 0 1px 0 0 rgba(255,255,255,0.04); }
+.glass {
+  background: rgba(17, 22, 36, 0.72);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  box-shadow: inset 0 0 0 1px var(--hairline), inset 0 1px 0 0 rgba(255,255,255,0.05);
+}
 
 /* Status accent (1px top edge) */
-.accent-ember   { box-shadow: inset 0 1px 0 0 #E8804B, inset 0 0 0 1px var(--hairline), inset 0 0 0 1px rgba(232,128,75,0.10); }
-.accent-lavender{ box-shadow: inset 0 1px 0 0 #8B92B8, inset 0 0 0 1px var(--hairline); }
-.accent-sage    { box-shadow: inset 0 1px 0 0 #8FA77D, inset 0 0 0 1px var(--hairline); }
-.accent-ash     { box-shadow: inset 0 1px 0 0 rgba(92,99,112,0.5), inset 0 0 0 1px var(--hairline); opacity: 0.92; }
+.accent-ember   { box-shadow: inset 0 1px 0 0 #FF8C5C, inset 0 0 0 1px var(--hairline), inset 0 0 0 1px rgba(255,140,92,0.12); }
+.accent-lavender{ box-shadow: inset 0 1px 0 0 #9CA5DC, inset 0 0 0 1px var(--hairline); }
+.accent-sage    { box-shadow: inset 0 1px 0 0 #9DC288, inset 0 0 0 1px var(--hairline); }
+.accent-ash     { box-shadow: inset 0 1px 0 0 rgba(110,119,133,0.55), inset 0 0 0 1px var(--hairline); opacity: 0.92; }
 
 /* Motor dot — blip cada 4s */
 .motor-dot { position: relative; }
 .motor-dot::after {
   content: ''; position: absolute; inset: -3px; border-radius: 50%;
-  background: #8FA77D; opacity: 0; transform: scale(1);
+  background: #9DC288; opacity: 0; transform: scale(1);
   animation: blip 4s var(--ease-soft) infinite;
 }
 @keyframes blip {
@@ -98,16 +105,28 @@ body::before {
   85% { opacity: 0; transform: scale(2.2); }
 }
 
-/* Card hover — 1px lift + accent brightens */
+/* Slow pulse for "creciendo" state — visible but restrained */
+@keyframes dotPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,140,92,0); }
+  50%      { box-shadow: 0 0 0 3px rgba(255,140,92,0.22); }
+}
+.dot-pulse { animation: dotPulse 2.8s var(--ease-soft) infinite; }
+
+@keyframes barBreath {
+  0%, 100% { opacity: 0.72; }
+  50%      { opacity: 1; }
+}
+.bar-ember-pulse { animation: barBreath 3.6s var(--ease-soft) infinite; }
+
+/* Card hover — box-shadow ONLY, no transform (prevents layout shift bug) */
 .trend-card {
-  transition: box-shadow 220ms var(--ease-soft), transform 220ms var(--ease-soft);
+  transition: box-shadow 280ms var(--ease-soft);
   position: relative;
 }
-.trend-card:hover { transform: translateY(-1px); }
-.trend-card:hover.accent-ember   { box-shadow: inset 0 1px 0 0 #FF9B6B, inset 0 0 0 1px var(--hairline-strong), 0 4px 12px -4px rgba(232,128,75,0.20); }
-.trend-card:hover.accent-lavender{ box-shadow: inset 0 1px 0 0 #A8AFCD, inset 0 0 0 1px var(--hairline-strong), 0 4px 12px -4px rgba(139,146,184,0.18); }
-.trend-card:hover.accent-sage    { box-shadow: inset 0 1px 0 0 #A6BD95, inset 0 0 0 1px var(--hairline-strong), 0 4px 12px -4px rgba(143,167,125,0.18); }
-.trend-card:hover.accent-ash     { box-shadow: inset 0 1px 0 0 rgba(92,99,112,0.8), inset 0 0 0 1px var(--hairline-strong); }
+.trend-card:hover.accent-ember   { box-shadow: inset 0 1px 0 0 #FFA478, inset 0 0 0 1px var(--hairline-strong), inset 0 0 0 1px rgba(255,140,92,0.15), 0 8px 24px -8px rgba(255,140,92,0.28); }
+.trend-card:hover.accent-lavender{ box-shadow: inset 0 1px 0 0 #B4BBE8, inset 0 0 0 1px var(--hairline-strong), 0 8px 24px -8px rgba(156,165,220,0.22); }
+.trend-card:hover.accent-sage    { box-shadow: inset 0 1px 0 0 #B5D5A0, inset 0 0 0 1px var(--hairline-strong), 0 8px 24px -8px rgba(157,194,136,0.22); }
+.trend-card:hover.accent-ash     { box-shadow: inset 0 1px 0 0 rgba(110,119,133,0.85), inset 0 0 0 1px var(--hairline-strong); }
 
 /* Hover reveal — métricas ocultas aparecen */
 .reveal-on-hover {
@@ -127,12 +146,12 @@ body::before {
 .fade-up { animation: cardEnter 0.5s var(--ease-soft) backwards; }
 
 /* Status bar */
-.bar-ember    { background: linear-gradient(90deg, #E8804B 0%, #E8804B 30%, transparent 100%); opacity: 0.85; }
-.bar-lavender { background: linear-gradient(90deg, #8B92B8 0%, #8B92B8 30%, transparent 100%); opacity: 0.75; }
-.bar-sage     { background: linear-gradient(90deg, #8FA77D 0%, #8FA77D 30%, transparent 100%); opacity: 0.75; }
-.bar-ash      { background: linear-gradient(90deg, #5C6370 0%, #5C6370 30%, transparent 100%); opacity: 0.4; }
-.bar-violet   { background: linear-gradient(90deg, #8B92B8 0%, #8B92B8 30%, transparent 100%); opacity: 0.75; }
-.bar-emerald  { background: linear-gradient(90deg, #8FA77D 0%, #8FA77D 30%, transparent 100%); opacity: 0.75; }
+.bar-ember    { background: linear-gradient(90deg, #FF8C5C 0%, #FF8C5C 30%, transparent 100%); opacity: 0.9; }
+.bar-lavender { background: linear-gradient(90deg, #9CA5DC 0%, #9CA5DC 30%, transparent 100%); opacity: 0.8; }
+.bar-sage     { background: linear-gradient(90deg, #9DC288 0%, #9DC288 30%, transparent 100%); opacity: 0.8; }
+.bar-ash      { background: linear-gradient(90deg, #6E7785 0%, #6E7785 30%, transparent 100%); opacity: 0.5; }
+.bar-violet   { background: linear-gradient(90deg, #9CA5DC 0%, #9CA5DC 30%, transparent 100%); opacity: 0.8; }
+.bar-emerald  { background: linear-gradient(90deg, #9DC288 0%, #9DC288 30%, transparent 100%); opacity: 0.8; }
 
 /* Sparkline */
 @keyframes drawSpark {
@@ -203,7 +222,7 @@ body::before {
 }
 
 /* Keyboard nav */
-body.keyboard-nav .trend-card:focus-visible { box-shadow: var(--shadow-md), inset 3px 0 0 0 var(--state-color, #E8804B); }
+body.keyboard-nav .trend-card:focus-visible { box-shadow: var(--shadow-md), inset 3px 0 0 0 var(--state-color, #FF8C5C); }
 </style>
 </head>
 <body class="text-textmain font-sans">
@@ -211,7 +230,7 @@ body.keyboard-nav .trend-card:focus-visible { box-shadow: var(--shadow-md), inse
 <a href="#main" class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[200] focus:px-3 focus:py-2 focus:rounded-md focus:surface focus:text-sm">Saltar al contenido</a>
 
 <!-- HEADER -->
-<header class="sticky top-0 z-40 surface border-b border-white/[0.04]" id="siteHeader">
+<header class="sticky top-0 z-40 glass border-b border-white/[0.05]" id="siteHeader">
   <div class="max-w-7xl mx-auto px-6 py-3.5 flex items-center justify-between">
     <div class="flex items-center gap-2.5">
       <svg width="22" height="22" viewBox="0 0 32 32" aria-hidden="true" style="animation: logoBreath 6s var(--ease-soft) infinite; transform-origin: 50% 80%;">
@@ -276,22 +295,22 @@ body.keyboard-nav .trend-card:focus-visible { box-shadow: var(--shadow-md), inse
 
 <!-- DETAIL PANEL -->
 <div id="overlay" class="fixed inset-0 bg-black/70 z-50 opacity-0 pointer-events-none transition-opacity duration-300" onclick="closePanel()"></div>
-<aside id="detailPanel" class="panel-slide fixed right-0 top-0 bottom-0 w-full max-w-md z-50 surface border-l border-white/[0.06] translate-x-full overflow-y-auto">
+<aside id="detailPanel" class="panel-slide fixed right-0 top-0 bottom-0 w-full max-w-md z-50 glass border-l border-white/[0.07] translate-x-full overflow-y-auto">
   <div class="p-6" id="panelContent"></div>
 </aside>
 
 <!-- TOAST -->
 <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] opacity-0 pointer-events-none transition-all duration-300">
   <div class="surface rounded-[10px] px-4 py-2.5 flex items-center gap-2 text-[13px] text-textmain" style="box-shadow: var(--shadow-lg);">
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#8FA77D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7l3.5 3.5L12 4"/></svg>
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#9DC288" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7l3.5 3.5L12 4"/></svg>
     <span id="toastText"></span>
   </div>
 </div>
 
 <style>
 @keyframes logoBreath {
-  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 4px rgba(245,158,11,0.3)); }
-  50%      { transform: scale(1.04); filter: drop-shadow(0 0 6px rgba(245,158,11,0.45)); }
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 3px rgba(255,140,92,0.25)); }
+  50%      { transform: scale(1.03); filter: drop-shadow(0 0 5px rgba(255,140,92,0.40)); }
 }
 </style>
 
@@ -308,7 +327,7 @@ const trends = [
     sourcesDetail: [{name:"Bluesky", count:9}, {name:"Reddit", count:5}],
     mentions: [
       {author:"@ia_policy_es", name:"IA Policy España", source:"Bluesky", text:"El borrador filtrado sobre IA general del artículo 7 es preocupante. Define 'modelo de uso general' de forma demasiado amplia y podría afectar a devs independientes que fine-tunean modelos open source.", time:"hace 2h", date:"30 jul, 14:32", likes:1243, reposts:284, replies:97, views:"18,4K", verified:true, avatar:"#38BDF8"},
-      {author:"@dev_es", name:"Dev España", source:"Bluesky", text:"Hilo sobre implicaciones del artículo 7 para devs independientes. Si se aprueba tal cual, cualquier dev que use un modelo de >10^9 params tendría que registrar el uso. Absurdo.", time:"hace 1h", date:"30 jul, 15:18", likes:456, reposts:112, replies:43, views:"7,2K", verified:false, avatar:"#8B92B8"},
+      {author:"@dev_es", name:"Dev España", source:"Bluesky", text:"Hilo sobre implicaciones del artículo 7 para devs independientes. Si se aprueba tal cual, cualquier dev que use un modelo de >10^9 params tendría que registrar el uso. Absurdo.", time:"hace 1h", date:"30 jul, 15:18", likes:456, reposts:112, replies:43, views:"7,2K", verified:false, avatar:"#9CA5DC"},
       {author:"u/tech_observer", name:"Tech Observer", source:"Reddit", text:"¿Alguien leyó el borrador de la UE sobre IA? Lo subí a r/spain pero pasó desaparecido. Ahora está explotando en Bluesky.", time:"hace 45min", date:"30 jul, 15:47", score:847, comments:213, upvoteRatio:94, crossposts:4, avatar:"#FB923C"},
     ]
   },
@@ -322,7 +341,7 @@ const trends = [
     sourcesDetail: [{name:"arXiv", count:1}, {name:"Bluesky", count:3}],
     mentions: [
       {author:"@solar_physics", name:"Solar Physics Daily", source:"Bluesky", text:"Nuevo preprint sobre ciclo solar 25 — los datos son significativos. Tormenta clase X9.3 detectada, la mayor del año. Si se confirma, las auroras van a ser visibles mucho más al sur de lo habitual.", time:"hace 45min", date:"30 jul, 15:45", likes:89, reposts:34, replies:12, views:"2,1K", verified:true, avatar:"#38BDF8"},
-      {author:"@astro_es", name:"Astro España", source:"Bluesky", text:"Si esto se confirma, las auroras van a ser visibles mucho más al sur. Estar atentos al KP index esta noche.", time:"hace 30min", date:"30 jul, 16:00", likes:67, reposts:28, replies:8, views:"1,8K", verified:false, avatar:"#8B92B8"},
+      {author:"@astro_es", name:"Astro España", source:"Bluesky", text:"Si esto se confirma, las auroras van a ser visibles mucho más al sur. Estar atentos al KP index esta noche.", time:"hace 30min", date:"30 jul, 16:00", likes:67, reposts:28, replies:8, views:"1,8K", verified:false, avatar:"#9CA5DC"},
     ]
   },
   {
@@ -360,7 +379,7 @@ const trends = [
     leadTime: "2h antes que El Mundo",
     sourcesDetail: [{name:"Mastodon", count:18}, {name:"RSS", count:8}],
     mentions: [
-      {author:"@climate_es@masto.es", name:"Climate España", source:"Mastodon", text:"La ONU aprobó fondos climáticos — esto es enorme. $300B anual para países en desarrollo. La conversación empezó en Mastodon 2h antes de que El Mundo lo publique.", time:"hace 5h", date:"30 jul, 11:30", likes:234, reposts:89, replies:34, views:"5,6K", verified:false, avatar:"#8B92B8"},
+      {author:"@climate_es@masto.es", name:"Climate España", source:"Mastodon", text:"La ONU aprobó fondos climáticos — esto es enorme. $300B anual para países en desarrollo. La conversación empezó en Mastodon 2h antes de que El Mundo lo publique.", time:"hace 5h", date:"30 jul, 11:30", likes:234, reposts:89, replies:34, views:"5,6K", verified:false, avatar:"#9CA5DC"},
       {author:"El Confidencial", name:"El Confidencial", source:"RSS", text:"La ONU reached agreement on climate funds after 36h of negotiations", time:"hace 4h", date:"30 jul, 12:45", likes:0, reposts:0, replies:0, views:"", verified:true, avatar:"#A89A85"},
     ]
   },
@@ -380,10 +399,10 @@ const trends = [
 ];
 
 const stateConfig = {
-  'creciendo': { label: 'Creciendo', color: '#E8804B', accent: 'accent-ember',   barClass: 'bar-ember',    pulse: true  },
-  'por nacer': { label: 'Por nacer', color: '#8B92B8', accent: 'accent-lavender',barClass: 'bar-lavender', pulse: false },
-  'nacida':    { label: 'Nacida',    color: '#8FA77D', accent: 'accent-sage',    barClass: 'bar-sage',     pulse: false },
-  'muriendo':  { label: 'Muriendo',  color: '#5C6370', accent: 'accent-ash',     barClass: 'bar-ash',      pulse: false },
+  'creciendo': { label: 'Creciendo', color: '#FF8C5C', accent: 'accent-ember',   barClass: 'bar-ember bar-ember-pulse', pulse: true  },
+  'por nacer': { label: 'Por nacer', color: '#9CA5DC', accent: 'accent-lavender',barClass: 'bar-lavender', pulse: false },
+  'nacida':    { label: 'Nacida',    color: '#9DC288', accent: 'accent-sage',    barClass: 'bar-sage',     pulse: false },
+  'muriendo':  { label: 'Muriendo',  color: '#6E7785', accent: 'accent-ash',     barClass: 'bar-ash',      pulse: false },
 };
 
 const sourceConfig = {
@@ -391,7 +410,7 @@ const sourceConfig = {
   'Reddit':    { color: '#FB923C', icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.6 0 12 0zm5.01 4.74c.69 0 1.25.56 1.25 1.25s-.56 1.25-1.25 1.25-1.25-.56-1.25-1.25.56-1.25 1.25-1.25zM12 19.5c-3.86 0-7-2.69-7-6 0-.31.03-.62.08-.92-.55-.31-.92-.89-.92-1.56 0-.99.81-1.8 1.8-1.8.48 0 .92.19 1.24.49 1.05-.7 2.48-1.15 4.06-1.21l.87-4.1c.04-.18.21-.3.39-.26l2.87.61c.2-.42.62-.71 1.12-.71.69 0 1.25.56 1.25 1.25s-.56 1.25-1.25 1.25-1.21-.5-1.25-1.13l-2.57-.55-.78 3.67c1.55.07 2.95.52 3.98 1.21.32-.3.76-.49 1.24-.49.99 0 1.8.81 1.8 1.8 0 .67-.37 1.25-.92 1.56.05.3.08.61.08.92 0 3.31-3.14 6-7 6zm-3.5-4.5c-.69 0-1.25.56-1.25 1.25S7.81 17.5 8.5 17.5s1.25-.56 1.25-1.25-.56-1.25-1.25-1.25zm7 0c-.69 0-1.25.56-1.25 1.25s.56 1.25 1.25 1.25 1.25-.56 1.25-1.25-.56-1.25-1.25-1.25z"/></svg>` },
   'arXiv':     { color: '#B31B1B', icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M8 8l8 8M16 8l-8 8"/></svg>` },
   'HN':        { color: '#F87171', icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3 1h18v22H3z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M7 7l3 6-3 4M17 7l-3 6 3 4" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>` },
-  'Mastodon':  { color: '#8B92B8', icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M23.27 5.33c-.36-2.67-2.7-4.77-5.47-5.18C17.33.07 15.55 0 12.04 0H12c-3.51 0-4.26.07-5.7.15C3.55.56 1.21 2.66.85 5.33.69 6.62.68 8.02.69 9.27c.02 2.03.05 3.38.09 4.75.15 5.32 1.07 7.69 2.4 8.93 1.7 1.58 4.5 1.74 6.49 1.84 1.7.08 7.04.12 8.83-.04 1.79-.16 3.5-.55 4.84-1.84 1.33-1.24 2.25-3.61 2.4-8.93.04-1.37.07-2.72.09-4.75.01-1.25 0-2.65-.16-3.94z"/></svg>` },
+  'Mastodon':  { color: '#9CA5DC', icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M23.27 5.33c-.36-2.67-2.7-4.77-5.47-5.18C17.33.07 15.55 0 12.04 0H12c-3.51 0-4.26.07-5.7.15C3.55.56 1.21 2.66.85 5.33.69 6.62.68 8.02.69 9.27c.02 2.03.05 3.38.09 4.75.15 5.32 1.07 7.69 2.4 8.93 1.7 1.58 4.5 1.74 6.49 1.84 1.7.08 7.04.12 8.83-.04 1.79-.16 3.5-.55 4.84-1.84 1.33-1.24 2.25-3.61 2.4-8.93.04-1.37.07-2.72.09-4.75.01-1.25 0-2.65-.16-3.94z"/></svg>` },
   'RSS':       { color: '#F59E0B', icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M4 4v3.5C13.17 7.5 16.5 10.83 16.5 20H20C20 8.5 15.5 4 4 4zm0 6v3.5c3.59 0 6.5 2.91 6.5 6.5H14c0-5.52-4.48-10-10-10zm2 8a2 2 0 11-4 0 2 2 0 014 0z"/></svg>` },
   'GitHub':    { color: '#A8AFCD', icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.44 9.8 8.21 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.75.08-.73.08-.73 1.21.09 1.84 1.24 1.84 1.24 1.07 1.84 2.81 1.31 3.5 1 .11-.78.42-1.31.76-1.61-2.67-.3-5.47-1.34-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.12-.3-.54-1.52.12-3.18 0 0 1.01-.32 3.3 1.23.96-.27 1.98-.4 3-.41 1.02.01 2.04.14 3 .41 2.29-1.55 3.3-1.23 3.3-1.23.66 1.66.24 2.88.12 3.18.77.84 1.24 1.91 1.24 3.22 0 4.61-2.81 5.63-5.49 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.22.7.83.58C20.57 21.8 24 17.3 24 12c0-6.63-5.37-12-12-12z"/></svg>` },
 };
@@ -477,7 +496,7 @@ function renderMention(m, stateColor) {
           <!-- Author + source + date -->
           <div class="flex items-center gap-1.5 mb-1 flex-wrap">
             <span class="text-[12px] font-medium text-textmain">${m.name || m.author}</span>
-            ${m.verified ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="${sc.color}" class="shrink-0"><path d="M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.71-3.998-3.818-3.998-.47 0-.92.084-1.336.25C14.818 2.415 13.51 1.5 12 1.5s-2.816.917-3.437 2.25c-.415-.165-.866-.25-1.336-.25-2.11 0-3.818 1.79-3.818 4 0 .494.083.964.237 1.4-1.272.65-2.147 2.018-2.147 3.6 0 1.495.782 2.798 1.942 3.486-.02.17-.032.34-.032.514 0 2.21 1.708 4 3.818 4 .47 0 .92-.086 1.335-.25.62 1.334 1.926 2.25 3.437 2.25 1.512 0 2.818-.916 3.437-2.25.415.164.866.25 1.336.25 2.11 0 3.818-1.79 3.818-4 0-.174-.012-.344-.033-.514 1.16-.688 1.943-1.99 1.943-3.486z"/><path d="M9.5 16.5l-3-3 1.5-1.5 1.5 1.5 4.5-4.5 1.5 1.5z" fill="#0A0B0D"/></svg>` : ''}
+            ${m.verified ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="${sc.color}" class="shrink-0"><path d="M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.71-3.998-3.818-3.998-.47 0-.92.084-1.336.25C14.818 2.415 13.51 1.5 12 1.5s-2.816.917-3.437 2.25c-.415-.165-.866-.25-1.336-.25-2.11 0-3.818 1.79-3.818 4 0 .494.083.964.237 1.4-1.272.65-2.147 2.018-2.147 3.6 0 1.495.782 2.798 1.942 3.486-.02.17-.032.34-.032.514 0 2.21 1.708 4 3.818 4 .47 0 .92-.086 1.335-.25.62 1.334 1.926 2.25 3.437 2.25 1.512 0 2.818-.916 3.437-2.25.415.164.866.25 1.336.25 2.11 0 3.818-1.79 3.818-4 0-.174-.012-.344-.033-.514 1.16-.688 1.943-1.99 1.943-3.486z"/><path d="M9.5 16.5l-3-3 1.5-1.5 1.5 1.5 4.5-4.5 1.5 1.5z" fill="#0A0D18"/></svg>` : ''}
             <span class="text-[11px] text-textmute">${m.author}</span>
             <span class="flex items-center gap-0.5 ml-auto text-[10px] text-textmute">
               <span style="color:${sc.color}; opacity:0.7;">${sc.icon}</span>
@@ -507,7 +526,7 @@ function renderCard(t, index) {
       <div class="p-5">
         <div class="flex items-center justify-between mb-3">
           <div class="flex items-center gap-1.5">
-            <span class="w-1 h-1 rounded-full" style="background:${cfg.color};"></span>
+            <span class="w-1 h-1 rounded-full ${cfg.pulse ? 'dot-pulse' : ''}" style="background:${cfg.color};"></span>
             <span class="caps" style="color:${cfg.color}">${cfg.label}</span>
           </div>
           <span class="mono-num text-[11px] text-textsec">${t.metric}</span>
@@ -540,7 +559,7 @@ function openPanel(id) {
   document.getElementById('panelContent').innerHTML = `
     <div class="flex items-center justify-between mb-7">
       <div class="flex items-center gap-2">
-        <span class="w-1.5 h-1.5 rounded-full" style="background:${cfg.color};"></span>
+        <span class="w-1.5 h-1.5 rounded-full ${cfg.pulse ? 'dot-pulse' : ''}" style="background:${cfg.color};"></span>
         <span class="caps" style="color:${cfg.color}">${cfg.label}</span>
       </div>
       <button onclick="closePanel()" class="text-textmute hover:text-textmain transition p-1 -mr-1" aria-label="Cerrar">
@@ -551,8 +570,8 @@ function openPanel(id) {
     <p class="caps text-textmute mb-5">primera detección · <span class="mono-num normal-case tracking-normal text-textsec ml-1">${t.firstSeen}</span></p>
 
     ${t.leadTime ? `
-    <div class="mb-5 p-3 rounded-[8px] flex items-center gap-3" style="background: rgba(143,167,125,0.06); box-shadow: inset 0 0 0 1px rgba(143,167,125,0.15);">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8FA77D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    <div class="mb-5 p-3 rounded-[8px] flex items-center gap-3" style="background: rgba(157,194,136,0.07); box-shadow: inset 0 0 0 1px rgba(157,194,136,0.18);">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9DC288" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
       <div>
         <p class="text-[12px] text-textsec">Detectaste esto <strong class="text-sage">${t.leadTime}</strong></p>
         <p class="text-[10px] text-textmute mt-0.5">comparado con cobertura en medios tradicionales</p>
@@ -597,8 +616,8 @@ function openPanel(id) {
         ${t.mentions.map(m => renderMention(m, cfg.color)).join('')}
       </div>
     </div>
-    <div class="flex gap-2 sticky bottom-0 -mx-6 px-6 py-3 mt-2 surface border-t border-white/[0.04]" style="background:rgba(16,18,22,0.92);">
-      <button class="flex-1 py-2.5 rounded-[8px] text-[13px] font-semibold transition hover:brightness-110" style="background:${cfg.color}; color:#0A0B0D;" onclick="showToast('Tendencia atizada — la seguirás')">Atizar (seguir)</button>
+    <div class="flex gap-2 sticky bottom-0 -mx-6 px-6 py-3 mt-2 glass border-t border-white/[0.05]" style="background:rgba(10,13,24,0.88);">
+      <button class="flex-1 py-2.5 rounded-[8px] text-[13px] font-semibold transition hover:brightness-110" style="background:${cfg.color}; color:#0A0D18;" onclick="showToast('Tendencia atizada — la seguirás')">Atizar (seguir)</button>
       <button class="px-4 py-2.5 rounded-[8px] text-[13px] surface-inset text-textsec hover:text-textmain transition" onclick="showToast('Guardada como brasa')">Guardar</button>
     </div>
   `;
