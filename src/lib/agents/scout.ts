@@ -86,18 +86,23 @@ JSON: {"plan":"...","sub_queries":["..."],"reasoning":"...","mentions":[...]}`,
   );
 
   let plan: { plan: string; sub_queries: string[]; reasoning: string };
+  let llmMentions: SimulatedMention[] = [];
   if (combinedResult.data) {
     plan = {
       plan: combinedResult.data.plan,
       sub_queries: combinedResult.data.sub_queries,
       reasoning: combinedResult.data.reasoning,
     };
+    llmMentions = combinedResult.data.mentions ?? [];
   } else {
+    // Fallback: deterministic plan + synthetic mentions
     plan = {
       plan: `Buscar información sobre "${query}"`,
       sub_queries: [query, `${query} noticias`, `${query} análisis`],
       reasoning: `Fallback: ${combinedResult.error?.slice(0, 60)}`,
     };
+    // Generate 5 synthetic mentions so the pipeline has something to cluster
+    llmMentions = generateFallbackMentions(query, sources);
   }
   console.log(`[scout] plan received: ${plan.plan.slice(0, 80)}`);
 
@@ -119,40 +124,38 @@ JSON: {"plan":"...","sub_queries":["..."],"reasoning":"...","mentions":[...]}`,
     }
   }
 
-  // 3. Usar las menciones generadas por el LLM en el combined call
-  if (combinedResult.data && combinedResult.data.mentions) {
-    for (const sm of combinedResult.data.mentions) {
-      const id = crypto.randomUUID();
-      const mention: NormalizedMention = {
-        id,
-        source: sm.source,
-        source_id: `sim_${id.slice(0, 8)}`,
-        url: sm.source === 'twitter' ? `https://x.com/${sm.author_handle.replace('@','')}/status/${Math.floor(Math.random()*1e18)}` :
-             sm.source === 'reddit' ? `https://reddit.com/r/${query.split(' ')[0].toLowerCase()}/comments/${id.slice(0,6)}` :
-             sm.source === 'hackernews' ? `https://news.ycombinator.com/item?id=${Math.floor(Math.random()*1e7)}` :
-             `https://trends.google.com/trends/explore?q=${encodeURIComponent(query)}`,
-        fetched_at: Date.now(),
-        published_at: Date.now() - sm.published_ago_minutes * 60_000,
-        type: sm.source === 'twitter' ? 'post' : sm.source === 'gdelt' ? 'article' : 'story',
-        title: sm.title,
-        body: sm.body,
-        lang: sm.lang,
-        author: {
-          handle: sm.author_handle,
-          name: sm.author_handle.replace('@','').replace('/u/','').replace('hn-',''),
-          followers: sm.followers,
-        },
-        engagement: sm.engagement,
-        entities: {
-          hashtags: (sm.body.match(/#\w+/g) ?? []),
-          urls: [],
-          domains: sm.source === 'gdelt' ? [sm.author_handle] : [],
-        },
-      };
-      if (!existing_ids.has(mention.source_id)) {
-        collected.push(mention);
-        existing_ids.add(mention.source_id);
-      }
+  // 3. Usar las menciones generadas por el LLM (o fallback)
+  for (const sm of llmMentions) {
+    const id = crypto.randomUUID();
+    const mention: NormalizedMention = {
+      id,
+      source: sm.source,
+      source_id: `sim_${id.slice(0, 8)}`,
+      url: sm.source === 'twitter' ? `https://x.com/${sm.author_handle.replace('@','')}/status/${Math.floor(Math.random()*1e18)}` :
+           sm.source === 'reddit' ? `https://reddit.com/r/${query.split(' ')[0].toLowerCase()}/comments/${id.slice(0,6)}` :
+           sm.source === 'hackernews' ? `https://news.ycombinator.com/item?id=${Math.floor(Math.random()*1e7)}` :
+           `https://trends.google.com/trends/explore?q=${encodeURIComponent(query)}`,
+      fetched_at: Date.now(),
+      published_at: Date.now() - sm.published_ago_minutes * 60_000,
+      type: sm.source === 'twitter' ? 'post' : sm.source === 'gdelt' ? 'article' : 'story',
+      title: sm.title,
+      body: sm.body,
+      lang: sm.lang,
+      author: {
+        handle: sm.author_handle,
+        name: sm.author_handle.replace('@','').replace('/u/','').replace('hn-',''),
+        followers: sm.followers,
+      },
+      engagement: sm.engagement,
+      entities: {
+        hashtags: (sm.body.match(/#\w+/g) ?? []),
+        urls: [],
+        domains: sm.source === 'gdelt' ? [sm.author_handle] : [],
+      },
+    };
+    if (!existing_ids.has(mention.source_id)) {
+      collected.push(mention);
+      existing_ids.add(mention.source_id);
     }
   }
 
@@ -191,4 +194,50 @@ JSON: {"plan":"...","sub_queries":["..."],"reasoning":"...","mentions":[...]}`,
     duration_ms: Date.now() - start,
     request_reloop: false,
   };
+}
+
+// Fallback: generate synthetic mentions when LLM is unavailable
+function generateFallbackMentions(query: string, sources: SourceType[]): SimulatedMention[] {
+  const templates = [
+    { body: `Noticias sobre ${query}: desarrollos importantes en las últimas horas.`, tone: 'info' },
+    { body: `Mi análisis sobre ${query}: lo que nadie está diciendo.`, tone: 'opinion' },
+    { body: `Reacción a lo que pasó con ${query}: increíble.`, tone: 'reaction' },
+    { body: `Thread sobre ${query} — todo lo que necesitás saber 🧵`, tone: 'thread' },
+    { body: `Datos interesantes sobre ${query} que se están viralizando.`, tone: 'data' },
+    { body: `Opinión: ${query} va a cambiar todo.`, tone: 'hot_take' },
+    { body: `Reporte en vivo: ${query} está explotando ahora.`, tone: 'breaking' },
+  ];
+
+  const handles: Record<string, string[]> = {
+    twitter: ['@analista_tech', '@periodista_arg', '@observer_uy', '@digital_watch'],
+    reddit: ['u/tech_throwaway', 'u/news_junkie', 'u/longtime_lurker'],
+    hackernews: ['pg', 'dang', 'tptacek'],
+  };
+
+  const out: SimulatedMention[] = [];
+  for (let i = 0; i < 6; i++) {
+    const tmpl = templates[i % templates.length];
+    // Pick a source that exists in sources
+    const source = sources[i % sources.length] ?? 'twitter';
+    const handleList = handles[source] ?? handles.twitter;
+    const handle = handleList[i % handleList.length];
+    const isRedditOrHn = source === 'reddit' || source === 'hackernews';
+
+    out.push({
+      source: source as SourceType,
+      author_handle: handle,
+      body: tmpl.body,
+      title: isRedditOrHn ? `${query[0].toUpperCase()}${query.slice(1)} — discusión` : null,
+      engagement: {
+        likes: Math.floor(Math.random() * 3000) + 50,
+        retweets: Math.floor(Math.random() * 800) + 10,
+        score: Math.floor(Math.random() * 2000) + 20,
+        comments: Math.floor(Math.random() * 400) + 5,
+      },
+      followers: Math.floor(Math.random() * 100000) + 1000,
+      published_ago_minutes: Math.floor(Math.random() * 180) + 5,
+      lang: 'es',
+    });
+  }
+  return out;
 }
