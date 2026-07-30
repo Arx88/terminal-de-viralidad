@@ -110,8 +110,16 @@ class NarrativeStore {
     if (redis) {
       const all = await redis.hgetall<Record<string, string>>(NARRATIVES_KEY);
       if (all) {
-        for (const raw of Object.values(all)) {
-          try { items.push(JSON.parse(raw) as Narrative); } catch {}
+        // Upstash REST returns hgetall as alternating array [k1,v1,k2,v2,...]
+        // but the @upstash/redis SDK normalizes to object. Handle both.
+        if (Array.isArray(all)) {
+          for (let i = 1; i < all.length; i += 2) {
+            try { items.push(JSON.parse(all[i] as string) as Narrative); } catch {}
+          }
+        } else {
+          for (const raw of Object.values(all)) {
+            try { items.push(JSON.parse(raw) as Narrative); } catch {}
+          }
         }
       }
     } else {
