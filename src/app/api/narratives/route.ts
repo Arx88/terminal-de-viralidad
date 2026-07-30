@@ -1,0 +1,25 @@
+// REST: list narratives (snapshot for initial UI load).
+
+import { NextRequest, NextResponse } from 'next/server';
+import { store } from '@/lib/eventbus';
+
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
+export async function GET(req: NextRequest) {
+  const status = req.nextUrl.searchParams.get('status') ?? undefined;
+  const minScore = Number(req.nextUrl.searchParams.get('minScore') ?? 0);
+  const limit = Number(req.nextUrl.searchParams.get('limit') ?? 50);
+
+  const narratives = store.list({
+    status: status || undefined,
+    min_score: minScore || undefined,
+    limit,
+  });
+
+  return NextResponse.json({
+    narratives,
+    count: narratives.length,
+    ts: Date.now(),
+  });
+}
