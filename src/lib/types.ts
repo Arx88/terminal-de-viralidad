@@ -80,6 +80,12 @@ export interface Narrative {
   last_delta_pct: number;
   // Loop iterations this narrative went through
   loop_iterations: number;
+  // LLM-generated human-readable briefing (2-3 sentences explaining what this is about)
+  briefing: string;
+  // LLM-generated explanation of why this legitimacy was assigned
+  legitimacy_explanation: string;
+  // Whether the LLM briefing is still being generated
+  briefing_pending: boolean;
 }
 
 // ─── Agent activity log (for UI agent panel) ─────────────────────────────
@@ -92,6 +98,8 @@ export interface AgentActivity {
   duration_ms: number | null;
   input_summary: string;
   output_summary: string;
+  // LLM-generated plain-Spanish explanation of what this agent did
+  explanation: string;
   // Loop context
   loop_id: string;
   iteration: number;
@@ -135,7 +143,8 @@ export type SSEEvent =
   | { type: 'mention_new'; mention: NormalizedMention; narrative_id: string }
   | { type: 'loop_iteration'; loop_id: string; iteration: number; agent: AgentName; status: AgentStatus }
   | { type: 'convergence'; loop_id: string; narrative_id: string; iterations: number }
-  | { type: 'phase_change'; narrative_id: string; old_phase: Phase; new_phase: Phase; confidence: number };
+  | { type: 'phase_change'; narrative_id: string; old_phase: Phase; new_phase: Phase; confidence: number }
+  | { type: 'system_briefing'; briefing: string; ts: number; narrative_count: number };
 
 // ─── Source adapter contract ─────────────────────────────────────────────
 export interface SourceAdapter {
