@@ -98,9 +98,8 @@ class NarrativeStore {
 
   async get(id: string): Promise<Narrative | undefined> {
     if (redis) {
-      const raw = await redis.hget<string>(NARRATIVES_KEY, id);
-      if (!raw) return undefined;
-      try { return JSON.parse(raw) as Narrative; } catch { return undefined; }
+      const raw = await redis.hget<Narrative>(NARRATIVES_KEY, id);
+      return raw ?? undefined;
     }
     return globalAny.__mem_narratives?.get(id);
   }
@@ -108,19 +107,10 @@ class NarrativeStore {
   async list(filter?: { status?: string; min_score?: number; limit?: number }): Promise<Narrative[]> {
     let items: Narrative[] = [];
     if (redis) {
-      const all = await redis.hgetall<Record<string, string>>(NARRATIVES_KEY);
+      const all = await redis.hgetall<Record<string, Narrative>>(NARRATIVES_KEY);
       if (all) {
-        // Upstash REST returns hgetall as alternating array [k1,v1,k2,v2,...]
-        // but the @upstash/redis SDK normalizes to object. Handle both.
-        if (Array.isArray(all)) {
-          for (let i = 1; i < all.length; i += 2) {
-            try { items.push(JSON.parse(all[i] as string) as Narrative); } catch {}
-          }
-        } else {
-          for (const raw of Object.values(all)) {
-            try { items.push(JSON.parse(raw) as Narrative); } catch {}
-          }
-        }
+        // @upstash/redis SDK auto-parses JSON values, so we get Narrative objects directly
+        items = Object.values(all).filter((n): n is Narrative => n != null);
       }
     } else {
       items = Array.from(globalAny.__mem_narratives?.values() ?? []);
@@ -148,8 +138,9 @@ class NarrativeStore {
 
   async getActivities(limit = 50): Promise<AgentActivity[]> {
     if (redis) {
-      const raw = await redis.lrange<string>(ACTIVITIES_KEY, 0, limit - 1);
-      return raw.map(s => { try { return JSON.parse(s) as AgentActivity; } catch { return null; } }).filter(Boolean) as AgentActivity[];
+      const raw = await redis.lrange<AgentActivity>(ACTIVITIES_KEY, 0, limit - 1);
+      // SDK auto-parses JSON, so raw is already AgentActivity[]
+      return raw.filter((a): a is AgentActivity => a != null);
     }
     return (globalAny.__mem_activities ?? []).slice(0, limit);
   }
