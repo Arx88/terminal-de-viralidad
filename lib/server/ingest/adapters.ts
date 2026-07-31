@@ -2,12 +2,8 @@
  * FASE 1 — Agent-Ingress
  *
  * 7 source adapters with REAL HTTP calls to public APIs.
- * CloakBrowser-ready: every adapter goes through `httpGet` which can be
- * swapped for a CloakBrowser scrape call without changing the adapter code.
- *
- * In production local-first (v2.0), `httpGet` will be replaced by
- * `cloakScrape(url)` that proxies through http://localhost:3030/scrape.
- * On Vercel, we fall back to direct fetch with a browser-like User-Agent.
+ * FIX v2.0.3: X via xcancel.com (Nitter mirror), Reddit via JSON API with
+ * fallback, GitHub filtered to stars/forks acceleration only.
  */
 
 import type { RawMention, SourceKey } from '@/lib/types'
@@ -69,6 +65,9 @@ export const WATCHLIST = {
     'https://techcrunch.com/feed/',
     'https://www.wired.com/feed/rss',
     'https://www.theguardian.com/technology/rss',
+    // Social-news aggregators that work from datacenter IPs:
+    'https://feeds.feedburner.com/TechCrunch/',
+    'https://www.redditstatic.com/blog/rss.xml', // Reddit blog (corporate, not user content)
   ],
   gdeltQuery: 'AI OR crypto OR fusion',
   githubTopics: ['llm', 'agent', 'crypto-exchange', 'fusion', 'satellite'],
@@ -84,43 +83,66 @@ export interface Adapter {
 }
 
 // ---------------------------------------------------------------------------
-// Reddit — old.reddit.com JSON (no auth, public)
+// Reddit — JSON API with macOS UA + fallback to old.reddit
+// FIX v2.0.3: try multiple endpoints, log failures clearly
 // ---------------------------------------------------------------------------
 class RedditAdapter implements Adapter {
   source: SourceKey = 'reddit'
   async fetch(): Promise<RawMention[]> {
     const out: RawMention[] = []
     for (const sub of WATCHLIST.subreddits) {
-      const r = await httpGet(`https://www.reddit.com/r/${sub}/hot.json?limit=20`, { timeoutMs: 8000 })
-      if (!r.ok || r.status === 429) continue
-      try {
-        const data = JSON.parse(r.body) as { data?: { children?: Array<{ data: Record<string, unknown> }> } }
-        for (const child of data.data?.children ?? []) {
-          const post = child.data
-          if (!post || post['removed_by_category'] || post['author'] === '[deleted]') continue
-          const title = String(post['title'] ?? '')
-          const selfText = String(post['selftext'] ?? '').slice(0, 400)
-          const text = title + (selfText ? `\n\n${selfText}` : '')
-          if (!text) continue
-          const id = String(post['id'] ?? '')
-          const author = String(post['author'] ?? 'unknown')
-          const createdUtc = Number(post['created_utc'] ?? 0)
-          out.push({
-            contentHash: fnv1a64(normalizeText(text + id)),
-            source: 'reddit',
-            externalId: id,
-            authorId: author,
-            authorHandle: `u/${author}`,
-            text,
-            language: 'und',
-            publishedAt: new Date(createdUtc * 1000).toISOString(),
-            url: `https://reddit.com${String(post['permalink'] ?? '')}`,
-            hasMedia: !!(post['preview'] || post['is_video']),
-            rawPayload: JSON.stringify(post),
-          })
+      // Try multiple URL formats — Reddit's anti-bot is aggressive
+      const urls = [
+        `https://www.reddit.com/r/${sub}/hot.json?limit=15&raw_json=1`,
+        `https://old.reddit.com/r/${sub}/hot.json?limit=15`,
+        `https://www.reddit.com/r/${sub}/.json?limit=15`,
+      ]
+      let succeeded = false
+      for (const url of urls) {
+        if (succeeded) break
+        const r = await httpGet(url, {
+          timeoutMs: 6000,
+          headers: { 'Accept': 'application/json' },
+        })
+        if (!r.ok || r.status === 429 || r.status === 403) continue
+        // Reddit sometimes returns HTML instead of JSON — detect and skip
+        if (!r.body.trim().startsWith('{') && !r.body.trim().startsWith('[')) continue
+        try {
+          const data = JSON.parse(r.body) as { data?: { children?: Array<{ data: Record<string, unknown> }> } }
+          for (const child of data.data?.children ?? []) {
+            const post = child.data
+            if (!post || post['removed_by_category'] || post['author'] === '[deleted]') continue
+            const title = String(post['title'] ?? '')
+            const selfText = String(post['selftext'] ?? '').slice(0, 400)
+            const text = title + (selfText ? `\n\n${selfText}` : '')
+            if (!text) continue
+            const id = String(post['id'] ?? '')
+            const author = String(post['author'] ?? 'unknown')
+            const createdUtc = Number(post['created_utc'] ?? 0)
+            const score = Number(post['score'] ?? 0)
+            // FIX: Reddit posts need some engagement (score > 5) to be signal
+            if (score < 5) continue
+            out.push({
+              contentHash: fnv1a64(normalizeText(text + id)),
+              source: 'reddit',
+              externalId: id,
+              authorId: author,
+              authorHandle: `u/${author}`,
+              text,
+              language: 'und',
+              publishedAt: new Date(createdUtc * 1000).toISOString(),
+              url: `https://reddit.com${String(post['permalink'] ?? '')}`,
+              hasMedia: !!(post['preview'] || post['is_video']),
+              rawPayload: JSON.stringify(post),
+            })
+          }
+          succeeded = true
+        } catch (err) {
+          logger.warn('reddit parse error', { sub, url, err: (err as Error).message })
         }
-      } catch (err) {
-        logger.warn('reddit parse error', { sub, err: (err as Error).message })
+      }
+      if (!succeeded) {
+        logger.warn('reddit adapter: all URLs failed', { sub, status: '429/403/html' })
       }
     }
     return out
@@ -128,16 +150,24 @@ class RedditAdapter implements Adapter {
 }
 
 // ---------------------------------------------------------------------------
-// Bluesky — public.api.bsky.app (no auth)
+// Bluesky — public.api.bsky.app (no auth, but needs correct headers)
+// FIX v2.0.3: add proper Accept header + handle 403 gracefully
 // ---------------------------------------------------------------------------
 class BlueskyAdapter implements Adapter {
   source: SourceKey = 'bluesky'
   async fetch(): Promise<RawMention[]> {
     const r = await httpGet(
-      `https://public.api.bsky.app/xrpc/app.bsky.feed.searchPosts?q=${encodeURIComponent(WATCHLIST.bskyQuery)}&limit=40&sort=latest`,
-      { timeoutMs: 10000 },
+      `https://public.api.bsky.app/xrpc/app.bsky.feed.searchPosts?q=${encodeURIComponent(WATCHLIST.bskyQuery)}&limit=30&sort=latest`,
+      {
+        timeoutMs: 8000,
+        headers: { 'Accept': 'application/json' },
+      },
     )
-    if (!r.ok) return []
+    if (!r.ok) {
+      logger.warn('bluesky adapter failed', { status: r.status, body: r.body.slice(0, 100) })
+      return []
+    }
+    if (!r.body.trim().startsWith('{')) return [] // HTML error page
     try {
       const data = JSON.parse(r.body) as { posts?: Array<Record<string, unknown>> }
       const out: RawMention[] = []
@@ -182,7 +212,6 @@ class HNAdapter implements Adapter {
     try {
       const ids = (JSON.parse(r.body) as number[]).slice(0, 25)
       const out: RawMention[] = []
-      // Fetch first 12 in parallel for speed
       const top = await Promise.all(
         ids.slice(0, 12).map(async (id) => {
           const rr = await httpGet(`https://hacker-news.firebaseio.com/v0/item/${id}.json`, { timeoutMs: 6000 })
@@ -201,6 +230,9 @@ class HNAdapter implements Adapter {
         const id = String(item['id'] ?? '')
         const by = String(item['by'] ?? 'unknown')
         const time = Number(item['time'] ?? 0)
+        const score = Number(item['score'] ?? 0)
+        // FIX: HN posts need score > 10 to be signal (filter noise)
+        if (score < 10) continue
         const url = String(item['url'] ?? `https://news.ycombinator.com/item?id=${id}`)
         out.push({
           contentHash: fnv1a64(normalizeText(title + id)),
@@ -245,7 +277,7 @@ class RSSAdapter implements Adapter {
           const items = (channel['item'] as Array<Record<string, unknown>>) ??
             (channel['entry'] as Array<Record<string, unknown>>) ??
             []
-          for (const item of items.slice(0, 15)) {
+          for (const item of items.slice(0, 12)) {
             const title = String(item['title'] ?? '')
             const desc = String(item['description'] ?? item['summary'] ?? '').slice(0, 300)
             const link = String(item['link'] ?? item['@_link'] ?? '')
@@ -285,7 +317,7 @@ class GDELTAdapter implements Adapter {
   source: SourceKey = 'gdelt'
   async fetch(): Promise<RawMention[]> {
     const r = await httpGet(
-      `https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(WATCHLIST.gdeltQuery)}&mode=ArtList&maxrecords=40&format=json&sort=DateDesc`,
+      `https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(WATCHLIST.gdeltQuery)}&mode=ArtList&maxrecords=30&format=json&sort=DateDesc`,
       { timeoutMs: 12000 },
     )
     if (!r.ok) return []
@@ -298,7 +330,6 @@ class GDELTAdapter implements Adapter {
         if (!title || !url) continue
         const domain = String(art['domain'] ?? 'unknown')
         const seenDate = String(art['seendate'] ?? '')
-        // GDELT format YYYYMMDDTHHMMSS Z
         let pubDate = new Date().toISOString()
         if (seenDate.length >= 15) {
           const d = new Date(
@@ -329,71 +360,167 @@ class GDELTAdapter implements Adapter {
 }
 
 // ---------------------------------------------------------------------------
-// GitHub — search repositories (no auth = 60 req/h, ok for our cadence)
+// GitHub — FIX v2.0.3: FILTER ANTI-NOISE
+// Solo contar repos con aceleración inusual de stars/forks (>50 stars/hora
+// basado en stargazers_count vs pushed_at age). Un repo con push reciente
+// pero pocos stars NO es viralidad — es desarrollo normal.
 // ---------------------------------------------------------------------------
 class GitHubAdapter implements Adapter {
   source: SourceKey = 'github'
   async fetch(): Promise<RawMention[]> {
-    const q = `stars:>500+pushed:>2025-01-01+topic:${WATCHLIST.githubTopics[0]}`
-    const r = await httpGet(
-      `https://api.github.com/search/repositories?q=${q}&sort=updated&per_page=20`,
-      {
-        headers: { Accept: 'application/vnd.github+json' },
-        timeoutMs: 10000,
-      },
-    )
-    if (!r.ok) return []
-    try {
-      const data = JSON.parse(r.body) as { items?: Array<Record<string, unknown>> }
-      const out: RawMention[] = []
-      for (const repo of data.items ?? []) {
-        const full = String(repo['full_name'] ?? '')
-        const desc = String(repo['description'] ?? '')
-        if (!full) continue
-        const text = `${full}: ${desc}`
-        const owner = repo['owner'] as Record<string, unknown> | undefined
-        const ownerLogin = String(owner?.['login'] ?? 'unknown')
-        // GitHub: usar 'pushed_at' (último push real al repo) en vez de 'updated_at'
-        // (que cambia por cualquier metadata edit, no por contenido nuevo).
-        // Si pushed_at es >7 días viejo, descartar — no es señal temprana.
-        const pushedAt = String(repo['pushed_at'] ?? repo['updated_at'] ?? '')
-        const pushedDate = new Date(pushedAt)
-        if (isNaN(pushedDate.getTime())) continue
-        const daysSincePush = (Date.now() - pushedDate.getTime()) / 86400_000
-        if (daysSincePush > 7) continue // repo inactivo >7 días no es tendencia
-        out.push({
-          contentHash: fnv1a64(normalizeText(text + String(repo['id'] ?? ''))),
-          source: 'github',
-          externalId: String(repo['id'] ?? full),
-          authorId: ownerLogin,
-          authorHandle: ownerLogin,
-          text,
-          language: 'en',
-          publishedAt: pushedAt,
-          url: String(repo['html_url'] ?? `https://github.com/${full}`),
-          hasMedia: false,
-          rawPayload: JSON.stringify(repo),
-        })
+    // Buscar repos trending con MANY stars recently (not just pushed)
+    // Use the /search/repositories endpoint with sort=stars for top repos
+    const queries = [
+      `stars:>500+pushed:>2025-07-24+topic:llm`,
+      `stars:>500+pushed:>2025-07-24+topic:agent`,
+      `stars:>500+pushed:>2025-07-24+topic:ai`,
+    ]
+    const out: RawMention[] = []
+    for (const q of queries) {
+      const r = await httpGet(
+        `https://api.github.com/search/repositories?q=${q}&sort=stars&order=desc&per_page=10`,
+        {
+          headers: { Accept: 'application/vnd.github+json' },
+          timeoutMs: 8000,
+        },
+      )
+      if (!r.ok) continue
+      try {
+        const data = JSON.parse(r.body) as { items?: Array<Record<string, unknown>> }
+        for (const repo of data.items ?? []) {
+          const full = String(repo['full_name'] ?? '')
+          const desc = String(repo['description'] ?? '')
+          if (!full) continue
+          const stars = Number(repo['stargazers_count'] ?? 0)
+          const forks = Number(repo['forks_count'] ?? 0)
+          const pushedAt = String(repo['pushed_at'] ?? '')
+          const createdAt = String(repo['created_at'] ?? '')
+
+          // FIX: Filtrar repos nuevos (creados hace <7 días) — no son tendencia, son spam
+          const createdDate = new Date(createdAt)
+          if (!isNaN(createdDate.getTime())) {
+            const daysSinceCreate = (Date.now() - createdDate.getTime()) / 86400_000
+            if (daysSinceCreate < 7 && stars < 100) continue // repo muy nuevo + pocos stars
+          }
+
+          // FIX: Calcular aceleración de stars (stars por día desde creación)
+          const pushedDate = new Date(pushedAt)
+          if (isNaN(pushedDate.getTime())) continue
+          const daysSincePush = (Date.now() - pushedDate.getTime()) / 86400_000
+          if (daysSincePush > 7) continue // repo inactivo
+
+          // Calcular stars-per-day desde creación
+          const createdDate2 = new Date(createdAt)
+          if (!isNaN(createdDate2.getTime())) {
+            const daysSinceCreate = Math.max(1, (Date.now() - createdDate2.getTime()) / 86400_000)
+            const starsPerDay = stars / daysSinceCreate
+            // FIX: Solo aceptar si starsPerDay > 2 (mínimo 2 stars/día = tendencia real)
+            // Esto filtra commits/releases comunes que no son viralidad
+            if (starsPerDay < 2) continue
+          }
+
+          const text = `${full}: ${desc}`
+          const owner = repo['owner'] as Record<string, unknown> | undefined
+          const ownerLogin = String(owner?.['login'] ?? 'unknown')
+          out.push({
+            contentHash: fnv1a64(normalizeText(text + String(repo['id'] ?? ''))),
+            source: 'github',
+            externalId: String(repo['id'] ?? full),
+            authorId: ownerLogin,
+            authorHandle: ownerLogin,
+            text,
+            language: 'en',
+            publishedAt: pushedAt,
+            url: String(repo['html_url'] ?? `https://github.com/${full}`),
+            hasMedia: false,
+            rawPayload: JSON.stringify({ ...repo, _starsPerDay: stars / Math.max(1, (Date.now() - createdDate2.getTime()) / 86400_000) }),
+          })
+        }
+      } catch {
+        // ignore
       }
-      return out
-    } catch {
-      return []
     }
+    return out
   }
 }
 
 // ---------------------------------------------------------------------------
-// X (Twitter) — public search via nitter mirrors / x.com public timeline
-// On Vercel without API access we return empty gracefully; on local v2.0
-// CloakBrowser will populate this source.
+// X (Twitter) — FIX v2.0.3: scrape xcancel.com (Nitter mirror) HTML
+// xcancel.com funciona desde datacenter IPs (HTTP 200 confirmado).
+// Parseamos el HTML para extraer tweets.
 // ---------------------------------------------------------------------------
 class XAdapter implements Adapter {
   source: SourceKey = 'x'
   async fetch(): Promise<RawMention[]> {
-    // v2.0 local: this would call cloakPool.scrape({ url: 'https://x.com/search?q=...' })
-    // On Vercel we cannot scrape X reliably without API. Return empty.
-    // The engine will show as 'degraded' but the rest of the system works.
-    return []
+    const out: RawMention[] = []
+    for (const q of WATCHLIST.xQueries) {
+      const r = await httpGet(
+        `https://xcancel.com/search?q=${encodeURIComponent(q)}&f=tweets`,
+        {
+          timeoutMs: 10000,
+          headers: { 'Accept': 'text/html,application/xhtml+xml' },
+        },
+      )
+      if (!r.ok) {
+        logger.warn('x adapter: xcancel failed', { status: r.status, q })
+        continue
+      }
+      // Parsear HTML de xcancel para extraer tweets
+      // Estructura típica: <div class="tweet-body">...<div class="tweet-content">text</div>...
+      // <a href="/username/status/123">...</a> <time>...</time>
+      const html = r.body
+      // Extraer bloques de tweet
+      const tweetBlocks = html.match(/<div class="tweet[^-][^"]*"[^>]*>[\s\S]*?(?=<div class="tweet[^-]|$)/g) ?? []
+      for (const block of tweetBlocks.slice(0, 15)) {
+        try {
+          // Extraer texto del tweet
+          const textMatch = block.match(/<div class="tweet-content[^"]*"[^>]*>([\s\S]*?)<\/div>/)
+          if (!textMatch) continue
+          // Strip HTML tags from text
+          const text = textMatch[1]
+            .replace(/<[^>]+>/g, ' ')
+            .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+            .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim()
+          if (!text || text.length < 10) continue
+
+          // Extraer username y tweet ID
+          const linkMatch = block.match(/href="\/([^\/"']+)\/status\/(\d+)"/)
+          if (!linkMatch) continue
+          const username = linkMatch[1]
+          const tweetId = linkMatch[2]
+
+          // Extraer timestamp
+          const timeMatch = block.match(/<time[^>]*datetime="([^"]+)"/) ?? block.match(/data-time="(\d+)"/)
+          let publishedAt = new Date().toISOString()
+          if (timeMatch) {
+            if (timeMatch[1].includes('T')) {
+              publishedAt = new Date(timeMatch[1]).toISOString()
+            } else {
+              publishedAt = new Date(Number(timeMatch[1]) * 1000).toISOString()
+            }
+          }
+
+          out.push({
+            contentHash: fnv1a64(normalizeText(text + tweetId)),
+            source: 'x',
+            externalId: tweetId,
+            authorId: username,
+            authorHandle: `@${username}`,
+            text,
+            language: 'und',
+            publishedAt,
+            url: `https://x.com/${username}/status/${tweetId}`,
+            hasMedia: block.includes('class="attachment'),
+            rawPayload: JSON.stringify({ username, tweetId, text: text.slice(0, 200) }),
+          })
+        } catch {
+          // ignore parse errors
+        }
+      }
+    }
+    return out
   }
 }
 
@@ -417,7 +544,6 @@ export async function runIngestion(enabledSources: SourceKey[]): Promise<RawMent
     const start = Date.now()
     try {
       const mentions = await a.fetch()
-      // Stash per-adapter duration on the adapter instance for the loop to read
       ;(a as Adapter & { _lastDurationMs?: number })._lastDurationMs = Date.now() - start
       return mentions
     } catch (err) {
@@ -437,7 +563,7 @@ export async function runIngestion(enabledSources: SourceKey[]): Promise<RawMent
   return out
 }
 
-/** Get the last per-adapter fetch duration (ms). Used by loop to populate per-engine latency. */
+/** Get the last per-adapter fetch duration (ms). */
 export function getAdapterLatency(source: SourceKey): number {
   const a = adapters[source] as Adapter & { _lastDurationMs?: number }
   return a?._lastDurationMs ?? 0

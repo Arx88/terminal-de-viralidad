@@ -523,8 +523,40 @@ class ClusterStore {
     cstate.scoreHistory.push({ ts: now, score })
     if (cstate.scoreHistory.length > 120) cstate.scoreHistory.shift()
 
-    // isTrending: requiere actividad reciente real, no solo score
-    const isTrending = score >= 35 && mentionsLast60 >= 2 && mentionsLast30 >= 1
+    // === SOURCE QUOTA (Agent-IngestFix) ===
+    // Ninguna fuente puede superar el 35% del volumen de menciones de un cluster
+    // sin corroboración en redes sociales (X, Reddit, Bluesky). Previene que
+    // GitHub inunde el dashboard con eventos de desarrollo que no son viralidad.
+    const SOCIAL_SOURCES: SourceKey[] = ['x', 'reddit', 'bluesky']
+    const socialMentionsRecent = mentions.filter((m) => {
+      const t = Date.parse(m.raw.publishedAt)
+      return !isNaN(t) && t > MIN_60 && SOCIAL_SOURCES.includes(m.raw.source)
+    }).length
+    const hasSocialCorroboration = socialMentionsRecent > 0
+
+    // Calcular el % de la fuente dominante en los últimos 60min
+    let maxSourceShare60 = 0
+    for (const c of Object.values(sourceCounts)) {
+      if (c > 0 && mentionsLast60 > 0) {
+        const share = c / mentionsLast60
+        if (share > maxSourceShare60) maxSourceShare60 = share
+      }
+    }
+
+    // Si la fuente dominante es >35% Y no hay corroboración social → penalizar score
+    let sourceQuotaPenalty = 0
+    if (maxSourceShare60 > 0.35 && !hasSocialCorroboration) {
+      // Penalización proporcional a cuánto excede el 35%
+      sourceQuotaPenalty = Math.min(0.5, (maxSourceShare60 - 0.35) * 1.5)
+      score = Math.round(score * (1 - sourceQuotaPenalty) * 100) / 100
+    }
+
+    // isTrending: requiere actividad reciente real + no estar dominado por una sola fuente
+    // sin corroboración social
+    const isTrending = score >= 35
+      && mentionsLast60 >= 2
+      && mentionsLast30 >= 1
+      && (hasSocialCorroboration || maxSourceShare60 <= 0.5)
 
     cstate.cluster = {
       ...cstate.cluster,
@@ -754,11 +786,17 @@ export function clusterToTrend(cluster: Cluster): Trend {
     score >= 30 ? 'Templado' :
     'Enfriándose'
   // Status mapeado a las 4 fases de detección temprana
-  const status =
-    cluster.phase === 'forming' ? 'Señal emergente' :        // formando tracción
-    cluster.phase === 'rising' ? 'Crecimiento acelerado' :   // subiendo fuerte
-    cluster.phase === 'peaked' ? 'En pico' :                  // máxima velocidad
-    'En desaceleración'                                        // perdiendo tracción
+  // AGENT 3 (UIRenderFix): Si el cluster es solo GitHub/HN (sin redes sociales),
+  // etiquetar como "Tendencia técnica" en vez de pretender ser viral social.
+  const isGithubOnly = cluster.sources.length === 1 && cluster.sources[0] === 'github'
+  const isTechnicalOnly = cluster.sources.every((s) => s === 'github' || s === 'hn')
+  const techLabel = isGithubOnly ? 'Tendencia técnica · Desarrollo' : isTechnicalOnly ? 'Tendencia técnica' : ''
+  const phaseLabel =
+    cluster.phase === 'forming' ? 'Señal emergente' :
+    cluster.phase === 'rising' ? 'Crecimiento acelerado' :
+    cluster.phase === 'peaked' ? 'En pico' :
+    'En desaceleración'
+  const status = techLabel ? `${techLabel} · ${phaseLabel}` : phaseLabel
   const lastSeenDate = new Date(cluster.lastSeen)
   const time = `${String(lastSeenDate.getHours()).padStart(2, '0')}:${String(lastSeenDate.getMinutes()).padStart(2, '0')}`
   const why = cluster.summary.slice(0, 180) + (cluster.summary.length > 180 ? '…' : '')
@@ -804,35 +842,73 @@ export function generateExtractiveBriefing(cluster: Cluster, mentions: RawMentio
   confidence: number
   evidenceMentionIds: string[]
 } {
-  // === AGENT 2 (DataInquisitor): evidence vector — anti-alucination ===
-  // El briefing SOLO puede citar información presente en las menciones fuente.
-  // evidenceMentionIds lista los IDs exactos de menciones en las que se basa.
+  // === AGENT 2 (BriefingSanitizer) — Anti-leak JSON + anti-repetición ===
+  // El briefing es extractivo (determinista). NO hay LLM que pueda producir
+  // JSON leaks. Pero aplicamos sanitización defensiva por si el contenido
+  // fuente contiene JSON/Markdown que pudiera renderizarse crudo.
+
   const top = mentions.slice(0, 5)
   const evidenceMentionIds = top.map((m) => `${m.source}:${m.externalId}`)
   const sourcesList = Array.from(new Set(cluster.sources)).join(', ')
   const velocityPerHour = Math.round(cluster.velocity * 60)
-  // Narrative: cada claim debe ser verificable contra las menciones fuente
-  const narrative = [
-    `Narrativa detectada en ${cluster.sources.length} fuente(s): ${sourcesList}.`,
-    `${cluster.mentionsCount} menciones de ${cluster.uniqueAuthors} autores únicos. Velocidad actual: ${velocityPerHour} menc/hora.`,
-    `Fase: "${cluster.phase}", forma: "${cluster.shape}", score: ${cluster.score.toFixed(1)}/100.`,
-    // Cita textual de la mención más reciente (verificable contra evidenceMentionIds[0])
-    top[0] ? `Mención más reciente (${top[0].source}): "${top[0].text.slice(0, 180)}"` : '',
-  ].filter(Boolean).join(' ')
+
+  // === SANITIZACIÓN: strip JSON codeblocks, Markdown, escaped quotes ===
+  const sanitize = (s: string): string => {
+    return s
+      // Strip ```json ... ``` codeblocks
+      .replace(/```(?:json)?\s*([\s\S]*?)```/g, '$1')
+      // Strip inline code backticks
+      .replace(/`([^`]+)`/g, '$1')
+      // Strip escaped quotes
+      .replace(/\\"/g, '"').replace(/\\'/g, "'")
+      // Strip HTML tags
+      .replace(/<[^>]+>/g, '')
+      // Collapse whitespace
+      .replace(/\s+/g, ' ')
+      .trim()
+  }
+
+  // === NARRATIVA: formato periodístico ejecutivo (QUÉ / POR QUÉ / EVIDENCIA) ===
+  // Prohibido: "Este cluster analiza...", "A continuación se presenta...", "Se observa..."
+  const recentMentionText = top[0] ? sanitize(top[0].text).slice(0, 200) : ''
+  const isGithubOnly = cluster.sources.length === 1 && cluster.sources[0] === 'github'
+  const isTechnicalOnly = cluster.sources.every((s) => s === 'github' || s === 'hn')
+
+  // Qué pasó — directo, sin relleno
+  const whatHappened = isGithubOnly
+    ? `Actividad de desarrollo detectada en GitHub: ${cluster.title}.`
+    : isTechnicalOnly
+      ? `Señal técnica emergiendo en ${sourcesList}: ${cluster.title}.`
+      : `Narrativa ganando tracción en ${sourcesList}: ${cluster.title}.`
+
+  // Por qué importa — métricas reales, no genéricas
+  const whyItMatters = `${velocityPerHour} menciones/hora en ventana de 15min. ${cluster.mentionsCount} menciones totales de ${cluster.uniqueAuthors} autores. Fase: ${cluster.phase}.`
+
+  // Evidencia real — cita textual verificable
+  const evidence = recentMentionText
+    ? `Fuente reciente (${top[0].source}): "${recentMentionText}"`
+    : 'Sin menciones recientes para citar.'
+
+  const narrative = `${whatHappened} ${whyItMatters} ${evidence}`
+
+  // === KEY POINTS — bullets concisos, sin frases de relleno ===
   const keyPoints = [
-    `Velocidad: ${velocityPerHour} menc/hora`,
+    `${velocityPerHour} menc/hora (15min)`,
     `${cluster.mentionsCount} menciones · ${cluster.uniqueAuthors} autores`,
+    `Fuentes: ${sourcesList}`,
     `Score: ${cluster.score.toFixed(1)}/100`,
-    `Fuentes: ${cluster.sources.length}/${ALL_SOURCES.length}`,
-    cluster.originator ? `Origen: ${cluster.originator.source}` : '',
+    isTechnicalOnly ? 'Tendencia técnica (sin respaldo social aún)' : 'Respaldado por redes sociales',
   ].filter(Boolean)
+
+  // === RISK FLAGS — específicos, no genéricos ===
   const riskFlags: string[] = []
-  if (cluster.trashPenalty > 0.4) riskFlags.push('Actividad sospechosa (spam/bot)')
-  if (cluster.trashPenalty >= 0.3 && cluster.trashPenalty < 0.4) riskFlags.push('Posible actividad bot')
-  if (cluster.sources.length === 1) riskFlags.push('Fuente única — baja corroboración')
+  if (cluster.trashPenalty > 0.4) riskFlags.push('Spam/bot detectado')
+  if (cluster.trashPenalty >= 0.3 && cluster.trashPenalty < 0.4) riskFlags.push('Posible bot')
+  if (cluster.sources.length === 1 && cluster.sources[0] === 'github') riskFlags.push('Solo GitHub — no es viralidad social')
   if (cluster.velocity > 5) riskFlags.push('Velocidad anómala')
-  // Nuevo risk flag: si el cluster está en desaceleración
-  if (cluster.phase === 'decaying') riskFlags.push('En desaceleración — perdiendo tracción')
+  if (cluster.phase === 'decaying') riskFlags.push('En desaceleración')
+  if (isTechnicalOnly && cluster.sources.length === 1) riskFlags.push('Fuente única — baja corroboración')
+
   const confidence = Math.max(0.2, Math.min(0.95, cluster.score / 100))
   return { narrative, keyPoints, riskFlags, confidence, evidenceMentionIds }
 }
