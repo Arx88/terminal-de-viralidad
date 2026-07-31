@@ -29,7 +29,7 @@ export function LeftRail() {
   return (
     <nav
       aria-label="Navegación principal"
-      className="sticky top-0 flex h-svh w-[92px] shrink-0 flex-col items-center overflow-y-auto pt-4 pb-6 self-start scrollbar-thin"
+      className="sticky top-0 flex h-svh w-[72px] shrink-0 flex-col items-center overflow-y-auto pt-3 pb-5 self-start scrollbar-thin sm:w-[84px] sm:pt-4 sm:pb-6 lg:w-[92px]"
     >
       <ul className="flex w-full flex-col items-center gap-1">
         {items.map(({ id, label, Icon }) => {
@@ -51,15 +51,25 @@ export function LeftRail() {
               >
                 <span
                   className={cn(
-                    'relative flex size-11 items-center justify-center rounded-2xl border transition-all duration-300',
+                    'relative flex size-10 items-center justify-center rounded-2xl border transition-all duration-300 lg:size-11',
                     isActive
                       ? 'border-primary/50 bg-primary/15 shadow-[0_0_24px_-4px_var(--primary)]'
                       : 'border-transparent group-hover:-translate-y-0.5 group-hover:border-border group-hover:bg-white/[0.04]',
                   )}
                 >
+                  {/* Pulsing glow behind the active Radar icon — a gentle
+                      heartbeat that signals “this is the live screen”
+                      (VLM issue #4: missing micro-interaction). */}
+                  {isActive && id === 'radar' && (
+                    <span
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-0 rounded-2xl bg-primary/25 blur-md"
+                      style={{ animation: 'vh-radar-pulse 2s ease-in-out infinite' }}
+                    />
+                  )}
                   <Icon
                     className={cn(
-                      'size-5 transition-transform duration-300',
+                      'relative size-[18px] transition-transform duration-300 lg:size-5',
                       isActive && 'text-primary',
                       !isActive && 'group-hover:scale-110',
                     )}
@@ -80,7 +90,9 @@ export function LeftRail() {
                     </span>
                   )}
                 </span>
-                <span className="text-[11px] leading-none font-medium">{label}</span>
+                <span className="text-[10px] leading-none font-medium lg:text-[11px]">
+                  {label}
+                </span>
               </button>
             </li>
           )

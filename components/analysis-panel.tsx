@@ -169,8 +169,8 @@ export function AnalysisPanel() {
         </button>
       </div>
 
-      <ul className="flex flex-col">
-        {trends.map((t) => {
+      <ul className="flex flex-col gap-0.5">
+        {trends.map((t, idx) => {
           const active = selectedId === t.id
           return (
             <li key={t.id}>
@@ -179,10 +179,15 @@ export function AnalysisPanel() {
                 onClick={() => select(t.id)}
                 aria-current={active ? 'true' : undefined}
                 className={cn(
-                  'group relative flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-all duration-200',
+                  'group relative flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-3 text-left transition-all duration-200',
                   active
                     ? 'bg-[var(--hot)]/8'
-                    : 'hover:translate-x-0.5 hover:bg-white/[0.03]',
+                    : cn(
+                        'hover:translate-x-0.5 hover:bg-white/[0.04]',
+                        // Zebra striping on alternating rows for visual
+                        // breathing room (VLM issue #2).
+                        idx % 2 === 1 && 'bg-white/[0.018]',
+                      ),
                 )}
               >
                 {active && (
@@ -420,7 +425,7 @@ export function AnalysisPanel() {
         </button>
       )}
 
-      <p className="flex items-center justify-center gap-2 pb-1 text-center text-[11px] text-muted-foreground/70">
+      <p className="flex items-center justify-center gap-2 pb-1 text-center text-[11px] text-muted-foreground/85">
         {live && (
           <span
             className="size-1.5 rounded-full bg-[var(--mint)]"

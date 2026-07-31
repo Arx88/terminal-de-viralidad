@@ -93,6 +93,11 @@ export function HeroCard() {
                   ? 'border-[var(--hot)]/40 bg-[var(--hot)]/10 text-[var(--hot)]'
                   : 'border-border bg-white/[0.04] text-muted-foreground',
               )}
+              style={
+                live
+                  ? { animation: 'vh-badge-glow 2.4s ease-in-out infinite' }
+                  : undefined
+              }
             >
               <span className="relative flex size-2">
                 {live && (
@@ -186,8 +191,16 @@ export function HeroCard() {
                   onClick={() => setScreen(screen)}
                   aria-label={`Ir a ${hint}: ${label}. Valor actual: ${value}.`}
                   title={`Ver ${label.toLowerCase()} en ${hint}`}
-                  className="group/stat flex h-full w-full cursor-pointer flex-col gap-2 rounded-xl border border-border/60 bg-white/[0.02] p-2.5 text-left transition-all duration-300 hover:-translate-y-0.5 hover:border-border hover:bg-white/[0.05] lg:flex-row lg:items-center lg:gap-3 lg:p-3"
+                  className="group/stat relative flex h-full w-full cursor-pointer flex-col gap-2 rounded-xl border border-border/60 bg-white/[0.02] p-2.5 text-left transition-all duration-300 hover:-translate-y-0.5 hover:border-border hover:bg-white/[0.05] lg:flex-row lg:items-center lg:gap-3 lg:p-3"
                 >
+                  {/* Always-visible arrow indicator — makes the card's
+                      clickability explicit on every breakpoint (VLM issue
+                      #6). Dim at rest, brightens + nudges on hover. */}
+                  <ChevronRight
+                    className="absolute right-2 top-2 size-3.5 text-muted-foreground opacity-40 transition-all duration-300 group-hover/stat:translate-x-0.5 group-hover/stat:opacity-100 group-hover/stat:text-foreground lg:right-3 lg:top-3"
+                    strokeWidth={2.4}
+                    aria-hidden="true"
+                  />
                   <span
                     className={cn(
                       'flex size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-white/[0.04] transition-all duration-300 lg:size-10',
@@ -196,19 +209,15 @@ export function HeroCard() {
                   >
                     <Icon className={`size-4 ${color}`} strokeWidth={2.2} />
                   </span>
-                  <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                  <span className="flex min-w-0 flex-1 flex-col gap-0.5 lg:pr-5">
                     <CountUp
                       value={value}
-                      className="text-2xl leading-none font-semibold tabular-nums text-foreground transition-transform duration-300 group-hover/stat:scale-105 lg:text-[2rem]"
+                      className="text-xl leading-none font-semibold tabular-nums text-foreground transition-transform duration-300 group-hover/stat:scale-105 sm:text-2xl lg:text-[2rem]"
                     />
                     <span className="truncate text-[10px] leading-tight text-muted-foreground transition-colors group-hover/stat:text-foreground lg:text-[11px]">
                       {label}
                     </span>
                   </span>
-                  <ChevronRight
-                    className="hidden size-4 shrink-0 text-muted-foreground opacity-0 transition-all duration-300 group-hover/stat:translate-x-0 group-hover/stat:opacity-100 lg:block"
-                    strokeWidth={2.2}
-                  />
                 </button>
               </li>
             ))}

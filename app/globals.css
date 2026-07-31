@@ -59,7 +59,10 @@
   --secondary-foreground: oklch(0.97 0.005 285);
 
   --muted: oklch(0.24 0.025 285);
-  --muted-foreground: oklch(0.66 0.02 285);
+  /* Bumped 0.66 → 0.70 to lift secondary-text contrast (VLM issue #3:
+     secondary text read as ~60% opacity / too dim). Keeps a clear
+     hierarchy vs foreground (0.97) while improving legibility. */
+  --muted-foreground: oklch(0.7 0.02 285);
 
   --accent: oklch(0.26 0.03 285);
   --accent-foreground: oklch(0.97 0.005 285);
@@ -274,6 +277,33 @@
   50% {
     transform: translateX(4px);
     opacity: 1;
+  }
+}
+
+/* Soft pulsing glow behind the active Radar icon in the side rail
+   (VLM issue #4: missing micro-interaction). Contained scale + opacity
+   so it reads as a gentle heartbeat, not a flashing alert. */
+@keyframes vh-radar-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.14;
+    transform: scale(1.4);
+  }
+}
+
+/* Pulsing box-shadow glow for the EN VIVO badge (VLM issue #4).
+   Breathes between a tight and a wider hot-orange halo. */
+@keyframes vh-badge-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 10px -3px var(--hot);
+  }
+  50% {
+    box-shadow: 0 0 20px -2px var(--hot);
   }
 }
 

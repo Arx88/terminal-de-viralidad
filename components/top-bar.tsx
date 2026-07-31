@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { BellRing, Pause, Play, SlidersHorizontal } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { BellRing, ChevronDown, Pause, Play, SlidersHorizontal } from 'lucide-react'
 import { CountUp } from '@/components/count-up'
 import { SourceTile } from '@/components/source-icon'
 import { useVirahub } from '@/components/virahub-provider'
@@ -59,13 +59,143 @@ function Waveform({ live, latency }: { live: boolean; latency: number }) {
   )
 }
 
+/**
+ * Engine focus dropdown — collapses the previous row of 7 inline
+ * social/engine icons into a compact avatar-stack trigger with a popover
+ * menu (VLM issue #1: "top bar doing too much"). Preserves the focus
+ * toggle + toast notify behaviour, and is fully keyboard accessible
+ * (Escape + click-outside to close, aria-haspopup/menu/itemradio).
+ */
+function EngineFocusMenu({
+  focused,
+  setFocused,
+  notify,
+}: {
+  focused: SourceKey
+  setFocused: (s: SourceKey) => void
+  notify: (m: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const rootRef = useRef<HTMLDivElement>(null)
+  const focusedEngine = ENGINES.find((e) => e.id === focused) ?? ENGINES[0]
+  const preview = ENGINES.slice(0, 3)
+
+  useEffect(() => {
+    if (!open) return
+    const onDown = (e: MouseEvent) => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-haspopup="menu"
+        aria-label={`Foco de motores. Seleccionado: ${focusedEngine.name}. Abrir menú con ${ENGINES.length} motores disponibles.`}
+        title={`Foco de motores — ${focusedEngine.name}`}
+        className={cn(
+          'group/eng flex cursor-pointer items-center gap-2 rounded-full border border-border bg-white/[0.03] py-1 pr-2.5 pl-1 transition-all duration-200 hover:border-border hover:bg-white/[0.06]',
+          open && 'border-border bg-white/[0.06]',
+        )}
+      >
+        {/* avatar pile — first 3 engines overlapping */}
+        <span className="flex -space-x-2">
+          {preview.map((e, i) => (
+            <span
+              key={e.id}
+              className="rounded-full ring-2 ring-background"
+              style={{ zIndex: preview.length - i }}
+            >
+              <SourceTile source={e.id as SourceKey} className="size-7 rounded-full" />
+            </span>
+          ))}
+        </span>
+        <span className="flex flex-col items-start leading-none">
+          <span className="text-[10px] text-muted-foreground">Foco</span>
+          <span className="text-[12px] font-medium text-foreground">
+            {focusedEngine.name}
+          </span>
+        </span>
+        <ChevronDown
+          className={cn(
+            'size-3.5 text-muted-foreground transition-transform duration-200',
+            open && 'rotate-180',
+          )}
+          strokeWidth={2}
+        />
+      </button>
+
+      {open && (
+        <div
+          role="menu"
+          aria-label="Seleccionar motor para enfocar"
+          className="absolute right-0 top-[calc(100%+8px)] z-50 w-64 animate-in fade-in slide-in-from-top-1 rounded-xl border border-border bg-popover p-1.5 shadow-xl duration-200"
+        >
+          <p className="px-2.5 py-1.5 text-[10.5px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+            Enfocar motor
+          </p>
+          <ul className="flex flex-col gap-0.5">
+            {ENGINES.map(({ id, name }) => {
+              const isFocused = focused === id
+              return (
+                <li key={id}>
+                  <button
+                    type="button"
+                    role="menuitemradio"
+                    aria-checked={isFocused}
+                    aria-label={`Enfocar motor ${name}${isFocused ? ' (seleccionado)' : ''}`}
+                    onClick={() => {
+                      setFocused(id as SourceKey)
+                      notify(`Foco en ${name}`)
+                      setOpen(false)
+                    }}
+                    className={cn(
+                      'flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-left transition-colors',
+                      isFocused ? 'bg-primary/15' : 'hover:bg-white/[0.05]',
+                    )}
+                  >
+                    <SourceTile source={id as SourceKey} className="size-7 rounded-full" />
+                    <span
+                      className={cn(
+                        'flex-1 text-[13px] font-medium',
+                        isFocused ? 'text-foreground' : 'text-foreground/90',
+                      )}
+                    >
+                      {name}
+                    </span>
+                    {isFocused && <span className="text-[13px] text-primary">✓</span>}
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function TopBar() {
   const { live, setLive, analyzed, latency, alerts, setScreen, screen, notify } =
     useVirahub()
   const [focused, setFocused] = useState<SourceKey>('reddit')
 
   return (
-    <header className="flex flex-wrap items-center gap-x-8 gap-y-4 px-6 py-4">
+    <header className="flex flex-wrap items-center gap-x-4 gap-y-3 px-4 py-3.5 sm:gap-x-8 sm:gap-y-4 sm:px-6 sm:py-4">
       <button
         type="button"
         onClick={() => setScreen('radar')}
@@ -140,14 +270,19 @@ export function TopBar() {
         </div>
         <p className="flex flex-wrap items-center gap-x-2 text-[12px] text-muted-foreground">
           <span>
-            <span className="text-foreground/85">{ENGINES.length} motores</span> activos
+            <span className="text-foreground/90">{ENGINES.length} motores</span> activos
           </span>
-          <span className="text-muted-foreground/40">•</span>
+          {/* Bumped /40 → /70 (VLM issue #3: secondary text too dim) */}
+          <span className="text-muted-foreground/70">•</span>
           <span>
-            <CountUp value={analyzed} locale="es-ES" className="text-foreground/85 tabular-nums" />{' '}
+            <CountUp
+              value={analyzed}
+              locale="es-ES"
+              className="text-foreground/90 tabular-nums"
+            />{' '}
             publicaciones analizadas
           </span>
-          <span className="text-muted-foreground/40">•</span>
+          <span className="text-muted-foreground/70">•</span>
           <span>
             latencia{' '}
             <CountUp
@@ -156,56 +291,20 @@ export function TopBar() {
               suffix="s"
               className={cn(
                 'tabular-nums',
-                latency > 1.5 ? 'text-[var(--hot)]' : 'text-foreground/85',
+                latency > 1.5 ? 'text-[var(--hot)]' : 'text-foreground/90',
               )}
             />
           </span>
         </p>
       </div>
 
-      <div className="ml-auto flex items-center gap-4">
-        {/* Social / engine icons — each is a focus toggle with a visible
-            tooltip + persistent selected state (ring + opacity). */}
-        <ul className="flex items-center gap-2.5">
-          {ENGINES.map(({ id, name }) => {
-            const isFocused = focused === id
-            return (
-              <li key={id} className="group/src relative flex items-center">
-                <button
-                  type="button"
-                  title={name}
-                  aria-label={`Enfocar motor ${name}${isFocused ? ' (seleccionado)' : ''}`}
-                  aria-pressed={isFocused}
-                  onClick={() => {
-                    setFocused(id as SourceKey)
-                    notify(`Foco en ${name}`)
-                  }}
-                  className={cn(
-                    'cursor-pointer rounded-full transition-all duration-200 hover:scale-110',
-                    isFocused
-                      ? 'ring-2 ring-primary/80 ring-offset-3 ring-offset-background'
-                      : 'opacity-65 hover:opacity-100',
-                  )}
-                >
-                  <SourceTile source={id as SourceKey} className="size-9 rounded-full" />
-                  <span className="sr-only">{name}</span>
-                </button>
-                {/* Visible tooltip — appears on hover & keyboard focus */}
-                <span
-                  role="tooltip"
-                  className={cn(
-                    'pointer-events-none absolute -bottom-9 left-1/2 z-30 -translate-x-1/2 translate-y-1 rounded-md border border-border bg-popover px-2 py-1 text-[10.5px] font-medium whitespace-nowrap text-popover-foreground opacity-0 shadow-md transition-all duration-150',
-                    'group-hover/src:translate-y-0 group-hover/src:opacity-100',
-                    'group-focus-within/src:translate-y-0 group-focus-within/src:opacity-100',
-                  )}
-                >
-                  {name}
-                  {isFocused && <span className="ml-1 text-primary">✓</span>}
-                </span>
-              </li>
-            )
-          })}
-        </ul>
+      <div className="ml-auto flex items-center gap-3">
+        {/* Social / engine focus — collapsed into a dropdown (VLM issue #1). */}
+        <EngineFocusMenu
+          focused={focused}
+          setFocused={setFocused}
+          notify={notify}
+        />
 
         <div className="flex items-center gap-1 rounded-full border border-border bg-white/[0.03] p-1 pl-3">
           <SlidersHorizontal className="size-4 text-muted-foreground" strokeWidth={1.8} />

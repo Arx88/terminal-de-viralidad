@@ -50,7 +50,7 @@ export default function Page() {
 
       <div className="relative">
         <TopBar />
-        <div className="flex items-start gap-2 px-4 pb-6 lg:px-6">
+        <div className="flex items-start gap-2 px-3 pb-6 sm:px-4 sm:gap-2.5 lg:gap-3 lg:px-6">
           <LeftRail />
           <div className="flex min-w-0 flex-1 flex-col gap-4 lg:flex-row">
             <ScreenRouter />
