@@ -8,8 +8,8 @@
 
 import { Redis } from '@upstash/redis'
 
-const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL
-const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN
+const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL || 'https://novel-oarfish-127561.upstash.io'
+const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN || 'gQAAAAAAAfJJAAIgcDFkMjY1NTRlMTNlZGM0MTQ0YmYyN2I5MTUyOWI4ZWE1OQ'
 
 let _redis: Redis | null = null
 let _useMemory = false
