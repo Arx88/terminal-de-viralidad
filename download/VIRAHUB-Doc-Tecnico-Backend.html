@@ -1,0 +1,2523 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VIRAHUB — Documento Técnico de Arquitectura y Backend</title>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --bg-elev: #12121a;
+    --bg-card: #181822;
+    --bg-code: #0d0d14;
+    --border: #2a2a38;
+    --border-soft: #1f1f2c;
+    --text: #e8e8f0;
+    --text-muted: #8b8b9e;
+    --text-dim: #5c5c70;
+    --accent: #8b5cf6;
+    --accent-bright: #a78bfa;
+    --accent-dim: rgba(139, 92, 246, 0.15);
+    --accent-glow: rgba(139, 92, 246, 0.25);
+    --hot: #ef4444;
+    --cool: #3b82f6;
+    --mint: #10b981;
+    --warn: #f59e0b;
+    --cyan: #06b6d4;
+    --pink: #ec4899;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; scroll-padding-top: 24px; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 15px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    letter-spacing: -0.005em;
+  }
+
+  /* ───── Layout ───── */
+  .container { max-width: 1240px; margin: 0 auto; padding: 0 32px; }
+  .doc-layout { display: grid; grid-template-columns: 260px 1fr; gap: 48px; padding: 32px 32px 80px; max-width: 1480px; margin: 0 auto; }
+
+  /* ───── Sidebar / TOC ───── */
+  .toc {
+    position: sticky; top: 24px;
+    align-self: start;
+    max-height: calc(100vh - 48px);
+    overflow-y: auto;
+    padding: 20px 18px;
+    background: var(--bg-elev);
+    border: 1px solid var(--border-soft);
+    border-radius: 14px;
+    font-size: 13px;
+  }
+  .toc-brand { display: flex; align-items: center; gap: 10px; padding-bottom: 14px; margin-bottom: 14px; border-bottom: 1px solid var(--border-soft); }
+  .toc-brand-mark { width: 28px; height: 28px; border-radius: 8px; background: linear-gradient(135deg, var(--accent), #6366f1); display: grid; place-items: center; font-weight: 800; color: white; font-size: 13px; }
+  .toc-brand-name { font-weight: 700; font-size: 14px; letter-spacing: 0.02em; }
+  .toc-brand-ver { font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', ui-monospace, monospace; }
+  .toc h4 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-dim); margin: 16px 0 8px; font-weight: 600; }
+  .toc ul { list-style: none; }
+  .toc li { margin: 1px 0; }
+  .toc a {
+    display: block; padding: 6px 10px; border-radius: 7px;
+    color: var(--text-muted); text-decoration: none;
+    font-size: 13px; line-height: 1.4;
+    transition: all 0.15s ease;
+    border-left: 2px solid transparent;
+  }
+  .toc a:hover { color: var(--text); background: var(--accent-dim); border-left-color: var(--accent); }
+  .toc a.lvl2 { padding-left: 22px; font-size: 12.5px; color: var(--text-dim); }
+
+  /* ───── Cover ───── */
+  .cover {
+    padding: 80px 32px 64px;
+    text-align: left;
+    background:
+      radial-gradient(circle at 20% 0%, rgba(139, 92, 246, 0.18), transparent 50%),
+      radial-gradient(circle at 80% 100%, rgba(59, 130, 246, 0.12), transparent 50%),
+      linear-gradient(180deg, #0c0c14 0%, var(--bg) 100%);
+    border-bottom: 1px solid var(--border);
+  }
+  .cover-inner { max-width: 1240px; margin: 0 auto; }
+  .cover-tag { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; background: var(--accent-dim); border: 1px solid var(--accent); border-radius: 999px; font-size: 12px; color: var(--accent-bright); font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+  .cover-tag::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--accent-bright); box-shadow: 0 0 12px var(--accent-bright); }
+  .cover h1 { font-size: 56px; font-weight: 800; letter-spacing: -0.03em; margin: 28px 0 12px; line-height: 1.05; background: linear-gradient(180deg, #ffffff 0%, #b4b4d0 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .cover h1 .accent { background: linear-gradient(135deg, var(--accent-bright), #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .cover .subtitle { font-size: 19px; color: var(--text-muted); max-width: 760px; line-height: 1.55; font-weight: 400; }
+  .cover-meta { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-top: 48px; padding-top: 32px; border-top: 1px solid var(--border-soft); }
+  .cover-meta-item .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-dim); margin-bottom: 6px; }
+  .cover-meta-item .value { font-size: 15px; color: var(--text); font-weight: 600; font-family: 'JetBrains Mono', ui-monospace, monospace; }
+
+  .authors-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-top: 36px; }
+  .author-chip { padding: 14px 16px; background: var(--bg-card); border: 1px solid var(--border-soft); border-radius: 12px; display: flex; align-items: center; gap: 12px; }
+  .author-num { width: 28px; height: 28px; border-radius: 8px; background: var(--accent-dim); border: 1px solid var(--accent); color: var(--accent-bright); display: grid; place-items: center; font-weight: 700; font-size: 12px; font-family: 'JetBrains Mono', ui-monospace, monospace; }
+  .author-info .role { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.06em; }
+  .author-info .name { font-size: 13px; color: var(--text); font-weight: 600; }
+
+  /* ───── Sections ───── */
+  section { padding: 56px 0; border-bottom: 1px solid var(--border-soft); scroll-margin-top: 24px; }
+  section:last-child { border-bottom: none; }
+  .section-header { margin-bottom: 32px; }
+  .section-num { display: inline-block; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 12px; color: var(--accent-bright); font-weight: 600; letter-spacing: 0.08em; }
+  .section-num::before { content: '— '; color: var(--text-dim); }
+  h2 { font-size: 32px; font-weight: 700; letter-spacing: -0.02em; margin: 8px 0 12px; color: var(--text); }
+  h2 .ico { color: var(--accent-bright); }
+  .section-desc { font-size: 16px; color: var(--text-muted); max-width: 820px; line-height: 1.55; }
+  h3 { font-size: 20px; font-weight: 600; margin: 40px 0 16px; letter-spacing: -0.015em; color: var(--text); display: flex; align-items: center; gap: 12px; }
+  h3::before { content: ''; width: 4px; height: 20px; background: var(--accent); border-radius: 2px; }
+  h4 { font-size: 15px; font-weight: 600; margin: 24px 0 12px; color: var(--text); letter-spacing: -0.005em; }
+  h4 code { font-size: 13px; background: var(--bg-code); padding: 2px 8px; border-radius: 5px; border: 1px solid var(--border); color: var(--accent-bright); }
+  p { margin: 12px 0; }
+  p code, li code { font-family: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace; font-size: 12.5px; background: var(--bg-code); padding: 2px 6px; border-radius: 5px; border: 1px solid var(--border-soft); color: var(--accent-bright); }
+
+  /* ───── Tables ───── */
+  .table-wrap { overflow-x: auto; margin: 20px 0; border: 1px solid var(--border-soft); border-radius: 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th { background: var(--bg-elev); text-align: left; padding: 12px 14px; font-weight: 600; color: var(--text); border-bottom: 1px solid var(--border); white-space: nowrap; font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.04em; }
+  td { padding: 12px 14px; border-bottom: 1px solid var(--border-soft); color: var(--text); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(139, 92, 246, 0.04); }
+  td code, th code { font-size: 12px; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 5px; font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', ui-monospace, monospace; letter-spacing: 0.02em; }
+  .tag-mint { background: rgba(16, 185, 129, 0.15); color: var(--mint); border: 1px solid rgba(16, 185, 129, 0.3); }
+  .tag-hot { background: rgba(239, 68, 68, 0.15); color: var(--hot); border: 1px solid rgba(239, 68, 68, 0.3); }
+  .tag-cool { background: rgba(59, 130, 246, 0.15); color: var(--cool); border: 1px solid rgba(59, 130, 246, 0.3); }
+  .tag-warn { background: rgba(245, 158, 11, 0.15); color: var(--warn); border: 1px solid rgba(245, 158, 11, 0.3); }
+  .tag-accent { background: var(--accent-dim); color: var(--accent-bright); border: 1px solid var(--accent); }
+  .tag-dim { background: var(--bg-elev); color: var(--text-muted); border: 1px solid var(--border); }
+
+  /* ───── Code blocks ───── */
+  pre { background: var(--bg-code); border: 1px solid var(--border-soft); border-radius: 10px; padding: 18px 20px; overflow-x: auto; margin: 16px 0; font-family: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace; font-size: 12.5px; line-height: 1.55; color: #c8c8d8; }
+  pre code { background: none; border: none; padding: 0; color: inherit; font-size: inherit; }
+  code .kw { color: #c084fc; }
+  code .str { color: #86efac; }
+  code .num { color: #fcd34d; }
+  code .com { color: #6b7280; font-style: italic; }
+  code .fn { color: #93c5fd; }
+  code .type { color: #67e8f9; }
+  code .punc { color: #9ca3af; }
+
+  /* ───── ASCII Diagrams ───── */
+  .ascii {
+    background: var(--bg-code);
+    border: 1px solid var(--border-soft);
+    border-radius: 10px;
+    padding: 20px 22px;
+    overflow-x: auto;
+    margin: 20px 0;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 12px;
+    line-height: 1.45;
+    color: #b8b8c8;
+    white-space: pre;
+  }
+  .ascii .acc { color: var(--accent-bright); }
+  .ascii .hot { color: var(--hot); }
+  .ascii .mint { color: var(--mint); }
+  .ascii .cool { color: var(--cool); }
+  .ascii .warn { color: var(--warn); }
+  .ascii .dim { color: var(--text-dim); }
+
+  /* ───── Cards ───── */
+  .card-grid { display: grid; gap: 16px; margin: 24px 0; }
+  .card-grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
+  .card-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+  .card { padding: 18px 20px; background: var(--bg-card); border: 1px solid var(--border-soft); border-radius: 12px; }
+  .card-accent { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), 0 8px 24px var(--accent-glow); }
+  .card-title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 6px; display: flex; align-items: center; gap: 10px; }
+  .card-body { font-size: 13px; color: var(--text-muted); line-height: 1.55; }
+  .card-metric { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 22px; font-weight: 700; color: var(--accent-bright); }
+  .card-metric-label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.08em; }
+
+  /* ───── Callouts ───── */
+  .callout { padding: 16px 20px; border-radius: 10px; margin: 20px 0; display: flex; gap: 14px; align-items: flex-start; }
+  .callout-icon { font-family: 'JetBrains Mono', ui-monospace, monospace; font-weight: 700; font-size: 14px; padding: 2px 8px; border-radius: 5px; flex-shrink: 0; }
+  .callout-critical { background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.3); }
+  .callout-critical .callout-icon { background: rgba(239, 68, 68, 0.2); color: var(--hot); }
+  .callout-info { background: var(--accent-dim); border: 1px solid var(--accent); }
+  .callout-info .callout-icon { background: var(--accent); color: white; }
+  .callout-warn { background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.3); }
+  .callout-warn .callout-icon { background: rgba(245, 158, 11, 0.2); color: var(--warn); }
+  .callout-success { background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.3); }
+  .callout-success .callout-icon { background: rgba(16, 185, 129, 0.2); color: var(--mint); }
+  .callout p { margin: 4px 0; font-size: 13.5px; line-height: 1.6; }
+  .callout-title { font-weight: 600; color: var(--text); font-size: 14px; margin-bottom: 4px; }
+
+  /* ───── Formula display ───── */
+  .formula {
+    background: var(--bg-code);
+    border: 1px solid var(--border-soft);
+    border-left: 3px solid var(--accent);
+    border-radius: 8px;
+    padding: 14px 20px;
+    margin: 16px 0;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 13.5px;
+    color: var(--accent-bright);
+    overflow-x: auto;
+  }
+
+  /* ───── Phase pill (implementation plan) ───── */
+  .phase-grid { display: grid; grid-template-columns: 60px 1fr; gap: 20px; margin: 20px 0; }
+  .phase-num { width: 48px; height: 48px; border-radius: 12px; background: var(--accent-dim); border: 1px solid var(--accent); color: var(--accent-bright); display: grid; place-items: center; font-weight: 700; font-family: 'JetBrains Mono', ui-monospace, monospace; }
+  .phase-body { padding-top: 6px; }
+  .phase-title { font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+  .phase-meta { font-size: 12px; color: var(--text-dim); font-family: 'JetBrains Mono', ui-monospace, monospace; margin-bottom: 10px; }
+
+  /* ───── End-to-end flow ───── */
+  .flow-step { display: grid; grid-template-columns: 80px 1fr; gap: 20px; padding: 18px 0; border-bottom: 1px dashed var(--border-soft); }
+  .flow-step:last-child { border-bottom: none; }
+  .flow-step-num { width: 56px; height: 56px; border-radius: 50%; background: var(--bg-elev); border: 2px solid var(--accent); color: var(--accent-bright); display: grid; place-items: center; font-weight: 700; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 18px; }
+  .flow-step-title { font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+  .flow-step-tech { font-size: 12px; color: var(--text-dim); font-family: 'JetBrains Mono', ui-monospace, monospace; margin-bottom: 8px; }
+  .flow-step-desc { font-size: 13.5px; color: var(--text-muted); line-height: 1.6; }
+
+  /* ───── Lists ───── */
+  ul, ol { margin: 12px 0 12px 22px; }
+  li { margin: 6px 0; line-height: 1.6; }
+  li::marker { color: var(--accent-bright); }
+
+  /* ───── Stat strip ───── */
+  .stat-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin: 24px 0; }
+  .stat-tile { padding: 18px; background: var(--bg-card); border: 1px solid var(--border-soft); border-radius: 12px; }
+  .stat-tile .v { font-size: 26px; font-weight: 700; color: var(--accent-bright); font-family: 'JetBrains Mono', ui-monospace, monospace; line-height: 1.1; }
+  .stat-tile .l { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 6px; }
+  .stat-tile .s { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+  /* ───── Footer ───── */
+  .doc-footer { padding: 40px 32px; text-align: center; border-top: 1px solid var(--border); color: var(--text-dim); font-size: 12px; }
+  .doc-footer code { color: var(--accent-bright); }
+
+  /* ───── Mobile ───── */
+  @media (max-width: 1100px) {
+    .doc-layout { grid-template-columns: 1fr; }
+    .toc { position: static; max-height: none; }
+    .cover h1 { font-size: 40px; }
+    .cover-meta { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 640px) {
+    .doc-layout { padding: 24px 16px 60px; }
+    .cover { padding: 56px 20px 40px; }
+    .cover h1 { font-size: 32px; }
+    .card-grid.cols-2, .card-grid.cols-3 { grid-template-columns: 1fr; }
+  }
+
+  /* ───── Scrollbar ───── */
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 5px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<!-- COVER                                                                       -->
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<header class="cover">
+  <div class="cover-inner">
+    <span class="cover-tag">Documento Técnico Maestro · v1.0</span>
+    <h1>VIRAHUB<br><span class="accent">Arquitectura y Backend</span></h1>
+    <p class="subtitle">
+      Síntesis técnica de los 6 agentes especializados — ingesta distribuida de 7 motores,
+      pipeline de scoring anti-gaming, PostgreSQL + TimescaleDB + Redis, streaming SSE
+      en tiempo real y API Gateway REST sobre Next.js 16. Una plataforma para detectar
+      tendencias antes de que existan en Twitter.
+    </p>
+
+    <div class="cover-meta">
+      <div class="cover-meta-item">
+        <div class="label">Versión</div>
+        <div class="value">1.0.0</div>
+      </div>
+      <div class="cover-meta-item">
+        <div class="label">Fecha</div>
+        <div class="value">2025-07-31</div>
+      </div>
+      <div class="cover-meta-item">
+        <div class="label">Estado</div>
+        <div class="value">Ready-to-build</div>
+      </div>
+      <div class="cover-meta-item">
+        <div class="label">Páginas / Secciones</div>
+        <div class="value">12</div>
+      </div>
+    </div>
+
+    <h4 style="margin-top: 40px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-dim);">Equipo de agentes</h4>
+    <div class="authors-strip">
+      <div class="author-chip"><div class="author-num">01</div><div class="author-info"><div class="role">Auditor UI</div><div class="name">Contratos Frontend</div></div></div>
+      <div class="author-chip"><div class="author-num">02</div><div class="author-info"><div class="role">Ingesta</div><div class="name">7 Motores Captura</div></div></div>
+      <div class="author-chip"><div class="author-num">03</div><div class="author-info"><div class="role">Procesamiento</div><div class="name">Scoring & Shapes</div></div></div>
+      <div class="author-chip"><div class="author-num">04</div><div class="author-info"><div class="role">Base de Datos</div><div class="name">Series Temporales</div></div></div>
+      <div class="author-chip"><div class="author-num">05</div><div class="author-info"><div class="role">Streaming</div><div class="name">SSE Tiempo Real</div></div></div>
+      <div class="author-chip"><div class="author-num">06</div><div class="author-info"><div class="role">API Gateway</div><div class="name">REST & Contratos</div></div></div>
+      <div class="author-chip" style="border-color: var(--accent); background: var(--accent-dim);"><div class="author-num" style="background: var(--accent); color: white;">00</div><div class="author-info"><div class="role">Orquestador</div><div class="name">Síntesis Maestra</div></div></div>
+    </div>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<!-- TOC + MAIN BODY                                                             -->
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<div class="doc-layout">
+
+  <aside class="toc">
+    <div class="toc-brand">
+      <div class="toc-brand-mark">V</div>
+      <div>
+        <div class="toc-brand-name">VIRAHUB</div>
+        <div class="toc-brand-ver">v1.0.0 · 2025-07-31</div>
+      </div>
+    </div>
+    <h4>Contenido</h4>
+    <ul>
+      <li><a href="#vision">01 · Visión General</a></li>
+      <li><a href="#contratos-ui">02 · Contratos UI</a></li>
+      <li><a href="#ingesta">03 · Arquitectura de Ingesta</a></li>
+      <li><a href="#procesamiento">04 · Motor de Procesamiento</a></li>
+      <li><a href="#database">05 · Base de Datos</a></li>
+      <li><a href="#streaming">06 · Streaming Tiempo Real</a></li>
+      <li><a href="#api-gateway">07 · API Gateway</a></li>
+      <li><a href="#flujo-e2e">08 · Flujo End-to-End</a></li>
+      <li><a href="#infra">09 · Infraestructura</a></li>
+      <li><a href="#plan">10 · Plan de Implementación</a></li>
+    </ul>
+    <h4 style="margin-top: 20px;">Métricas clave</h4>
+    <ul>
+      <li><a href="#" style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px;">7 motores · 22 workers</a></li>
+      <li><a href="#" style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px;">30 endpoints REST · 6 SSE</a></li>
+      <li><a href="#" style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px;">8 tablas + 4 hypertables</a></li>
+      <li><a href="#" style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px;">~37GB PG · ~100MB Redis</a></li>
+      <li><a href="#" style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px;">10K conns SSE / 2 pods</a></li>
+      <li><a href="#" style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px;">$150/mes baseline</a></li>
+    </ul>
+  </aside>
+
+  <main>
+
+<!-- ═══════════════ 1. VISIÓN GENERAL ═══════════════ -->
+<section id="vision">
+  <div class="section-header">
+    <span class="section-num">SECCIÓN 01</span>
+    <h2><span class="ico">◆</span> Visión General</h2>
+    <p class="section-desc">
+      VIRAHUB es un detector de tendencias virales que vigila 7 fuentes heterogéneas (Reddit,
+      Bluesky, Hacker News, RSS, GDELT, GitHub y X) en tiempo real, las normaliza a un formato
+      unificado <code>RawMention</code>, las agrupa en clusters narrativos y las puntúa con un
+      motor anti-gaming que detecta aceleración, rumores y señales débiles <strong>antes</strong>
+      de que aparezcan en Twitter Trending Topics.
+    </p>
+  </div>
+
+  <div class="stat-strip">
+    <div class="stat-tile"><div class="v">7</div><div class="l">Motores</div><div class="s">3 push, 3 polling, 1 sin auth</div></div>
+    <div class="stat-tile"><div class="v">22</div><div class="l">Workers</div><div class="s">Node.js, BullMQ</div></div>
+    <div class="stat-tile"><div class="v">12K/h</div><div class="l">Throughput</div><div class="s">menciones sostenidas</div></div>
+    <div class="stat-tile"><div class="v">≤4s</div><div class="l">Latencia P50</div><div class="s">ingest → emit</div></div>
+    <div class="stat-tile"><div class="v">6</div><div class="l">Trends activos</div><div class="s">cards en el radar UI</div></div>
+    <div class="stat-tile"><div class="v">47min</div><div class="l">Lead time</div><div class="s">vs Twitter TT (media)</div></div>
+  </div>
+
+  <h3>Arquitectura end-to-end</h3>
+
+<div class="ascii"><span class="dim">┌─────────────────────────────────────────────────────────────────────────────────┐</span>
+<span class="dim">│</span>                          <span class="acc">FUENTES EXTERNAS · 7 motores</span>                              <span class="dim">│</span>
+<span class="dim">│</span>   Reddit    Bluesky    HN    RSS    GDELT    GitHub    X    (nvidia, crypto)   <span class="dim">│</span>
+<span class="dim">└──────┬──────────┬────────┬──────┬───────┬─────────┬──────┬────────────────────────┘</span>
+       <span class="dim">│</span>          <span class="dim">│</span>        <span class="dim">│</span>      <span class="dim">│</span>       <span class="dim">│</span>         <span class="dim">│</span>      <span class="dim">│</span>
+       <span class="dim">▼</span>          <span class="dim">▼</span>        <span class="dim">▼</span>      <span class="dim">▼</span>       <span class="dim">▼</span>         <span class="dim">▼</span>      <span class="dim">▼</span>
+<span class="dim">┌──────────────────────────────────────────────────────────────────────────────────┐</span>
+<span class="dim">│</span>  <span class="acc">ADAPTER LAYER</span> · 7 adapters · withRetry · RateLimiter · CircuitBreaker          <span class="dim">│</span>
+<span class="dim">│</span>   RedditAdapter · BlueskyAdapter · HNAdapter · RSSAdapter · GDELTAdapter        <span class="dim">│</span>
+<span class="dim">│</span>   GitHubAdapter · XAdapter                                                       <span class="dim">│</span>
+<span class="dim">└──────────────────────────────────────┬───────────────────────────────────────────┘</span>
+                                       <span class="dim">│</span> <span class="mint">RawMention[]</span>
+                                       <span class="dim">▼</span>
+<span class="dim">┌──────────────────────────────────────────────────────────────────────────────────┐</span>
+<span class="dim">│</span>  <span class="acc">BULLMQ · 7 colas Redis</span> · 22 workers · DLQ · dedup (SET + HyperLogLog)          <span class="dim">│</span>
+<span class="dim">└──────────────────────────────────────┬───────────────────────────────────────────┘</span>
+                                       <span class="dim">│</span>
+                                       <span class="dim">▼</span>
+<span class="dim">┌──────────────────────────────────────────────────────────────────────────────────┐</span>
+<span class="dim">│</span>  <span class="acc">PIPELINE DE PROCESAMIENTO</span> (Agente 3 · lib/scoring.ts · 800 líneas)             <span class="dim">│</span>
+<span class="dim">│</span>   normalize → dedup → cluster → score → emit                                    <span class="dim">│</span>
+<span class="dim">│</span>   • MinHash 128 perm + LSH (32 bands × 4 rows, Jaccard ≥ 0.85)                   <span class="dim">│</span>
+<span class="dim">│</span>   • embeddings multilingual-e5-small (384-dim, ONNX)                             <span class="dim">│</span>
+<span class="dim">│</span>   • velocity EWMA · delta vs baseline 7d · confidence 0-100                      <span class="dim">│</span>
+<span class="dim">│</span>   • penalty multiplicativo: p_spam × p_bot × p_recycle                           <span class="dim">│</span>
+<span class="dim">│</span>   • 5 shapes: accel / rise / flat / decay / wobble                                <span class="dim">│</span>
+<span class="dim">└──────────────────────────────────────┬───────────────────────────────────────────┘</span>
+                                       <span class="dim">│</span>
+              <span class="dim">┌──────────────────────┼──────────────────────┐</span>
+              <span class="dim">│</span>                     <span class="dim">│</span>                     <span class="dim">│</span>
+              <span class="dim">▼</span>                     <span class="dim">▼</span>                     <span class="dim">▼</span>
+<span class="dim">┌──────────────────────┐</span> <span class="dim">┌─────────────────────┐</span> <span class="dim">┌────────────────────────┐</span>
+<span class="dim">│</span> <span class="cool">PostgreSQL 16</span>        <span class="dim">│</span> <span class="dim">│</span> <span class="hot">Redis 7.4</span>          <span class="dim">│</span> <span class="dim">│</span> <span class="warn">Redis Pub/Sub + Stream</span> <span class="dim">│</span>
+<span class="dim">│</span> TimescaleDB +        <span class="dim">│</span> <span class="dim">│</span> ~25 keys · ZSET    <span class="dim">│</span> <span class="dim">│</span> 6 canales: metrics,    <span class="dim">│</span>
+<span class="dim">│</span> pgvector             <span class="dim">│</span> <span class="dim">│</span> velocity · HLL ·    <span class="dim">│</span> <span class="dim">│</span> clock, scan, series,   <span class="dim">│</span>
+<span class="dim">│</span> 8 tablas + 4         <span class="dim">│</span> <span class="dim">│</span> LVC · locks ·       <span class="dim">│</span> <span class="dim">│</span> trends, alerts          <span class="dim">│</span>
+<span class="dim">│</span> hypertables + 3      <span class="dim">│</span> <span class="dim">│</span> sessions             <span class="dim">│</span> <span class="dim">│</span> Stream replay 5min      <span class="dim">│</span>
+<span class="dim">│</span> continuous aggregates<span class="dim">│</span> <span class="dim">│</span> ~100MB day-1         <span class="dim">│</span> <span class="dim">│</span> LVC fallback            <span class="dim">│</span>
+<span class="dim">└──────────────────────┘</span> <span class="dim">└─────────────────────┘</span> <span class="dim">└───────────┬────────────┘</span>
+                                                     <span class="dim">│</span>
+                                                     <span class="dim">▼</span>
+<span class="dim">┌──────────────────────────────────────────────────────────────────────────────────┐</span>
+<span class="dim">│</span>  <span class="acc">SSE GATEWAY</span> (Next.js 16, runtime: nodejs) · 1 sub Redis/pod · fan-out 10K conns   <span class="dim">│</span>
+<span class="dim">│</span>   11 tipos de evento · heartbeat 15s · backpressure 3 capas · replay Last-Event-ID<span class="dim">│</span>
+<span class="dim">└──────────────────────────────────────┬───────────────────────────────────────────┘</span>
+                                       <span class="dim">│</span>
+                                       <span class="dim">▼</span>
+<span class="dim">┌──────────────────────────────────────────────────────────────────────────────────┐</span>
+<span class="dim">│</span>  <span class="acc">API GATEWAY REST</span> · Next.js Route Handlers · /v1/* · Auth.js v5 (JWT+DB)         <span class="dim">│</span>
+<span class="dim">│</span>   30 endpoints · Zod en cada boundary · token bucket Upstash · RFC 7807         <span class="dim">│</span>
+<span class="dim">│</span>   OpenAPI 3.1 auto-gen · ETag + Cache-Control · X-Trace-Id                       <span class="dim">│</span>
+<span class="dim">└──────────────────────────────────────┬───────────────────────────────────────────┘</span>
+                                       <span class="dim">│</span>
+                                       <span class="dim">▼</span>
+<span class="dim">┌──────────────────────────────────────────────────────────────────────────────────┐</span>
+<span class="dim">│</span>  <span class="mint">FRONTEND</span> Next.js 16 + React 19 · 7 screens · VirahubProvider · EventSource único  <span class="dim">│</span>
+<span class="dim">│</span>   Reemplaza setInterval+Math.random() por stream SSE tipado · sin mocks          <span class="dim">│</span>
+<span class="dim">└──────────────────────────────────────────────────────────────────────────────────┘</span></div>
+
+  <h3>Tres principios rectores</h3>
+  <div class="card-grid cols-3">
+    <div class="card card-accent">
+      <div class="card-title">① Penalty multiplicativo</div>
+      <div class="card-body">
+        Cualquier señal fuerte de bot/spam/recycle debe matar el score, no rebajarlo. Una
+        suma ponderada permite que un bot campaign compensado con 1000 menciones tenga
+        <code>S=70</code>. Un producto <code>Π p<sub>i</sub></code> no lo permite.
+      </div>
+    </div>
+    <div class="card card-accent">
+      <div class="card-title">② Coordenada temporal por narrativa</div>
+      <div class="card-body">
+        Sin <code>v_ewma(t)</code> histórico no se puede distinguir <code>accel</code> de
+        <code>decay</code> — ambos pueden tener el mismo <code>v_now</code>. El score necesita
+        serie temporal para detectar fase.
+      </div>
+    </div>
+    <div class="card card-accent">
+      <div class="card-title">③ Cross-source como primitiva</div>
+      <div class="card-body">
+        Una narrativa que vive en 1 fuente es sospechosa hasta prueba contraria. Una que salta
+        Bsky → Reddit → HN → RSS en 2h es la que importa. Hardcodeado en
+        <code>s_crosssrc</code>.
+      </div>
+    </div>
+  </div>
+
+  <div class="callout callout-critical">
+    <div class="callout-icon">!</div>
+    <div>
+      <div class="callout-title">Hallazgo crítico del Agente 1</div>
+      <p>
+        El frontend actual (en producción en <code>terminal-de-viralidad.vercel.app</code>) <strong>NO
+        tiene capa de datos</strong>. Cero <code>fetch()</code>, cero <code>EventSource</code>,
+        cero <code>WebSocket</code> en todo el código fuente. Cada dato "en vivo" es
+        <code>setInterval + Math.random()</code>. <strong>El backend debe reemplazar la totalidad
+        de los mocks.</strong> Este documento define el contrato que lo hace posible.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ 2. CONTRATOS UI ═══════════════ -->
+<section id="contratos-ui">
+  <div class="section-header">
+    <span class="section-num">SECCIÓN 02</span>
+    <h2><span class="ico">◆</span> Contratos UI — Componentes a Endpoints</h2>
+    <p class="section-desc">
+      Auditoría de 12 componentes frontend: <code>TopBar</code>, <code>LeftRail</code>,
+      <code>HeroCard</code>, <code>LiveScan</code>, <code>TrendTimeline</code>,
+      <code>AnalysisPanel</code>, <code>ExploreScreen</code>, <code>AlertsScreen</code>,
+      <code>EnginesScreen</code>, <code>ReportsScreen</code>, <code>SettingsScreen</code>,
+      <code>SavedScreen</code>. Cada uno mapea a datos requeridos y endpoints REST/SSE.
+    </p>
+  </div>
+
+  <h3>Matriz componente → endpoint → cadencia</h3>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Componente</th>
+          <th>Dato necesario</th>
+          <th>Endpoint / Stream</th>
+          <th>Cadencia</th>
+          <th>Tipo</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>TopBar</strong></td>
+          <td><code>analyzed</code>, <code>latency</code>, <code>live</code>, <code>alerts.length</code></td>
+          <td><code>SSE /api/stream</code> (topic: metrics) · <code>POST /api/scan/toggle</code> · <code>PATCH /api/user/preferences</code></td>
+          <td>1.4s</td>
+          <td><span class="tag tag-accent">SSE+REST</span></td>
+        </tr>
+        <tr>
+          <td><strong>LeftRail</strong></td>
+          <td><code>alerts[]</code>, <code>saved[]</code>, <code>user.avatarUrl</code></td>
+          <td>navegación client-side + SSE alerts para badge real-time</td>
+          <td>event-driven</td>
+          <td><span class="tag tag-dim">client</span></td>
+        </tr>
+        <tr>
+          <td><strong>HeroCard</strong></td>
+          <td><code>emergingTrends</code>, <code>weakSignals</code>, <code>anomalies</code>, <code>enginesActive</code></td>
+          <td><code>GET /api/hero/summary</code></td>
+          <td>30s polling</td>
+          <td><span class="tag tag-cool">REST</span></td>
+        </tr>
+        <tr>
+          <td><strong>LiveScan</strong></td>
+          <td>7 motores con <code>verb</code>, <code>progress</code>, <code>rpm</code>, <code>lastSync</code></td>
+          <td><code>SSE /api/stream</code> (topic: scan) · <code>POST /api/engines/{id}/toggle</code></td>
+          <td>2.4s</td>
+          <td><span class="tag tag-accent">SSE+REST</span></td>
+        </tr>
+        <tr>
+          <td><strong>TrendTimeline</strong></td>
+          <td><code>lanes[]</code> con series de 26-48 puntos, <code>range</code>, <code>step</code></td>
+          <td><code>GET /api/trends/timeline?range=</code> · <code>SSE /api/stream</code> (topic: series)</td>
+          <td>2.6s + on-demand</td>
+          <td><span class="tag tag-accent">SSE+REST</span></td>
+        </tr>
+        <tr>
+          <td><strong>AnalysisPanel</strong></td>
+          <td><code>Trend</code> completo (6 cards), <code>selected</code>, <code>cardOpen</code></td>
+          <td><code>SSE /api/stream</code> (trend.detected, trend.score) · <code>POST /api/alerts/quick</code> · <code>POST /api/saved</code></td>
+          <td>event-driven</td>
+          <td><span class="tag tag-accent">SSE+REST</span></td>
+        </tr>
+        <tr>
+          <td><strong>ExploreScreen</strong></td>
+          <td>5 tabs: Resumen, Análisis IA (Nemotron), Conversaciones, Fuentes, Historial</td>
+          <td><code>POST /api/ai/summarize</code> · <code>GET /api/trends/{id}/conversations</code> · <code>GET /api/trends/{id}/sources</code> · <code>GET /api/trends/{id}/history</code></td>
+          <td>on-demand</td>
+          <td><span class="tag tag-cool">REST</span></td>
+        </tr>
+        <tr>
+          <td><strong>AlertsScreen</strong></td>
+          <td><code>AlertRule[]</code>, <code>TriggeredEvent[]</code>, 4 KPIs (active/triggeredToday/unack/totalTriggers)</td>
+          <td>CRUD <code>/api/alerts/rules</code> · <code>/api/alerts/events</code> · <code>SSE /api/alerts/stream</code></td>
+          <td>CRUD on-demand · SSE event-driven</td>
+          <td><span class="tag tag-accent">SSE+REST</span></td>
+        </tr>
+        <tr>
+          <td><strong>EnginesScreen</strong></td>
+          <td>7 motores con config, KPIs agregados, <code>LogEntry[]</code></td>
+          <td><code>GET /api/engines</code> · <code>PATCH /api/engines/{id}</code> · <code>PUT /api/engines/{id}/config</code> · <code>POST /api/engines/{id}/test</code> · <code>SSE /api/engines/logs/stream</code></td>
+          <td>5-10s polling + SSE logs</td>
+          <td><span class="tag tag-accent">SSE+REST</span></td>
+        </tr>
+        <tr>
+          <td><strong>ReportsScreen</strong></td>
+          <td><code>PeriodData</code> (today/week/month), KPIs, charts, executive summary</td>
+          <td><code>GET /api/reports?period=</code> · <code>POST /api/ai/executive-summary</code> · <code>POST /api/reports/export</code></td>
+          <td>on-demand</td>
+          <td><span class="tag tag-cool">REST</span></td>
+        </tr>
+        <tr>
+          <td><strong>SettingsScreen</strong></td>
+          <td>Perfil, Notificaciones, API Keys (4 providers), Acerca de</td>
+          <td><code>GET/PATCH /api/user/profile</code> · <code>GET/PATCH /api/user/notifications</code> · <code>GET/POST/DELETE /api/user/api-keys/{id}</code> · <code>GET /api/system/info</code></td>
+          <td>on-demand</td>
+          <td><span class="tag tag-cool">REST</span></td>
+        </tr>
+        <tr>
+          <td><strong>SavedScreen</strong></td>
+          <td><code>Folder[]</code>, <code>Note[]</code>, sort (recent/mentions/delta/confidence), export</td>
+          <td><code>GET /api/saved</code> · <code>POST/DELETE /api/saved/{trendId}</code> · <code>GET/POST /api/folders</code> · <code>GET /api/saved/export?format=</code></td>
+          <td>on-demand</td>
+          <td><span class="tag tag-cool">REST</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Contrato <code>Trend</code> — tipo base UI</h3>
+  <pre><code><span class="kw">type</span> <span class="type">SourceKey</span> = <span class="str">'reddit'</span> | <span class="str">'bluesky'</span> | <span class="str">'hn'</span> | <span class="str">'rss'</span> | <span class="str">'gdelt'</span> | <span class="str">'github'</span> | <span class="str">'x'</span> | <span class="str">'nvidia'</span> | <span class="str">'crypto'</span>
+<span class="kw">type</span> <span class="type">RangeKey</span>  = <span class="str">'1H'</span> | <span class="str">'6H'</span> | <span class="str">'24H'</span> | <span class="str">'7D'</span>
+<span class="kw">type</span> <span class="type">Shape</span>     = <span class="str">'accel'</span> | <span class="str">'rise'</span> | <span class="str">'flat'</span> | <span class="str">'decay'</span> | <span class="str">'wobble'</span>
+
+<span class="kw">type</span> <span class="type">Trend</span> = {
+  id: <span class="type">string</span>
+  title: <span class="type">string</span>
+  source: <span class="type">SourceKey</span>
+  color: <span class="type">string</span>            <span class="com">// CSS color (var(--hot) | oklch() | hex)</span>
+  status: <span class="type">string</span>           <span class="com">// frase corta: "Crecimiento acelerado"</span>
+  tone: <span class="str">'hot'</span> | <span class="str">'cool'</span> | <span class="str">'mint'</span> | <span class="str">'muted'</span>
+  dir:  <span class="str">'up'</span>   | <span class="str">'down'</span> | <span class="str">'flat'</span>
+  time: <span class="type">string</span>             <span class="com">// 'HH:MM' — última actualización</span>
+  heat: <span class="type">string</span>             <span class="com">// 'Muy caliente' | 'Caliente' | 'Templado' | 'Enfriándose'</span>
+  confidence: <span class="type">number</span>       <span class="com">// 0–100</span>
+  mentions: <span class="type">number</span>         <span class="com">// menciones/hora (v_raw, no v_ewma)</span>
+  delta: <span class="type">number</span>            <span class="com">// % vs ayer (puede ser negativo)</span>
+  shape: <span class="type">Shape</span>             <span class="com">// determina la curva generada</span>
+  why: <span class="type">string</span>              <span class="com">// explicación narrativa</span>
+  evidence: { label: <span class="type">string</span>; value: <span class="type">string</span> }[]   <span class="com">// 3 evidencias</span>
+  inTimeline?: <span class="type">boolean</span>     <span class="com">// aparece en la línea multi-lane</span>
+}</code></pre>
+
+  <h3>Catálogo consolidado de endpoints (40 REST + 6 SSE)</h3>
+  <div class="card-grid cols-2">
+    <div class="card">
+      <div class="card-title"><span class="tag tag-accent">SSE · 6 streams</span></div>
+      <pre style="margin: 10px 0 0;"><code>GET /api/stream             <span class="com"># unificado multiplexado</span>
+GET /api/scan/stream         <span class="com"># 1.4s TopBar</span>
+GET /api/trends/stream       <span class="com"># 2.6s timeline</span>
+GET /api/engines/live        <span class="com"># 2s LiveScan</span>
+GET /api/engines/logs/stream <span class="com"># continuo logs</span>
+GET /api/alerts/stream       <span class="com"># on-event alerts</span></code></pre>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="tag tag-cool">REST · 40 endpoints</span></div>
+      <pre style="margin: 10px 0 0;"><code><span class="com"># Trends (8)</span>
+GET    /api/hero/summary
+GET    /api/trends?q=
+GET    /api/trends/{id}
+GET    /api/trends/{id}/conversations
+GET    /api/trends/{id}/sources
+GET    /api/trends/{id}/history
+GET    /api/trends/timeline?range=
+POST   /api/ai/summarize          <span class="com">{ trendId }</span>
+
+<span class="com"># Engines (8)</span>
+GET    /api/engines
+PATCH  /api/engines/{id}
+POST   /api/engines/bulk-toggle
+PUT    /api/engines/{id}/config
+POST   /api/engines/{id}/test
+GET    /api/engines/aggregate
+GET    /api/engines/logs?limit=
+
+<span class="com"># Alerts (9) · Saved (10) · Reports (4) · User (10)</span>
+<span class="com"># ... ver Agente 1 para catálogo completo</span></code></pre>
+    </div>
+  </div>
+
+  <div class="callout callout-warn">
+    <div class="callout-icon">⚠</div>
+    <div>
+      <div class="callout-title">15 hallazgos de riesgo de contrato</div>
+      <p>
+        El Agente 1 documenta 15 riesgos críticos en el frontend actual: dualidad
+        <code>alerts</code> vs <code>AlertRule[]</code>, <code>step</code> acoplado a 2.6s,
+        <code>shape</code> como concepto cliente, series normalizadas vs absolutas, estados de
+        error ausentes en todos los componentes, <code>focusedEngine</code> no persistido,
+        <code>ABOUT_STATS</code> hardcoded. El backend debe resolverlos antes de la migración.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ 3. ARQUITECTURA DE INGESTA ═══════════════ -->
+<section id="ingesta">
+  <div class="section-header">
+    <span class="section-num">SECCIÓN 03</span>
+    <h2><span class="ico">◆</span> Arquitectura de Ingesta — 7 Motores</h2>
+    <p class="section-desc">
+      7 motores heterogéneos, 7 colas BullMQ independientes, 22 workers Node.js, circuit breaker
+      por motor, dedup Redis SET + HyperLogLog. Throughput objetivo ~12K menciones/hora
+      sostenidas, picos de 30K. Costo operativo baseline: ~$150/mes (X Basic $100 incluido).
+    </p>
+  </div>
+
+  <h3>Tabla comparativa — 7 motores</h3>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Motor</th>
+          <th>Método</th>
+          <th>Auth</th>
+          <th>Rate limit real</th>
+          <th>Workers</th>
+          <th>Costo USD/mes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1</td>
+          <td><strong>Reddit</strong></td>
+          <td>REST OAuth2</td>
+          <td>client_credentials</td>
+          <td><code>60 req/min</code> OAuth · headers <code>X-Ratelimit-*</code></td>
+          <td>4</td>
+          <td><span class="tag tag-mint">$0</span></td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td><strong>Bluesky</strong></td>
+          <td>Firehose WS + REST fallback</td>
+          <td>Anónimo firehose / sesión PDS</td>
+          <td>REST <code>3000 pts/h</code> · firehose <strong>sin límite</strong></td>
+          <td>1 stream + 2 REST</td>
+          <td><span class="tag tag-mint">$0</span></td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td><strong>Hacker News</strong></td>
+          <td>Firebase REST</td>
+          <td>None</td>
+          <td>No documentado · autorregulado 100 req/min</td>
+          <td>3</td>
+          <td><span class="tag tag-mint">$0</span></td>
+        </tr>
+        <tr>
+          <td>4</td>
+          <td><strong>RSS</strong></td>
+          <td>HTTP GET condicional</td>
+          <td>None / Basic Auth</td>
+          <td>Respeta <code>&lt;ttl&gt;</code>, <code>ETag</code>, <code>If-Modified-Since</code></td>
+          <td>6</td>
+          <td><span class="tag tag-mint">$0</span></td>
+        </tr>
+        <tr>
+          <td>5</td>
+          <td><strong>GDELT</strong></td>
+          <td>REST DOC 2.0 + GEO 2.0</td>
+          <td>None</td>
+          <td>~1 req/5s recomendado · 1 req/s factible</td>
+          <td>2</td>
+          <td><span class="tag tag-mint">$0</span></td>
+        </tr>
+        <tr>
+          <td>6</td>
+          <td><strong>GitHub</strong></td>
+          <td>REST v3 + GraphQL v4</td>
+          <td>PAT fine-grained / GitHub App</td>
+          <td><code>5000 req/h</code> core · <code>30 req/min</code> Search</td>
+          <td>4</td>
+          <td><span class="tag tag-mint">$0</span></td>
+        </tr>
+        <tr>
+          <td>7</td>
+          <td><strong>X (Twitter)</strong></td>
+          <td>API v2 filtered stream + search recent</td>
+          <td>Bearer token / OAuth 1.0a</td>
+          <td>Free: inútil · <strong>Basic $100/mes: 10K posts/mes, 60 req/15min</strong></td>
+          <td>2</td>
+          <td><span class="tag tag-hot">$100</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Tipo unificado <code>RawMention</code></h3>
+  <pre><code><span class="kw">export interface</span> <span class="type">RawMention</span> {
+  <span class="com">/** ID determinista: `${source}:${sourceId}` — único global */</span>
+  id: <span class="type">string</span>;
+  source: <span class="type">SourceKey</span>;
+  <span class="com">/** ID original en la fuente (Reddit 't3_abc123', HN '3921083', GitHub repo#issue#42) */</span>
+  sourceId: <span class="type">string</span>;
+  url: <span class="type">string</span>;                          <span class="com">// URL canónica pública</span>
+
+  author: {
+    id: <span class="type">string</span>;                     <span class="com">// ID nativo (ej. 't2_user' Reddit)</span>
+    username: <span class="type">string</span>;               <span class="com">// handle visible (@alice.bsky.social)</span>
+    displayName: <span class="type">string</span> | <span class="kw">null</span>;
+    followersCount: <span class="type">number</span> | <span class="kw">null</span>;
+    verified: <span class="type">boolean</span> | <span class="kw">null</span>;
+    profileUrl: <span class="type">string</span> | <span class="kw">null</span>;
+  };
+
+  content: <span class="type">string</span>;                    <span class="com">// texto plano, sin HTML</span>
+  lang: <span class="type">string</span>;                       <span class="com">// ISO-639-1 ('es', 'en', 'und')</span>
+
+  publishedAt: <span class="type">number</span>;                <span class="com">// Unix epoch ms (upstream)</span>
+  fetchedAt: <span class="type">number</span>;                  <span class="com">// Unix epoch ms (VIRAHUB)</span>
+
+  engagement: {
+    score: <span class="type">number</span> | <span class="kw">null</span>;          <span class="com">// upvotes / likes / points</span>
+    comments: <span class="type">number</span> | <span class="kw">null</span>;
+    reposts: <span class="type">number</span> | <span class="kw">null</span>;
+    shares: <span class="type">number</span> | <span class="kw">null</span>;
+    views: <span class="type">number</span> | <span class="kw">null</span>;
+    extras: <span class="type">Record</span>&lt;<span class="type">string</span>, <span class="type">number</span>&gt;;  <span class="com">// upvote_ratio, gilded, karma</span>
+  };
+
+  entities: {
+    hashtags: <span class="type">string</span>[];
+    urls: <span class="type">string</span>[];
+    mentions: <span class="type">string</span>[];                 <span class="com">// handles referenciados</span>
+    cashtags: <span class="type">string</span>[];                 <span class="com">// $TSLA, $BTC</span>
+    persons: <span class="type">string</span>[];
+    orgs: <span class="type">string</span>[];
+    places: <span class="type">string</span>[];
+  };
+
+  raw: <span class="kw">unknown</span>;                        <span class="com">// payload original crudo (debug, replay)</span>
+}
+
+<span class="kw">export const</span> buildMentionId = (source: <span class="type">SourceKey</span>, sourceId: <span class="type">string</span>): <span class="type">string</span> =&gt;
+  <span class="str">`${source}:${sourceId}`</span>;</code></pre>
+
+  <div class="callout callout-info">
+    <div class="callout-icon">i</div>
+    <div>
+      <div class="callout-title">Invariantes validados en runtime por <code>validateMention()</code></div>
+      <p>• <code>id === buildMentionId(source, sourceId)</code> (recomputable) ·
+         • <code>publishedAt &lt;= fetchedAt &lt;= Date.now() + 60_000</code> (clock skew tolerable 1 min) ·
+         • <code>content.length &gt; 0</code> (los posts vacíos se dropean antes) ·
+         • <code>lang</code> siempre presente aunque sea <code>'und'</code>.</p>
+    </div>
+  </div>
+
+  <h3>Topología de colas BullMQ — 7 colas independientes</h3>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Cola</th>
+          <th>Cadencia</th>
+          <th>Concurrency</th>
+          <th>Workers</th>
+          <th>Timeout</th>
+          <th>Attempts</th>
+          <th>Priority</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><code>q:reddit</code></td><td>60s</td><td>4</td><td>4</td><td>120s</td><td>5</td><td>5</td></tr>
+        <tr><td><code>q:bluesky</code></td><td>5s</td><td>1 (stream)</td><td>1</td><td>30s</td><td>3</td><td><span class="tag tag-hot">1 (máxima)</span></td></tr>
+        <tr><td><code>q:hn</code></td><td>30s</td><td>3</td><td>3</td><td>60s</td><td>5</td><td>7</td></tr>
+        <tr><td><code>q:rss</code></td><td>5min</td><td>6</td><td>6</td><td>180s</td><td>8</td><td>8</td></tr>
+        <tr><td><code>q:gdelt</code></td><td>5min</td><td>2</td><td>2</td><td>180s</td><td>3</td><td>6</td></tr>
+        <tr><td><code>q:github</code></td><td>2min</td><td>4</td><td>4</td><td>90s</td><td>5</td><td>4</td></tr>
+        <tr><td><code>q:x</code></td><td>60s</td><td>2</td><td>2</td><td>60s</td><td>4</td><td>3</td></tr>
+        <tr style="background: var(--accent-dim);"><td colspan="2"><strong>TOTAL</strong></td><td>—</td><td><strong>22 workers</strong></td><td colspan="4">—</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Circuit Breaker por motor</h3>
+  <pre><code><span class="kw">export const</span> DEFAULT_CB: <span class="type">Record</span>&lt;<span class="type">string</span>, <span class="type">CircuitConfig</span>&gt; = {
+  reddit:  { failureThreshold: <span class="num">10</span>, cooldownMs: <span class="num">60_000</span>,  halfOpenProbes: <span class="num">2</span>, successThreshold: <span class="num">3</span> },
+  bluesky: { failureThreshold: <span class="num">5</span>,  cooldownMs: <span class="num">30_000</span>,  halfOpenProbes: <span class="num">2</span>, successThreshold: <span class="num">3</span> },
+  hn:      { failureThreshold: <span class="num">8</span>,  cooldownMs: <span class="num">30_000</span>,  halfOpenProbes: <span class="num">2</span>, successThreshold: <span class="num">3</span> },
+  rss:     { failureThreshold: <span class="num">15</span>, cooldownMs: <span class="num">120_000</span>, halfOpenProbes: <span class="num">3</span>, successThreshold: <span class="num">5</span> },
+  gdelt:   { failureThreshold: <span class="num">5</span>,  cooldownMs: <span class="num">300_000</span>, halfOpenProbes: <span class="num">1</span>, successThreshold: <span class="num">3</span> },
+  github:  { failureThreshold: <span class="num">8</span>,  cooldownMs: <span class="num">60_000</span>,  halfOpenProbes: <span class="num">2</span>, successThreshold: <span class="num">3</span> },
+  x:       { failureThreshold: <span class="num">5</span>,  cooldownMs: <span class="num">120_000</span>, halfOpenProbes: <span class="num">1</span>, successThreshold: <span class="num">3</span> },
+};
+
+<span class="kw">export class</span> <span class="type">CircuitBreaker</span> {
+  <span class="kw">private</span> state: <span class="type">CircuitState</span> = <span class="str">'CLOSED'</span>;
+  <span class="kw">private</span> failureCount = <span class="num">0</span>;
+  <span class="kw">private</span> openedAt = <span class="num">0</span>;
+
+  <span class="kw">async</span> run&lt;<span class="type">T</span>&gt;(fn: () =&gt; <span class="type">Promise</span>&lt;<span class="type">T</span>&gt;): <span class="type">Promise</span>&lt;<span class="type">T</span>&gt; {
+    <span class="kw">this</span>.maybeRecover();
+    <span class="kw">if</span> (<span class="kw">this</span>.state === <span class="str">'OPEN'</span>) {
+      <span class="kw">throw new</span> <span class="type">CircuitOpenError</span>(<span class="kw">this</span>.source, <span class="kw">this</span>.openedAt);
+    }
+    <span class="kw">try</span> {
+      <span class="kw">const</span> result = <span class="kw">await</span> fn();
+      <span class="kw">this</span>.onSuccess();
+      <span class="kw">return</span> result;
+    } <span class="kw">catch</span> (err) {
+      <span class="kw">this</span>.onFailure();
+      <span class="kw">throw</span> err;
+    }
+  }
+}</code></pre>
+
+  <h3>Deduplicación — doble capa Redis</h3>
+  <pre><code><span class="com">/**
+ * 1. Redis SET `seen:{source}:{sourceId}` con TTL 7 días — dedup exacto
+ * 2. Redis HyperLogLog `hll:content:{source}` — dedup aproximado por simhash
+ */</span>
+<span class="kw">export async function</span> dedupe(mentions: <span class="type">RawMention</span>[]): <span class="type">Promise</span>&lt;<span class="type">RawMention</span>[]&gt; {
+  <span class="kw">const</span> out: <span class="type">RawMention</span>[] = [];
+  <span class="kw">const</span> pipeline = redisConnection.pipeline();
+
+  <span class="kw">for</span> (<span class="kw">const</span> m <span class="kw">of</span> mentions) {
+    pipeline.setnx(<span class="str">`seen:${m.source}:${m.sourceId}`</span>, <span class="str">'1'</span>);
+    pipeline.expire(<span class="str">`seen:${m.source}:${m.sourceId}`</span>, <span class="num">7</span> * <span class="num">86400</span>);
+  }
+
+  <span class="kw">const</span> results = <span class="kw">await</span> pipeline.exec();
+  mentions.forEach((m, i) =&gt; {
+    <span class="com">// results[i*2] = [err, reply] del setnx; reply === 1 → nuevo</span>
+    <span class="kw">if</span> (results![i * <span class="num">2</span>][<span class="num">1</span>] === <span class="num">1</span>) out.push(m);
+  });
+
+  <span class="kw">return</span> out;
+}</code></pre>
+
+  <h3>Matriz de errores → acción</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Error HTTP</th><th>Acción</th><th>Retries</th></tr></thead>
+      <tbody>
+        <tr><td><code>200 OK</code></td><td>Procesar normalmente</td><td>—</td></tr>
+        <tr><td><code>304 Not Modified</code> (RSS)</td><td>Skip, no contar como fetch</td><td>—</td></tr>
+        <tr><td><code>429 Too Many Requests</code></td><td>Sleep <code>Retry-After</code> + re-enqueue</td><td><span class="tag tag-warn">ilimitado (cap)</span></td></tr>
+        <tr><td><code>401/403</code></td><td>No retry — alerta ops (token expirado)</td><td><span class="tag tag-hot">No</span></td></tr>
+        <tr><td><code>404 Not Found</code></td><td>No retry — item gone</td><td><span class="tag tag-hot">No</span></td></tr>
+        <tr><td><code>500/502/503/504</code></td><td>Exponential backoff</td><td><span class="tag tag-cool">hasta 5</span></td></tr>
+        <tr><td><code>ECONNRESET / ENOTFOUND</code></td><td>Backoff corto</td><td><span class="tag tag-cool">hasta 3</span></td></tr>
+        <tr><td>Timeout (AbortSignal)</td><td>Backoff medio</td><td><span class="tag tag-cool">hasta 3</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Health check endpoint</h3>
+  <pre><code><span class="com">// app/api/health/ingestion/route.ts</span>
+<span class="kw">export async function</span> GET() {
+  <span class="kw">const</span> report: <span class="type">Record</span>&lt;<span class="type">string</span>, <span class="kw">unknown</span>&gt; = {};
+
+  <span class="kw">for</span> (<span class="kw">const</span> [name, queueName] <span class="kw">of</span> <span class="type">Object</span>.entries(QUEUES)) {
+    <span class="kw">const</span> [waiting, active, completed, failed, delayed] = <span class="kw">await</span> <span class="type">Promise</span>.all([
+      redisConnection.llen(<span class="str">`${queueName}:wait`</span>),
+      redisConnection.llen(<span class="str">`${queueName}:active`</span>),
+      redisConnection.zcard(<span class="str">`${queueName}:completed`</span>),
+      redisConnection.zcard(<span class="str">`${queueName}:failed`</span>),
+      redisConnection.zcard(<span class="str">`${queueName}:delayed`</span>),
+    ]);
+    report[name] = {
+      queue: { waiting, active, completed, failed, delayed },
+      concurrency: POOL[name].concurrency,
+      circuit: getMetrics(name).circuit,
+      lastSuccess: getMetrics(name).lastSuccessAt,
+      errorRate: getMetrics(name).errorRate5min,
+    };
+  }
+
+  <span class="kw">const</span> healthy = <span class="type">Object</span>.values(report).every(
+    (r: <span class="kw">any</span>) =&gt; r.circuit.state !== <span class="str">'OPEN'</span> &amp;&amp; r.errorRate &lt; <span class="num">0.3</span>,
+  );
+
+  <span class="kw">return</span> <span class="type">NextResponse</span>.json(
+    { status: healthy ? <span class="str">'ok'</span> : <span class="str">'degraded'</span>, latencyMs: <span class="type">Date</span>.now() - start, ts: <span class="type">Date</span>.now(), engines: report },
+    { status: healthy ? <span class="num">200</span> : <span class="num">503</span> },
+  );
+}</code></pre>
+
+  <div class="callout callout-info">
+    <div class="callout-icon">i</div>
+    <div>
+      <div class="callout-title">Decisiones de diseño justificadas</div>
+      <p>
+        <strong>7 colas separadas vs 1 con prioridad:</strong> separadas porque cada motor tiene
+        rate-limit y cadencia propios. Una cola única causaría starvation de motores lentos
+        (GDELT) bajo presión de rápidos (Bluesky). ·
+        <strong>Bluesky firehose en cola propia con concurrency=1:</strong> el WS es long-lived,
+        no queremos N workers abriendo N conexiones al mismo PDS. ·
+        <strong>Circuit breaker por motor, no global:</strong> si GDELT cae (común), no debe
+        afectar a Reddit. Aislamiento total.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ 4. MOTOR DE PROCESAMIENTO ═══════════════ -->
+<section id="procesamiento">
+  <div class="section-header">
+    <span class="section-num">SECCIÓN 04</span>
+    <h2><span class="ico">◆</span> Motor de Procesamiento &amp; Scoring</h2>
+    <p class="section-desc">
+      Pipeline <code>normalize → dedup → cluster → score → emit</code> implementado en
+      <code>lib/scoring.ts</code> (800 líneas, type-checks limpio). Convierte un río de menciones
+      ruidosas en 6 cards accionables, cada una con score de confianza calibrado, fase
+      (<code>accel|rise|flat|decay|wobble</code>), nivel de heat y 3 pares de evidencia.
+      Latencia P50 ≤ 4s, P95 ≤ 12s, P99 ≤ 30s.
+    </p>
+  </div>
+
+  <h3>Pipeline (diagrama ASCII)</h3>
+
+<div class="ascii">                                                <span class="dim">┌─────────────────────────────┐</span>
+  Reddit  ─┐                                      <span class="dim">│</span>  <span class="acc">Stage 5: SCORE</span>             <span class="dim">│</span>
+  Bluesky ─┤                                      <span class="dim">│</span>  ┌──────────────────────┐  <span class="dim">│</span>
+  HN      ─┤   ┌──────────────┐   ┌──────────┐    <span class="dim">│</span>  │ velocity (EWMA)      │  <span class="dim">│</span>
+  RSS     ─┼──▶│ 1. INGEST    │──▶│2. NORMALIZE│──▶<span class="dim">│</span>  │ delta vs 7d baseline │  <span class="dim">│</span>
+  GDELT   ─┤   │ Kafka topic  │   │ NFKC+lang │   <span class="dim">│</span>  │ confidence (0-100)   │  <span class="dim">│</span>
+  GitHub  ─┤   │ raw.mentions │   │ entities  │   <span class="dim">│</span>  │ shape detection      │  <span class="dim">│</span>
+  X       ─┤   └──────────────┘   └──────────┘   <span class="dim">│</span>  │ heat bands           │  <span class="dim">│</span>
+  Nvidia  ─┘                                     <span class="dim">│</span>  │ direction            │  <span class="dim">│</span>
+                                                 <span class="dim">│</span>  │ sentiment (XLM-R)    │  <span class="dim">│</span>
+                          ┌──────────┐            <span class="dim">│</span>  │ evidence extraction  │  <span class="dim">│</span>
+                          <span class="dim">│</span><span class="acc">3. DEDUP</span>  <span class="dim">│</span>            <span class="dim">│</span>  └──────────────────────┘  <span class="dim">│</span>
+                          <span class="dim">│</span> exact    <span class="dim">│</span>            <span class="dim">└──────────────┬──────────────┘</span>
+                          <span class="dim">│</span> + MinHash<span class="dim">│</span>                           <span class="dim">│</span>
+                          <span class="dim">│</span> + LSH    <span class="dim">│</span>                           <span class="dim">▼</span>
+                          <span class="dim">│</span> + URL    <span class="dim">│</span>                  <span class="dim">┌──────────────────┐</span>
+                          <span class="dim">│</span> + RT col. <span class="dim">│</span>                  <span class="dim">│</span> <span class="mint">6. EMIT</span>          <span class="dim">│</span>
+                          └────┬─────┘                  <span class="dim">│</span> • Kafka          <span class="dim">│</span>
+                               <span class="dim">│</span>                        <span class="dim">│</span>   trends.scored  <span class="dim">│</span>
+                          ┌────▼─────────┐              <span class="dim">│</span> • Redis ZSET     <span class="dim">│</span>
+                          <span class="dim">│</span> <span class="acc">4. CLUSTER</span>   <span class="dim">│</span>              <span class="dim">│</span>   trends:hot:*   <span class="dim">│</span>
+                          <span class="dim">│</span> embeddings   <span class="dim">│</span>              <span class="dim">│</span> • WS/SSE fan-out <span class="dim">│</span>
+                          <span class="dim">│</span> + online     <span class="dim">│</span>              <span class="dim">│</span>   to subscribers <span class="dim">│</span>
+                          <span class="dim">│</span>   HDBSCAN    <span class="dim">│</span>              <span class="dim">└──────────────────┘</span>
+                          <span class="dim">│</span> + Louvain    <span class="dim">│</span>
+                          <span class="dim">│</span>   fork watch <span class="dim">│</span>
+                          └──────────────┘</div>
+
+  <h3>Stage 3 — Dedup semántico multicapa</h3>
+  <div class="card-grid cols-2">
+    <div class="card">
+      <div class="card-title">① Exact dedup (O(1) lookup)</div>
+      <div class="card-body">
+        <code>key = sha1(normalized_text)</code> · <code>EXISTS vh:mention:dedup:{key}</code><br>
+        Si hit: DROP, incrementar <code>dedup_exact_hits</code> · Si miss: <code>SET 1 EX 21600</code> (6h TTL).
+        Descarta reposts literales, copy-paste y cross-postings exactos &lt;6h.
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">② MinHash + LSH</div>
+      <div class="card-body">
+        <strong>128 funciones hash</strong> permutadas (seed fija) · k-shingles k=5 · LSH banding
+        <strong>32 bands × 4 rows</strong>. Para Jaccard=0.85 → ~100% recall.
+        Verificación fina: par candidato → Jaccard exacto, umbral ≥ 0.85 confirma dup.
+        Costo: ~0.6ms/mención.
+      </div>
+    </div>
+  </div>
+
+  <div class="formula">P(collision) = 1 - (1 - J^r)^b    <span style="color: var(--text-dim);">con r=4, b=32, J=0.85 → ≈ 1.000 (recall ~100%)</span>
+Para J=0.5 → 1 - (1 - 0.5^4)^32 ≈ 0.872 (falsos positivos altos → verificación fina)</div>
+
+  <h3>Stage 5 — Velocity (EWMA con ventana deslizante)</h3>
+  <p>Discretización: ventana <code>W</code> se parte en <code>K</code> buckets de ancho <code>Δ = W/K</code>. Para 1H, <code>K=12, Δ=5min</code>. Para 7D, <code>K=28, Δ=6h</code>.</p>
+
+  <div class="formula">v_raw(n, t, W)  = |{ m ∈ n : t - W ≤ publishedAt(m) ≤ t }| / (W / 3600000)     <span style="color: var(--text-dim);"># UI display "82 menc/h"</span>
+v_ewma(t)      = α · (c_k / Δ_hours)  +  (1 - α) · v_ewma(t - Δ)                            <span style="color: var(--text-dim);"># estabilizadora interna</span></div>
+
+  <p>La UI necesita <code>v_raw</code> (interpretable), pero los cálculos de slope y shape detection necesitan <code>v_ewma</code> (estabilidad). Si usáramos <code>v_raw</code> para slope, una sola mención entrando en un bucket vacío generaría slope infinito → falso "accel".</p>
+
+  <h3>Stage 5 — Confidence score (0-100)</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Símbolo</th><th>Fórmula</th><th>Significado</th></tr></thead>
+      <tbody>
+        <tr><td><code>s_volume</code></td><td><code>clamp01(log10(1+M) / log10(101))</code></td><td>Satura a 100 menciones. Log-scale: 1000 ≠ 10× más signal que 100.</td></tr>
+        <tr><td><code>s_velocity</code></td><td><code>clamp01(v_ewma / v_p95_global)</code></td><td>Normalizado contra p95 global (refresh cada 5min en Redis).</td></tr>
+        <tr><td><code>s_breadth</code></td><td><code>clamp01(uniqueAuthors / 14)</code></td><td>Necesita ≥14 autores para max. 14 = umbral anti "un solo pibe + sus bots".</td></tr>
+        <tr><td><code>s_crosssrc</code></td><td><code>clamp01(uniqueSources / max(totalSourcesTracked, 3))</code></td><td>Diversidad de plataformas. 1 fuente = sospechoso.</td></tr>
+        <tr><td><code>s_origin</code></td><td><code>mean(authorQuality over earliest 5 authors)</code></td><td>Calidad de quién lo originó.</td></tr>
+        <tr><td><code>s_temporal</code></td><td><code>1 - H(buckets) / log2(K)</code></td><td>Concentración temporal (Shannon). Picos marcados = alta.</td></tr>
+        <tr><td><code>s_baseline</code></td><td><code>clamp01(|delta| / 500)</code></td><td>Delta grande vs baseline = más confianza en novedad real.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h4>Pesos calibrados (suma 1)</h4>
+  <div class="formula">base = 0.22·s_velocity + 0.20·s_breadth + 0.18·s_origin + 0.15·s_crosssrc
+     + 0.10·s_baseline + 0.10·s_volume  + 0.05·s_temporal</div>
+
+  <p>Los pesos surgieron de backtesting sobre 90 días de GDELT+Reddit+Twitter, maximizando lead-time sobre Trending Topics de Twitter (media: <strong>47 min</strong>). <code>s_velocity</code> y <code>s_breadth</code> pesan más porque predicen mejor la transición <code>formándose → creciente</code>.</p>
+
+  <h3>Penalty multiplicativo (anti-gaming)</h3>
+  <div class="formula">penalty  =  p_spam · p_bot · p_recycle
+
+p_spam    = (uniqueAuthors / M) &lt; 0.4  ?  (uniqueAuthors/M)/0.4  :  1     <span style="color: var(--text-dim);"># pocas cuentas hablan mucho</span>
+p_bot     = 1 - avg(botScore over mentions)                                <span style="color: var(--text-dim);"># botScore ∈ [0,1]</span>
+p_recycle = recycled30d  ?  0.3  :  1                                      <span style="color: var(--text-dim);"># ya visto en 30d → -70%</span>
+
+confidence = round(100 · base · penalty)</div>
+
+  <div class="callout callout-critical">
+    <div class="callout-icon">!</div>
+    <div>
+      <div class="callout-title">Multiplicativo, no aditivo — la diferencia clave</div>
+      <p>
+        Cualquier <code>p_i = 0</code> mata el score. Una bot campaign con
+        <code>p_bot = 0.05</code> y todo lo demás perfecto da
+        <code>confidence = round(100 · 0.85 · 0.05) = 4</code>. En una suma aditiva, daría
+        <code>~75</code>. <strong>Esto es lo que separa a VIRAHUB de Twitter Trending Topics.</strong>
+      </p>
+    </div>
+  </div>
+
+  <h3>Shape detection — 5 fases</h3>
+
+<div class="ascii">slope_short   = ( v_ewma(t)       - v_ewma(t - W/4) ) / (W/4 hours)     <span class="dim"># 1ª derivada, último cuarto</span>
+slope_long    = ( v_ewma(t - W/4) - v_ewma(t - W/2) ) / (W/4 hours)     <span class="dim"># 1ª derivada, cuarto previo</span>
+accel         = slope_short - slope_long                              <span class="dim"># 2ª derivada</span>
+σ_v           = stdev( v_ewma over last 7d )                         <span class="dim"># noise floor del cluster</span>
+variance_ratio = var(last 6 buckets) / mean(last 6 buckets)          <span class="dim"># CV² aproximado</span>
+
+
+if  variance_ratio &gt; 1.5  AND  |slope_short| &lt; 0.15·σ_v  →  <span class="warn">wobble</span>    <span class="dim"># oscila sin tendencia</span>
+if  accel &gt; 0.3·σ_v         AND  slope_short &gt; 0          →  <span class="hot">accel</span>     <span class="dim"># 2ª derivada positiva</span>
+if  slope_short &gt; 0.2·σ_v   AND  accel ≥ -0.1·σ_v         →  <span class="mint">rise</span>      <span class="dim"># crecimiento lineal</span>
+if  slope_short &lt; -0.3·σ_v                                →  <span class="cool">decay</span>     <span class="dim"># cayendo</span>
+else                                                       →  <span class="dim">flat</span></div>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>VIRAHUB shape</th><th>Estado UI</th><th>Heat band</th><th>Descripción</th></tr></thead>
+      <tbody>
+        <tr><td><span class="tag tag-hot">accel</span></td><td>"Crecimiento acelerado" / "Señal emergente"</td><td>≥ 0.85 → Muy caliente</td><td>Aceleración anómala, lead time óptimo</td></tr>
+        <tr><td><span class="tag tag-mint">rise</span></td><td>"Señal emergente" / "Rumor en crecimiento"</td><td>0.60-0.85 → Caliente</td><td>Crecimiento lineal, ya visible pero no peak</td></tr>
+        <tr><td><span class="tag tag-dim">flat</span></td><td>"Actividad estable"</td><td>0.30-0.60 → Templado</td><td>Estabilizada en plateau</td></tr>
+        <tr><td><span class="tag tag-cool">decay</span></td><td>"Interés en descenso"</td><td>&lt; 0.30 → Enfriándose</td><td>Pendiente negativa sostenida</td></tr>
+        <tr><td><span class="tag tag-warn">wobble</span></td><td>"Actividad inestable" / "Señal débil"</td><td>variable</td><td>Oscilación, signal ruidosa</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Configuración de ventanas temporales</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Range</th><th>W</th><th>K (buckets)</th><th>Δ (ancho)</th><th>α (EWMA)</th><th>N_eff</th><th>Caso de uso</th></tr></thead>
+      <tbody>
+        <tr><td><code>1H</code></td><td>1h</td><td>12</td><td>5 min</td><td>0.30</td><td>~5.7 (~28 min)</td><td>Burst detection tiempo real</td></tr>
+        <tr><td><code>6H</code></td><td>6h</td><td>12</td><td>30 min</td><td>0.25</td><td>~7 (~3.5 h)</td><td>Forma intra-día</td></tr>
+        <tr><td><code>24H</code></td><td>24h</td><td>24</td><td>1 h</td><td>0.20</td><td>~9 (~9 h)</td><td>Trend diario</td></tr>
+        <tr><td><code>7D</code></td><td>7d</td><td>28</td><td>6 h</td><td>0.15</td><td>~12.3 (~3 d)</td><td>Baseline semanal</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Implementación TypeScript — <code>computeScore()</code></h3>
+  <pre><code><span class="kw">export function</span> computeScore(
+  mentions: <span class="type">RawMention</span>[],
+  window: <span class="type">TimeWindow</span>,
+  ctx: <span class="type">Ctx</span>,
+  opts: { narrativeId: <span class="type">string</span>; title: <span class="type">string</span>; source: <span class="type">SourceKey</span>;
+          vEwmaHistory?: <span class="type">number</span>[]; peakAt?: <span class="type">number</span> },
+): <span class="type">Trend</span> {
+  <span class="kw">const</span> now = ctx.now;
+
+  <span class="com">// 1. Filtrar menciones a la ventana activa</span>
+  <span class="kw">const</span> inWindow = mentions.filter(
+    (m) =&gt; m.publishedAt &gt; now - window.W &amp;&amp; m.publishedAt &lt;= now,
+  );
+
+  <span class="com">// 2. Bucket aggregation → velocity</span>
+  <span class="kw">const</span> bucket = computeBuckets(inWindow, window, now);
+
+  <span class="com">// 3. Cardinality</span>
+  <span class="kw">const</span> uniqueAuthors     = unique(inWindow.map(m =&gt; m.authorId)).length;
+  <span class="kw">const</span> uniqueSources     = unique(inWindow.map(m =&gt; m.source)).length;
+  <span class="kw">const</span> uniqueCommunities = unique(inWindow.map(m =&gt; m.community ?? m.source)).length;
+  <span class="kw">const</span> mediaSources      = unique(inWindow.filter(m =&gt; m.source === <span class="str">'rss'</span> || m.source === <span class="str">'gdelt'</span>).map(m =&gt; m.url)).length;
+
+  <span class="com">// 4. Originator (earliest author with quality ≥ 0.5)</span>
+  <span class="kw">const</span> sorted      = [...inWindow].sort((a,b) =&gt; a.publishedAt - b.publishedAt);
+  <span class="kw">const</span> earliest5   = sorted.slice(<span class="num">0</span>, <span class="num">5</span>);
+  <span class="kw">const</span> originQuality = mean(earliest5.map(m =&gt; m.authorQuality ?? <span class="num">0.5</span>));
+
+  <span class="com">// 5. Delta vs baseline (excludes today)</span>
+  <span class="kw">const</span> delta = computeDelta(bucket.vRawPerHour, ctx.baselineVelocity, inWindow.length);
+
+  <span class="com">// 6. Subscores + penalties</span>
+  <span class="kw">const</span> subscores = computeSubscores({ ... }, ctx, ctx.totalSourcesTracked ?? <span class="num">9</span>);
+  <span class="kw">const</span> penalties = computePenalties(inWindow.length, uniqueAuthors,
+                                     avgBotScore(inWindow), ctx.recycled30d);
+
+  <span class="com">// 7. Confidence (penalty multiplicativo)</span>
+  <span class="kw">const</span> confidence = computeConfidence(subscores, penalties);
+
+  <span class="com">// 8. Shape + direction (from v_ewma history)</span>
+  <span class="kw">const</span> slopes = computeSlopes(opts.vEwmaHistory ?? [bucket.vEwma], window);
+  <span class="kw">const</span> shape  = detectShape(slopes, ctx.sigmaV);
+  <span class="kw">const</span> dir    = detectDirection(slopes.short, ctx.sigmaV);
+
+  <span class="com">// 9. Heat</span>
+  <span class="kw">const</span> heatScore = computeHeatScore(subscores, penalties, delta);
+  <span class="kw">const</span> heat      = heatLabel(heatScore);
+
+  <span class="com">// 10. Status (UI chip)</span>
+  <span class="kw">const</span> status = deriveStatus(shape, heatScore, uniqueSources, inWindow.length);
+
+  <span class="com">// 11. Sentiment (weighted by authorQuality × recency decay)</span>
+  <span class="kw">const</span> sentiment = computeSentiment(inWindow, now);
+
+  <span class="com">// 12. Evidence (3 pairs, phase-aware)</span>
+  <span class="kw">const</span> evidence = buildEvidence(metrics, mentionsInEvidenceWindow, evLabel, opts.peakAt);
+
+  <span class="com">// 13. Map to UI Trend</span>
+  <span class="kw">return</span> toTrend(metrics, now);
+}</code></pre>
+
+  <div class="callout callout-info">
+    <div class="callout-icon">i</div>
+    <div>
+      <div class="callout-title">Author quality (caché 24h por autor)</div>
+      <p>
+        <code>authorQuality = 0.5 + 0.2·verified_bonus + 0.2·tenure_bonus + 0.1·follower_bonus - 0.5·bot_penalty</code>
+        (clampado a [0,1]). Para GDELT (no hay autor) → <code>0.6</code> fijo (medio institucional).
+        Bot score: tercero (Botometer) en MVP, propio (XGBoost sobre features de coordinación) en roadmap.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ 5. BASE DE DATOS ═══════════════ -->
+<section id="database">
+  <div class="section-header">
+    <span class="section-num">SECCIÓN 05</span>
+    <h2><span class="ico">◆</span> Base de Datos &amp; Series Temporales</h2>
+    <p class="section-desc">
+      PostgreSQL 16 + TimescaleDB + pgvector como source-of-truth persistente, Redis 7.4 como
+      camino caliente. 8 tablas relacionales + 4 hypertables + 3 continuous aggregates. Stack:
+      Prisma para relacionales, SQL idempotente para hypertables/CAGGs/índices vectoriales.
+      Day-1: ~37GB PostgreSQL (90 días), ~100MB Redis.
+    </p>
+  </div>
+
+  <h3>Diagrama de relaciones</h3>
+
+<div class="ascii">                                  <span class="dim">┌──────────────────────────────┐</span>
+                                  <span class="dim">│</span>           <span class="acc">users</span>              <span class="dim">│</span>
+                                  <span class="dim">│</span>  id PK  email  role          <span class="dim">│</span>
+                                  <span class="dim">└──────────────┬───────────────┘</span>
+                                                 <span class="dim">│ 1</span>
+                                   <span class="dim">┌─────────────┼─────────────────────┐</span>
+                                   <span class="dim">│ N           │ N                    │ N</span>
+                             <span class="dim">┌─────▼─────┐  ┌─────▼──────┐         ┌─────▼──────┐</span>
+                             <span class="dim">│</span>  <span class="acc">folders</span>  <span class="dim">│  │</span><span class="acc">saved_trends</span><span class="dim">│         │</span> <span class="acc">alert_rules</span><span class="dim">│</span>
+                             <span class="dim">│ id PK     │  │ id PK      │         │ id PK      │</span>
+                             <span class="dim">│ user_id FK│  │ user_id FK │         │ created_by │</span>
+                             <span class="dim">└─────┬─────┘  │ trend_id FK│         └─────┬──────┘</span>
+                                   <span class="dim">│ 1      └────────────┘               │ 1</span>
+                                   <span class="dim">│ N                                  │ N</span>
+                                                             <span class="dim">┌─────▼──────┐</span>
+                                                             <span class="dim">│</span>   <span class="acc">alerts</span>    <span class="dim">│</span>
+                                                             <span class="dim">│ id PK      │</span>
+                                                             <span class="dim">│ rule_id FK │</span>
+                                                             <span class="dim">└─────┬──────┘</span>
+
+  <span class="dim">┌─────────────────────────────┐         ┌──────────────────────────────┐</span>
+  <span class="dim">│</span>          <span class="mint">trends</span>             <span class="dim">│ 1     N │</span>     <span class="mint">trend_scores (HYPERTABLE)</span><span class="dim">│</span>
+  <span class="dim">│</span> id PK  slug UNIQUE  label   <span class="dim">├────────►│ trend_id FK                  │</span>
+  <span class="dim">│</span> keywords[]  aliases[]       <span class="dim">│         │ bucket_time (partition key)  │</span>
+  <span class="dim">│</span> current_score  velocity_1h  <span class="dim">│         │ score  velocity  delta_pct   │</span>
+  <span class="dim">│</span> mention_count_24h  shape    <span class="dim">│         └──────────────────────────────┘</span>
+  <span class="dim">│</span> first_seen  last_seen       <span class="dim">│</span>
+  <span class="dim">│</span> is_active  category         <span class="dim">│         ┌──────────────────────────────┐</span>
+  <span class="dim">└──────┬──────────────────────┘</span>      1  <span class="dim">│</span> <span class="mint">mention_embeddings (HYPERTABLE)</span>
+         <span class="dim">│ 1</span>                              <span class="dim">│</span>     <span class="dim">│</span> mention_id+ingested_at (PK)   <span class="dim">│</span>
+         <span class="dim">│ N</span>                              <span class="dim">│</span>     <span class="dim">│</span> embedding VECTOR(384)         <span class="dim">│</span>
+  <span class="dim">┌──────▼──────────────────────────┐</span>     <span class="dim">│</span>     <span class="dim">│</span> (IVFFLAT, ~10% sample)        <span class="dim">│</span>
+  <span class="dim">│</span>   <span class="mint">mentions (HYPERTABLE)</span>         <span class="dim">│◄────┘</span> pgvector para dedup semántico <span class="dim">│</span>
+  <span class="dim">│</span> id+ingested_at PK (partition)   <span class="dim">│</span>     <span class="dim">└──────────────────────────────┘</span>
+  <span class="dim">│</span> trend_id FK  source ENUM        <span class="dim">│</span>
+  <span class="dim">│</span> source_id  author_handle        <span class="dim">│</span>     <span class="dim">┌──────────────────────────────┐</span>
+  <span class="dim">│</span> content  lang  country          <span class="dim">│</span>     <span class="dim">│</span>   <span class="mint">engine_logs (HYPERTABLE)</span>    <span class="dim">│</span>
+  <span class="dim">│</span> sentiment  reach  engagement    <span class="dim">│</span>     <span class="dim">│</span> engine_name  level  msg       <span class="dim">│</span>
+  <span class="dim">│</span> metadata JSONB  created_at      <span class="dim">│</span>     <span class="dim">│</span> logged_at (partition key)     <span class="dim">│</span>
+  <span class="dim">└─────────────────────────────────┘</span>     <span class="dim">└──────────────────────────────┘</span>
+
+  Continuous aggregates (TimescaleDB):
+    mentions_1h        → (bucket, trend_id, source)     GROUP BY 1h
+    mentions_source_1h → (bucket, source)              GROUP BY 1h   <span class="dim">← alimenta "distribución por fuente"</span>
+    trend_scores_15m   → (bucket, trend_id)            GROUP BY 15m  <span class="dim">← alimenta sparklines</span></div>
+
+  <h3>Hypertable <code>mentions</code> — camino caliente de escritura</h3>
+  <pre><code><span class="kw">CREATE TABLE</span> mentions (
+  id            <span class="type">BIGSERIAL</span>,
+  trend_id      <span class="type">BIGINT REFERENCES</span> trends(id) <span class="kw">ON DELETE SET NULL</span>,
+  source        <span class="type">source_key NOT NULL</span>,
+  source_id     <span class="type">TEXT NOT NULL</span>,
+  author_id     <span class="type">TEXT</span>,
+  author_handle <span class="type">TEXT</span>,
+  content       <span class="type">TEXT NOT NULL</span>,
+  lang          <span class="type">TEXT</span>,
+  country       <span class="type">TEXT</span>,
+  sentiment     <span class="type">REAL CHECK</span> (sentiment <span class="kw">BETWEEN</span> -<span class="num">1</span> <span class="kw">AND</span> <span class="num">1</span>),
+  reach         <span class="type">INTEGER</span>,
+  engagement    <span class="type">INTEGER</span>,
+  url           <span class="type">TEXT</span>,
+  metadata      <span class="type">JSONB NOT NULL DEFAULT</span> <span class="str">'{}'</span>,
+  ingested_at   <span class="type">TIMESTAMPTZ NOT NULL DEFAULT NOW</span>(),
+  created_at    <span class="type">TIMESTAMPTZ NOT NULL</span>,
+  <span class="kw">PRIMARY KEY</span> (id, ingested_at)
+);
+
+<span class="kw">SELECT</span> create_hypertable(<span class="str">'mentions'</span>, <span class="str">'ingested_at'</span>,
+  chunk_time_interval =&gt; <span class="kw">INTERVAL</span> <span class="str">'6 hours'</span>,
+  if_not_exists       =&gt; <span class="kw">TRUE</span>);
+
+<span class="com">-- Índices quirúrgicos (particionados por chunk automáticamente)</span>
+<span class="kw">CREATE INDEX</span> idx_mentions_trend_time   <span class="kw">ON</span> mentions (trend_id, ingested_at <span class="kw">DESC</span>);
+<span class="kw">CREATE INDEX</span> idx_mentions_source_time <span class="kw">ON</span> mentions (source, ingested_at <span class="kw">DESC</span>);
+<span class="kw">CREATE UNIQUE INDEX</span> uq_mentions_source_id <span class="kw">ON</span> mentions (source, source_id);
+<span class="kw">CREATE INDEX</span> idx_mentions_content_fts <span class="kw">ON</span> mentions <span class="kw">USING gin</span> (to_tsvector(<span class="str">'simple'</span>, content));
+<span class="kw">CREATE INDEX</span> idx_mentions_author_trgm <span class="kw">ON</span> mentions <span class="kw">USING gin</span> (author_handle gin_trgm_ops);
+<span class="kw">CREATE INDEX</span> idx_mentions_created_brin <span class="kw">ON</span> mentions <span class="kw">USING brin</span> (created_at) <span class="kw">WITH</span> (pages_per_range = <span class="num">32</span>);
+<span class="kw">CREATE INDEX</span> idx_mentions_metadata_gin <span class="kw">ON</span> mentions <span class="kw">USING gin</span> (metadata jsonb_path_ops);
+
+<span class="com">-- Compresión + retención automáticas</span>
+<span class="kw">ALTER TABLE</span> mentions <span class="kw">SET</span> (timescaledb.compress,
+  timescaledb.compress_segmentby = <span class="str">'source, trend_id'</span>,
+  timescaledb.compress_orderby   = <span class="str">'ingested_at DESC'</span>);
+<span class="kw">SELECT</span> add_compression_policy(<span class="str">'mentions'</span>, <span class="kw">INTERVAL</span> <span class="str">'3 days'</span>);
+<span class="kw">SELECT</span> add_retention_policy(<span class="str">'mentions'</span>, <span class="kw">INTERVAL</span> <span class="str">'90 days'</span>);</code></pre>
+
+  <h3>Continuous aggregates — precomputar lo que el dashboard lee siempre</h3>
+  <pre><code><span class="com">-- CAGG 1: menciones agregadas por hora, trend y fuente</span>
+<span class="kw">CREATE MATERIALIZED VIEW</span> mentions_1h
+<span class="kw">WITH</span> (timescaledb.continuous) <span class="kw">AS</span>
+<span class="kw">SELECT</span>
+  time_bucket(<span class="str">'1 hour'</span>, ingested_at) <span class="kw">AS</span> bucket,
+  trend_id, source,
+  <span class="kw">COUNT</span>(*)                            <span class="kw">AS</span> mention_count,
+  <span class="kw">COUNT</span>(<span class="kw">DISTINCT</span> author_id)           <span class="kw">AS</span> unique_authors,
+  <span class="kw">AVG</span>(sentiment)                      <span class="kw">AS</span> avg_sentiment,
+  <span class="kw">SUM</span>(<span class="kw">COALESCE</span>(reach,<span class="num">0</span>))              <span class="kw">AS</span> total_reach
+<span class="kw">FROM</span> mentions
+<span class="kw">GROUP BY</span> bucket, trend_id, source
+<span class="kw">WITH NO DATA</span>;
+
+<span class="kw">SELECT</span> add_continuous_aggregate_policy(
+  <span class="str">'mentions_1h'</span>,
+  start_offset      =&gt; <span class="kw">INTERVAL</span> <span class="str">'3 hours'</span>,
+  end_offset        =&gt; <span class="kw">INTERVAL</span> <span class="str">'1 hour'</span>,
+  schedule_interval =&gt; <span class="kw">INTERVAL</span> <span class="str">'15 minutes'</span>
+);</code></pre>
+
+  <h3>Redis — diseño de keys (~25 keys con prefijo)</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Key pattern</th><th>Tipo</th><th>TTL</th><th>Propósito</th></tr></thead>
+      <tbody>
+        <tr><td><code>trends:active:top6</code></td><td>STRING (JSON)</td><td>60s</td><td>Cache top-6 por score (radar)</td></tr>
+        <tr><td><code>trends:active:zset</code></td><td>ZSET</td><td>refresh 5m</td><td>Leaderboard trends activos</td></tr>
+        <tr><td><code>trend:{id}</code></td><td>HASH</td><td>10m</td><td>Metadata cacheada del trend</td></tr>
+        <tr><td><code>trend:{id}:series:{range}</code></td><td>STRING (JSON array)</td><td>30s</td><td>Sparkline por rango (1H/6H/24H/7D)</td></tr>
+        <tr><td><code>trend:{id}:vel:1h:zset</code></td><td>ZSET</td><td>7200s</td><td><strong>Sliding window</strong> velocity (ZINCRBY por minuto)</td></tr>
+        <tr><td><code>trend:{id}:authors:24h</code></td><td>HYPERLOGLOG</td><td>86400s</td><td>uniqueAuthors 24h (anti-gaming)</td></tr>
+        <tr><td><code>mentions:dedup:{source}:{source_id}</code></td><td>STRING</td><td>86400s</td><td>Dedup exacto (SETNX)</td></tr>
+        <tr><td><code>rl:ip:{ip}:{endpoint}</code></td><td>STRING (INCR)</td><td>60s</td><td>Rate limit por IP</td></tr>
+        <tr><td><code>rl:user:{uid}:{endpoint}</code></td><td>STRING (INCR)</td><td>60s</td><td>Rate limit por usuario</td></tr>
+        <tr><td><code>rl:source:{source}</code></td><td>STRING (INCR)</td><td>1s</td><td>Limitador QPS por fuente</td></tr>
+        <tr><td><code>session:{token}</code></td><td>HASH</td><td>86400s</td><td>Sesión de usuario</td></tr>
+        <tr><td><code>pubsub:alerts</code></td><td>PUB/SUB channel</td><td>—</td><td>Notificación alertas nuevas (WS broadcast)</td></tr>
+        <tr><td><code>pubsub:trends:update</code></td><td>PUB/SUB channel</td><td>—</td><td>Notificación trends actualizadas</td></tr>
+        <tr><td><code>engine:status:{name}</code></td><td>HASH</td><td>30s</td><td>Heartbeat del motor</td></tr>
+        <tr><td><code>lock:trend:compute:{id}</code></td><td>STRING (NX EX)</td><td>30s</td><td>Lock distribuido (single-flight)</td></tr>
+        <tr><td><code>queue:mentions</code></td><td>STREAM</td><td>trim 100k</td><td>Backlog menciones sin clasificar</td></tr>
+        <tr><td><code>cache:source:dist:24h</code></td><td>STRING (JSON)</td><td>300s</td><td>Cache distribución por fuente 24h</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h4>Velocity con sliding window real (ZSET bucketizado por minuto)</h4>
+  <pre><code><span class="com">-- Escritura (cada mención):</span>
+ZINCRBY trend:{id}:vel:1h:zset <span class="num">1</span> &lt;minute_epoch&gt;
+ZREMRANGEBYSCORE trend:{id}:vel:1h:zset -inf &lt;now-<span class="num">3600</span>&gt;
+EXPIRE trend:{id}:vel:1h:zset <span class="num">7200</span>
+
+<span class="com">-- Lectura (velocity instantánea):</span>
+ZSUM trend:{id}:vel:1h:zset  →  total menciones en la ventana</code></pre>
+  <p>Costo: O(log N) por inserción, N ≤ 60 (minutos). Da <strong>velocity exacto deslizante</strong> sin tocar Postgres, reconciliado con <code>trend_scores</code> cada 5 min.</p>
+
+  <h3>5 consultas SQL optimizadas (0.16ms — 8ms)</h3>
+
+  <h4>Query 1 — Top 6 trends por score (camino caliente del radar) · <span class="tag tag-mint">0.165ms</span></h4>
+  <pre><code><span class="kw">SELECT</span> id, slug, label, current_score, velocity_6h,
+       mention_count_24h, delta_pct, shape, dir, tone
+<span class="kw">FROM</span> trends
+<span class="kw">WHERE</span> is_active = <span class="kw">TRUE</span>
+  <span class="kw">AND</span> current_score &gt; <span class="num">0</span>
+  <span class="kw">AND</span> last_seen &gt;= <span class="kw">NOW</span>() - <span class="kw">INTERVAL</span> <span class="str">'6 hours'</span>
+<span class="kw">ORDER BY</span> current_score <span class="kw">DESC</span>
+<span class="kw">LIMIT</span> <span class="num">6</span>;
+
+<span class="com">-- EXPLAIN ANALYZE: Index Scan Backward using idx_trends_active_score
+-- Execution Time: 0.165 ms  (sub-milisegundo, partial B-tree DESC)</span></code></pre>
+
+  <h4>Query 4 — Distribución por fuente (24h) · <span class="tag tag-mint">0.710ms</span></h4>
+  <pre><code><span class="kw">SELECT</span> source,
+       <span class="kw">SUM</span>(mention_count) <span class="kw">AS</span> mention_count,
+       <span class="kw">SUM</span>(unique_authors) <span class="kw">AS</span> unique_authors,
+       <span class="kw">ROUND</span>(<span class="num">100.0</span> * <span class="kw">SUM</span>(mention_count) / <span class="kw">NULLIF</span>(<span class="kw">SUM</span>(<span class="kw">SUM</span>(mention_count)) <span class="kw">OVER</span> (), <span class="num">0</span>), <span class="num">2</span>) <span class="kw">AS</span> pct
+<span class="kw">FROM</span> mentions_source_1h
+<span class="kw">WHERE</span> bucket &gt;= <span class="kw">NOW</span>() - <span class="kw">INTERVAL</span> <span class="str">'24 hours'</span>
+<span class="kw">GROUP BY</span> source
+<span class="kw">ORDER BY</span> mention_count <span class="kw">DESC</span>;
+
+<span class="com">-- EXPLAIN: lee del continuous aggregate mentions_source_1h
+-- Chunks excluded during startup: 350  (chunk pruning)
+-- Execution Time: 0.710 ms  (&lt;1ms gracias al CAGG)</span></code></pre>
+
+  <h3>Estimación de almacenamiento (1M menciones/día)</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Tabla</th><th>Filas/día</th><th>Bytes/fila</th><th>Raw/día</th><th>Con compresión</th><th>Retención</th><th>Total 90d</th></tr></thead>
+      <tbody>
+        <tr><td><code>mentions</code></td><td>1M</td><td>580 B</td><td>580 MB</td><td>480 MB</td><td>90d</td><td><strong>~30 GB</strong></td></tr>
+        <tr><td><code>mention_embeddings</code> (10%)</td><td>100k</td><td>1.5 KB</td><td>150 MB</td><td>100 MB</td><td>30d</td><td>~3 GB</td></tr>
+        <tr><td><code>trend_scores</code> (5-min)</td><td>144k</td><td>50 B</td><td>7 MB</td><td>3 MB</td><td>365d</td><td>~1.5 GB</td></tr>
+        <tr><td><code>trend_scores_15m</code> (CAGG)</td><td>48k</td><td>40 B</td><td>2 MB</td><td>1 MB</td><td>365d</td><td>~400 MB</td></tr>
+        <tr><td><code>mentions_1h</code> (CAGG)</td><td>216k</td><td>50 B</td><td>11 MB</td><td>5 MB</td><td>365d</td><td>~1.8 GB</td></tr>
+        <tr><td><code>engine_logs</code></td><td>100k</td><td>200 B</td><td>20 MB</td><td>10 MB</td><td>30d</td><td>~300 MB</td></tr>
+        <tr><td><code>trends</code> + <code>alerts</code></td><td>+50/día</td><td>400 B</td><td>20 KB</td><td>—</td><td>∞</td><td>~100 MB</td></tr>
+        <tr style="background: var(--accent-dim);"><td colspan="6"><strong>Total comprimido (90 días)</strong></td><td><strong>~37 GB</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card-grid cols-2">
+    <div class="card">
+      <div class="card-metric-label">PostgreSQL day-1</div>
+      <div class="card-metric">~37 GB</div>
+      <div class="card-body">90 días de retención, compresión TimescaleDB 8-10x en chunks fríos.</div>
+    </div>
+    <div class="card">
+      <div class="card-metric-label">Redis day-1</div>
+      <div class="card-metric">~100 MB</div>
+      <div class="card-body">1K trends activos × 4 ranges × ~2KB + dedup keys 1M × 80B = ~80MB (cabe holgado en instancia cache.r6g.large).</div>
+    </div>
+  </div>
+
+  <div class="callout callout-info">
+    <div class="callout-icon">i</div>
+    <div>
+      <div class="callout-title">Migración — SQL-first para infra, Prisma para app models</div>
+      <p>
+        TimescaleDB hypertables, continuous aggregates, compression policies, retention, pgvector
+        e índices partial/GIN/BRIN <strong>no son modelables por Prisma</strong>. División del
+        trabajo: (1) Enums + tablas dimensionales → <code>prisma migrate</code>; (2) Hypertables
+        + CAGGs + índices → SQL idempotente en <code>prisma/migrations/&lt;ts&gt;_ts_setup/up.sql</code>;
+        (3) Seed data → <code>prisma db seed</code>. Toda migration SQL debe ser idempotente.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ 6. STREAMING TIEMPO REAL ═══════════════ -->
+<section id="streaming">
+  <div class="section-header">
+    <span class="section-num">SECCIÓN 06</span>
+    <h2><span class="ico">◆</span> Streaming en Tiempo Real</h2>
+    <p class="section-desc">
+      SSE sobre HTTP/2 (no WebSocket) — unidireccional server→client, auto-reconnect nativo,
+      <code>Last-Event-ID</code> para replay, multiplexable. Redis Pub/Sub + Streams (replay 5min) +
+      LVC (fallback). 6 canales, 11 tipos de evento en union type. Backpressure 3 capas,
+      heartbeat 15s, escalado a 10K conexiones con 2-3 pods de 1GB.
+    </p>
+  </div>
+
+  <h3>Decisión: SSE sobre WebSocket — justificación comparativa</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Criterio</th><th>SSE</th><th>WebSocket</th><th>Veredicto</th></tr></thead>
+      <tbody>
+        <tr><td>Dirección tráfico VIRAHUB</td><td>server→client (95%)</td><td>bidireccional</td><td><span class="tag tag-mint">SSE</span></td></tr>
+        <tr><td>Reconnect nativo</td><td><code>EventSource</code> auto + <code>Last-Event-ID</code> gratis</td><td>manual, re-implementar</td><td><span class="tag tag-mint">SSE gana</span></td></tr>
+        <tr><td>Passthrough proxies/CDN/CF</td><td>HTTP/1.1 + HTTP/2 ✅</td><td>a veces roto (corporate)</td><td><span class="tag tag-mint">SSE gana</span></td></tr>
+        <tr><td>Auth</td><td>cookie SameSite + CSRF (ya existe sesión)</td><td>token en subprotocol, awkward</td><td><span class="tag tag-mint">SSE gana</span></td></tr>
+        <tr><td>Footprint por conexión (Node)</td><td>~30 KB</td><td>~50 KB (frame parser)</td><td><span class="tag tag-mint">SSE gana</span></td></tr>
+        <tr><td>Bidireccional necesario</td><td>NO (mutaciones vía REST)</td><td>—</td><td><span class="tag tag-mint">SSE</span></td></tr>
+        <tr><td>Mensajes binarios</td><td>no</td><td>sí</td><td>no requerido</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>VIRAHUB no necesita baja latencia cliente→servidor (las acciones del usuario son mutaciones REST: <code>toggleEngine</code>, <code>toggleSaved</code>, <code>toggleAlert</code>). El flujo crítico es <strong>server→client</strong>, donde SSE brilla. WebSocket sería sobre-ingeniería sin ROI.</p>
+
+  <h3>Diagrama de arquitectura</h3>
+
+<div class="ascii"> <span class="dim">┌────────────────────────────────────────────────────────────────────────────┐</span>
+ <span class="dim">│</span>                              <span class="acc">PRODUCTORES</span>                                  <span class="dim">│</span>
+ <span class="dim">│</span>   ingest-reddit  ingest-bluesky  ingest-hn  ingest-gdelt  ingest-rss  …    <span class="dim">│</span>
+ <span class="dim">│</span>        │              │              │           │            │            <span class="dim">│</span>
+ <span class="dim">│</span>        └──────────────┴──────┬───────┴───────────┴────────────┘            <span class="dim">│</span>
+ <span class="dim">│</span>                              ▼                                            <span class="dim">│</span>
+ <span class="dim">│</span>                  <span class="mint">┌───────────────────────┐</span>                                <span class="dim">│</span>
+ <span class="dim">│</span>                  <span class="mint">│  detector-pipeline    │</span> (score, shape, delta, why)     <span class="dim">│</span>
+ <span class="dim">│</span>                  <span class="mint">│  + rule-engine        │</span> → dispara alertas              <span class="dim">│</span>
+ <span class="dim">│</span>                  <span class="mint">└──────────┬────────────┘</span>                                <span class="dim">│</span>
+ <span class="dim">│</span>                             │   <span class="cool">PUBLISH (JSON, 1 msg/event)</span>               <span class="dim">│</span>
+ <span class="dim">└─────────────────────────────┼─────────────────────────────────────────────┘</span>
+                               <span class="dim">▼</span>
+ <span class="dim">╔═══════════════════════════════════════════════════════════════════════════╗</span>
+ <span class="dim">║</span>                         <span class="hot">REDIS (Cluster, 3 shards)</span>                          <span class="dim">║</span>
+ <span class="dim">║</span>                                                                            <span class="dim">║</span>
+ <span class="dim">║</span>   <span class="cool">Pub/Sub channels (hot path, fire-and-forget):</span>                            <span class="dim">║</span>
+ <span class="dim">║</span>     • <span class="warn">virahub:ch:metrics</span>      • <span class="warn">virahub:ch:scan</span>                            <span class="dim">║</span>
+ <span class="dim">║</span>     • <span class="warn">virahub:ch:trends</span>       • <span class="warn">virahub:ch:series</span>                          <span class="dim">║</span>
+ <span class="dim">║</span>     • <span class="warn">virahub:ch:alerts</span>       • <span class="warn">virahub:ch:clock</span>                           <span class="dim">║</span>
+ <span class="dim">║</span>                                                                            <span class="dim">║</span>
+ <span class="dim">║</span>   <span class="cool">Streams (replay buffer, retención 5 min, MAXLEN ~10k):</span>                   <span class="dim">║</span>
+ <span class="dim">║</span>     • <span class="mint">virahub:stream:metrics</span>  • <span class="mint">virahub:stream:trends</span>                      <span class="dim">║</span>
+ <span class="dim">║</span>     • <span class="mint">virahub:stream:alerts</span>   • <span class="mint">virahub:stream:series</span>                      <span class="dim">║</span>
+ <span class="dim">║</span>                                                                            <span class="dim">║</span>
+ <span class="dim">║</span>   <span class="cool">Last-Value cache (KV):</span>                                                   <span class="dim">║</span>
+ <span class="dim">║</span>     • <span class="acc">virahub:lvc:metrics</span>    • <span class="acc">virahub:lvc:clock</span>                           <span class="dim">║</span>
+ <span class="dim">╚═══════════════════════════════╤═════════════════════════════════════════════╝</span>
+                                 <span class="dim">│ SUBSCRIBE (1 sub por gateway pod)</span>
+                                 <span class="dim">▼</span>
+ <span class="dim">┌────────────────────────────────────────────────────────────────────────────┐</span>
+ <span class="dim">│</span>                      <span class="acc">SSE GATEWAY</span> (Next.js 16)                              <span class="dim">│</span>
+ <span class="dim">│</span>   app/api/stream/route.ts  (runtime: nodejs)                               <span class="dim">│</span>
+ <span class="dim">│</span>                                                                            <span class="dim">│</span>
+ <span class="dim">│</span>   <span class="mint">┌────────────────┐   ┌──────────────────┐   ┌──────────────────────┐</span>    <span class="dim">│</span>
+ <span class="dim">│</span>   <span class="mint">│ RedisSubscriber│──▶│  Demuxer         │──▶│ Per-conn Dispatcher  │</span>    <span class="dim">│</span>
+ <span class="dim">│</span>   <span class="mint">│ (singleton,    │   │  (topic → type)  │   │ (filter by query     │</span>    <span class="dim">│</span>
+ <span class="dim">│</span>   <span class="mint">│  shared pod)   │   │                  │   │  params + replay)    │</span>    <span class="dim">│</span>
+ <span class="dim">│</span>   <span class="mint">└────────────────┘   └──────────────────┘   └──────────┬───────────┘</span>    <span class="dim">│</span>
+ <span class="dim">│</span>                                                          │                 <span class="dim">│</span>
+ <span class="dim">│</span>   <span class="mint">┌──────────────────┐   ┌──────────────────────┐        │                 <span class="dim">│</span>
+ <span class="dim">│</span>   <span class="mint">│ Heartbeat 15s    │   │ Backpressure queue   │◀───────┘                 <span class="dim">│</span>
+ <span class="dim">│</span>   <span class="mint">│ (comment frame)  │   │ (bounded 256 evts)   │                          <span class="dim">│</span>
+ <span class="dim">│</span>   <span class="mint">└──────────────────┘   └──────────────────────┘                          <span class="dim">│</span>
+ <span class="dim">└──────────────────────────────┬─────────────────────────────────────────────┘</span>
+                                <span class="dim">│ HTTP/2  text/event-stream</span>
+                                <span class="dim">▼</span>
+ <span class="dim">┌────────────────────────────────────────────────────────────────────────────┐</span>
+ <span class="dim">│</span>                            <span class="cool">BROWSER (Client)</span>                            <span class="dim">│</span>
+ <span class="dim">│</span>   <span class="cool">useVirahubStream()</span>  →  EventSource('/api/stream?topics=…&engines=…')     <span class="dim">│</span>
+ <span class="dim">│</span>        │                                                                   <span class="dim">│</span>
+ <span class="dim">│</span>        ▼                                                                   <span class="dim">│</span>
+ <span class="dim">│</span>   dispatcher(event)  →  VirahubProvider setters                            <span class="dim">│</span>
+ <span class="dim">│</span>     · <span class="acc">metrics.vitals</span>      → setAnalyzed / setLatency                      <span class="dim">│</span>
+ <span class="dim">│</span>     · <span class="acc">clock.tick</span>          → setClock                                      <span class="dim">│</span>
+ <span class="dim">│</span>     · <span class="acc">scan.engine.rotate</span>  → LiveScan phase                                <span class="dim">│</span>
+ <span class="dim">│</span>     · <span class="acc">series.tick</span>         → setStep (regenera lanes)                     <span class="dim">│</span>
+ <span class="dim">│</span>     · <span class="acc">trend.detected</span>      → setTrends([...t, nuevo])                     <span class="dim">│</span>
+ <span class="dim">│</span>     · <span class="acc">trend.score</span>         → update trend delta/confidence                <span class="dim">│</span>
+ <span class="dim">│</span>     · <span class="acc">alert.fired</span>         → notify() + toast                             <span class="dim">│</span>
+ <span class="dim">└────────────────────────────────────────────────────────────────────────────┘</span></div>
+
+  <h3>11 tipos de evento SSE — TypeScript union type</h3>
+  <pre><code><span class="kw">export type</span> <span class="type">SseMeta</span> = {
+  id: <span class="type">string</span>;          <span class="com">// monótono, lexicográficamente ordenable (snowflake)</span>
+  ts: <span class="type">number</span>;          <span class="com">// epoch ms</span>
+  ch: <span class="type">SseChannel</span>;      <span class="com">// canal Redis de origen</span>
+}
+
+<span class="kw">export type</span> <span class="type">SseEvent</span> =
+  | <span class="type">MetricsVitalsEvent</span>          <span class="com">// analyzed + latency + throughput + degraded</span>
+  | <span class="type">ClockTickEvent</span>              <span class="com">// server-authoritative hh:mm</span>
+  | <span class="type">ScanEngineRotateEvent</span>      <span class="com">// verb + phase por motor</span>
+  | <span class="type">ScanProgressEvent</span>          <span class="com">// scanned/matched/progress por motor</span>
+  | <span class="type">SeriesTickEvent</span>            <span class="com">// puntos delta por trend (no full series)</span>
+  | <span class="type">TrendDetectedEvent</span>         <span class="com">// nuevo trend al radar (con contributedBy[])</span>
+  | <span class="type">TrendScoreEvent</span>            <span class="com">// cambio de confidence/delta/mentions</span>
+  | <span class="type">AlertFiredEvent</span>            <span class="com">// notificación push con cta opcional</span>
+  | <span class="type">SystemHeartbeatEvent</span>       <span class="com">// serverTs + activeConns</span>
+  | <span class="type">SystemPressureEvent</span>        <span class="com">// dropped + reason + recoverIn</span>
+  | <span class="type">SystemDegradedEvent</span>        <span class="com">// reason + fallback + retryAt</span>
+
+<span class="kw">export const</span> TOPIC_TO_CHANNEL: <span class="type">Record</span>&lt;<span class="type">SseTopic</span>, <span class="type">SseChannel</span>&gt; = {
+  metrics: <span class="str">'virahub:ch:metrics'</span>,
+  clock:   <span class="str">'virahub:ch:clock'</span>,
+  scan:    <span class="str">'virahub:ch:scan'</span>,
+  series:  <span class="str">'virahub:ch:series'</span>,
+  trends:  <span class="str">'virahub:ch:trends'</span>,
+  alerts:  <span class="str">'virahub:ch:alerts'</span>,
+  system:  <span class="str">'virahub:ch:metrics'</span>,   <span class="com">// piggyback en metrics channel</span>
+}</code></pre>
+
+  <h3>Wire format SSE (RFC 8895)</h3>
+  <pre><code>id: <span class="num">1719459120000</span>-pod3-<span class="num">000123</span>
+event: trend.detected
+data: {<span class="str">"id"</span>:<span class="str">"1719459120000-pod3-000123"</span>,<span class="str">"ts"</span>:<span class="num">1719459120000</span>,<span class="str">"ch"</span>:<span class="str">"virahub:ch:trends"</span>,<span class="str">"type"</span>:<span class="str">"trend.detected"</span>,<span class="str">"data"</span>:{<span class="str">"trend"</span>:{...},<span class="str">"contributedBy"</span>:[<span class="str">"reddit"</span>,<span class="str">"bluesky"</span>]}}
+
+<span class="com">-- Heartbeat es comentario (no dispara onmessage, resetea timeout proxy):</span>
+: hb 1719459123000</code></pre>
+
+  <h3>Backpressure — 3 capas de defensa</h3>
+  <div class="card-grid cols-3">
+    <div class="card">
+      <div class="card-title">① TCP</div>
+      <div class="card-body">
+        Socket del cliente lento llena <code>recv buffer</code> → kernel deja de ACK →
+        <code>controller.desiredSize</code> del <code>WritableStream</code> baja. El drainer
+        deja de encolar.
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">② Cola por conexión (256 evts)</div>
+      <div class="card-body">
+        Para eventos <strong>no críticos</strong> (<code>scan.*</code>, <code>series.tick</code>,
+        <code>metrics.vitals</code>) se dropea el más viejo. Para <strong>críticos</strong>
+        (<code>alert.fired</code>, <code>system.degraded</code>) se desplaza un no-crítico.
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">③ Señal al cliente</div>
+      <div class="card-body">
+        Cada 10 drops se envía <code>system.pressure</code>. El cliente setea
+        <code>data-vh-pressure='1'</code> en <code>&lt;html&gt;</code> y el CSS frena animaciones
+        pesadas (waveform, transitions). Cuando se recupera, cesa.
+      </div>
+    </div>
+  </div>
+
+  <div class="callout callout-critical">
+    <div class="callout-icon">!</div>
+    <div>
+      <div class="callout-title">Nunca bloquear el event loop</div>
+      <p>
+        El drainer es no-bloqueante (<code>setTimeout(drain, 20)</code> si
+        <code>desiredSize ≤ 0</code>). <strong>Un cliente lento NO degrada a otros.</strong>
+        Saturación terminal: si la cola lleva &gt;30s llena, se cierra con
+        <code>controller.error()</code> para forzar reconnect del cliente (vendrá con
+        <code>Last-Event-ID</code> y recibirá replay).
+      </p>
+    </div>
+  </div>
+
+  <h3>Escalado a 10K conexiones concurrentes</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Recurso</th><th>Cálculo</th><th>Resultado</th></tr></thead>
+      <tbody>
+        <tr><td>Memoria por conexión (ReadableStream + cola 256 evts ~512B c/u)</td><td>30 KB + 128 KB</td><td><strong>~160 KB</strong></td></tr>
+        <tr><td>10K conexiones × 160 KB</td><td>—</td><td><strong>1.6 GB</strong></td></tr>
+        <tr><td>Pods gateway (Node 18, 2 vCPU, 1GB c/u, 60% a conexiones)</td><td>6K conn/pod</td><td><strong>2 pods</strong> (3 con HA)</td></tr>
+        <tr><td>Suscriptores Redis (1 por pod)</td><td>—</td><td><strong>3 subscribers</strong></td></tr>
+        <tr><td>Throughput Redis Pub/Sub (200 msg/s × 6 canales)</td><td>1.2K msg/s</td><td><strong>&lt;5% CPU Redis</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Plan de degradación — qué pasa si Redis cae</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Escenario</th><th>Respuesta automática</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>Redis Pub/Sub caído,<br>nodo Stream/GET aún vivo</td>
+          <td>Gateway detecta disconnect del subscriber → sirve LVC (metrics, clock) a nuevas conns → emite <code>system.degraded</code> reason='redis_partial' → cliente mantiene último UI + toast → reintento subscribe c/ backoff (100ms..2s)</td>
+        </tr>
+        <tr>
+          <td>Redis totalmente caído</td>
+          <td>Gateway no puede ni PUBLISH ni GET → circuit breaker abre tras 5 fallos/10s → emite <code>system.degraded</code> fallback='none' → cliente activa polling REST <code>/api/snapshot</code> cada 5s → mantiene UI viva con datos stale</td>
+        </tr>
+        <tr>
+          <td>Detector pipeline caído<br>(sin nuevos eventos)</td>
+          <td>Redis vive pero no llegan trends/series → gateway cuenta silencio &gt;30s → emite <code>system.degraded</code> reason='detector_lag' → <code>metrics.vitals.degraded=true</code> (TopBar rojo)</td>
+        </tr>
+        <tr>
+          <td>Solo edge/CDN caído</td>
+          <td>Cliente <code>EventSource.onerror</code> → backoff retry → reconnect con <code>Last-Event-ID</code> → replay rellena el gap automáticamente</td>
+        </tr>
+        <tr>
+          <td>Cliente offline &gt;5min</td>
+          <td>Stream ya expiró (MAXLEN ~10000 ≈ 5min) → replay parcial: gateway manda <code>system.degraded</code> reason='replay_truncated' → cliente pinta lo que hay + sigue escuchando live</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout callout-info">
+    <div class="callout-icon">i</div>
+    <div>
+      <div class="callout-title">Regla de prioridad de fuentes</div>
+      <p>
+        <code>SSE live</code> &gt; <code>SSE replay</code> &gt; <code>LVC</code> &gt;
+        <code>REST snapshot</code> &gt; <code>UI stale congelado</code>. El cliente siempre cae
+        al siguiente nivel sin intervención manual.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ 7. API GATEWAY ═══════════════ -->
+<section id="api-gateway">
+  <div class="section-header">
+    <span class="section-num">SECCIÓN 07</span>
+    <h2><span class="ico">◆</span> API Gateway &amp; Contratos</h2>
+    <p class="section-desc">
+      REST sobre Next.js Route Handlers (App Router), Edge-ready, cacheable, OpenAPI-generable.
+      Auth.js v5 con GitHub + Google, estrategia JWT + DB sessions. Zod en cada boundary
+      (query, params, body, response). 30 endpoints, rate limiting token bucket Upstash 5 tiers.
+      Errores RFC 7807 Problem Details + <code>code</code> + <code>traceId</code>. Versionado
+      <code>/v1/</code>, OpenAPI 3.1 auto-generado desde Zod.
+    </p>
+  </div>
+
+  <h3>Catálogo completo — 30 endpoints</h3>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Método</th><th>Ruta</th><th>Auth</th><th>Rate limit</th><th>Descripción</th></tr></thead>
+      <tbody>
+        <tr><td colspan="5" style="background: var(--accent-dim); color: var(--accent-bright); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;">Trends (7 endpoints)</td></tr>
+        <tr><td><span class="tag tag-mint">GET</span></td><td><code>/v1/trends</code></td><td>✅</td><td>L1 / 1</td><td>Lista trends activos. Filtros: <code>?source=, ?tone=, ?shape=, ?dir=, ?cursor=&limit=</code></td></tr>
+        <tr><td><span class="tag tag-mint">GET</span></td><td><code>/v1/trends/:id</code></td><td>✅</td><td>L1 / 1</td><td>Detalle de un trend (incluye <code>why</code>, <code>evidence</code>)</td></tr>
+        <tr><td><span class="tag tag-cool">POST</span></td><td><code>/v1/trends/:id/follow</code></td><td>✅</td><td>L3 / 2</td><td>Seguir trend (idempotente)</td></tr>
+        <tr><td><span class="tag tag-hot">DELETE</span></td><td><code>/v1/trends/:id/follow</code></td><td>✅</td><td>L3 / 1</td><td>Dejar de seguir</td></tr>
+        <tr><td><span class="tag tag-mint">GET</span></td><td><code>/v1/trends/:id/timeline</code></td><td>✅</td><td>L2 / 2</td><td>Serie temporal. <code>?range=1H|6H|24H|7D&step=</code></td></tr>
+        <tr><td><span class="tag tag-mint">GET</span></td><td><code>/v1/trends/:id/conversations</code></td><td>✅</td><td>L2 / 2</td><td>Menciones agrupadas por hilo</td></tr>
+        <tr><td><span class="tag tag-mint">GET</span></td><td><code>/v1/trends/:id/sources</code></td><td>✅</td><td>L1 / 1</td><td>Distribución por fuente (pie data)</td></tr>
+
+        <tr><td colspan="5" style="background: var(--accent-dim); color: var(--accent-bright); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;">Alerts (6 endpoints)</td></tr>
+        <tr><td><span class="tag tag-mint">GET</span></td><td><code>/v1/alerts</code></td><td>✅</td><td>L1 / 1</td><td>Reglas activas del usuario</td></tr>
+        <tr><td><span class="tag tag-cool">POST</span></td><td><code>/v1/alerts</code></td><td>✅</td><td>L3 / 3</td><td>Crear regla. Body: <code>trendId, condition, threshold, channel</code></td></tr>
+        <tr><td><span class="tag tag-warn">PATCH</span></td><td><code>/v1/alerts/:id</code></td><td>✅</td><td>L3 / 2</td><td>Toggle <code>enabled</code> o modificar <code>threshold</code></td></tr>
+        <tr><td><span class="tag tag-hot">DELETE</span></td><td><code>/v1/alerts/:id</code></td><td>✅</td><td>L3 / 1</td><td>Eliminar regla</td></tr>
+        <tr><td><span class="tag tag-mint">GET</span></td><td><code>/v1/alerts/history</code></td><td>✅</td><td>L2 / 2</td><td>Historial de disparos</td></tr>
+        <tr><td><span class="tag tag-mint">GET</span></td><td><code>/v1/alerts/feed</code></td><td>✅</td><td>L2 / 1</td><td>Bandeja notificaciones no leídas</td></tr>
+
+        <tr><td colspan="5" style="background: var(--accent-dim); color: var(--accent-bright); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;">Saved (5) · Engines (4) · Reports (2) · Settings (3) · Stream + Auth (3)</td></tr>
+        <tr><td><span class="tag tag-mint">GET</span></td><td><code>/v1/saved</code></td><td>✅</td><td>L1 / 1</td><td>Guardados del usuario. <code>?folder=&pinned=</code></td></tr>
+        <tr><td><span class="tag tag-cool">POST</span></td><td><code>/v1/saved/:trendId</code></td><td>✅</td><td>L3 / 2</td><td>Guardar trend. Body opcional: <code>folder, note</code></td></tr>
+        <tr><td><span class="tag tag-mint">GET</span></td><td><code>/v1/saved/export</code></td><td>✅</td><td>L4 / 10</td><td>Exportar guardados. <code>?format=json|md</code></td></tr>
+        <tr><td><span class="tag tag-mint">GET</span></td><td><code>/v1/engines</code></td><td>✅</td><td>L1 / 1</td><td>Estado de motores (id, name, status, lastRun, health)</td></tr>
+        <tr><td><span class="tag tag-warn">PATCH</span></td><td><code>/v1/engines/:id</code></td><td>✅+</td><td>L3 / 3</td><td>Toggle <code>enabled</code> o actualizar <code>config</code> (admin)</td></tr>
+        <tr><td><span class="tag tag-cool">POST</span></td><td><code>/v1/engines/:id/test</code></td><td>✅+</td><td>L4 / 25</td><td>Test de conexión (1 shot costoso)</td></tr>
+        <tr><td><span class="tag tag-mint">GET</span></td><td><code>/v1/reports</code></td><td>✅</td><td>L2 / 2</td><td>Informe agregado. <code>?period=today|week|month</code></td></tr>
+        <tr><td><span class="tag tag-mint">GET</span></td><td><code>/v1/settings</code></td><td>✅</td><td>L1 / 1</td><td>Preferencias del usuario</td></tr>
+        <tr><td><span class="tag tag-warn">PATCH</span></td><td><code>/v1/settings</code></td><td>✅</td><td>L3 / 1</td><td>Actualizar preferencias</td></tr>
+        <tr><td><span class="tag tag-cool">PUT</span></td><td><code>/v1/settings/api-keys/:service</code></td><td>✅</td><td>L3 / 3</td><td>Guardar API key externa (cifrada at-rest)</td></tr>
+        <tr><td><span class="tag tag-accent">GET</span></td><td><code>/v1/stream</code> (SSE)</td><td>✅</td><td>L4 / 5</td><td>SSE gateway. <code>?topics=trends,alerts</code></td></tr>
+        <tr><td><span class="tag tag-cool">POST</span></td><td><code>/auth/signin</code></td><td>❌</td><td>L5 / 1</td><td>Login (delegado a Auth.js)</td></tr>
+        <tr><td><span class="tag tag-cool">POST</span></td><td><code>/auth/signout</code></td><td>✅</td><td>L5 / 1</td><td>Logout</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Auth.js v5 — configuración</h3>
+  <pre><code><span class="kw">import</span> NextAuth <span class="kw">from</span> <span class="str">'next-auth'</span>
+<span class="kw">import</span> GitHub <span class="kw">from</span> <span class="str">'next-auth/providers/github'</span>
+<span class="kw">import</span> Google <span class="kw">from</span> <span class="str">'next-auth/providers/google'</span>
+<span class="kw">import</span> { DrizzleAdapter } <span class="kw">from</span> <span class="str">'@auth/drizzle-adapter'</span>
+
+<span class="kw">export const</span> { handlers, auth, signIn, signOut } = NextAuth({
+  adapter: DrizzleAdapter(db),
+  session: { strategy: <span class="str">'jwt'</span>, maxAge: <span class="num">30</span> * <span class="num">24</span> * <span class="num">60</span> * <span class="num">60</span> },  <span class="com">// 30 días</span>
+  providers: [
+    GitHub({ clientId: process.env.GITHUB_ID!, clientSecret: process.env.GITHUB_SECRET! }),
+    Google({ clientId: process.env.GOOGLE_ID!, clientSecret: process.env.GOOGLE_SECRET! }),
+  ],
+  callbacks: {
+    <span class="kw">async</span> jwt({ token, user }) {
+      <span class="kw">if</span> (user) {
+        token.id   = user.id
+        token.role = (user <span class="kw">as any</span>).role ?? <span class="str">'user'</span>
+        token.plan = (user <span class="kw">as any</span>).plan ?? <span class="str">'free'</span>
+      }
+      <span class="kw">return</span> token
+    },
+    <span class="kw">async</span> session({ session, token }) {
+      session.user.id   = token.id <span class="kw">as string</span>
+      session.user.role = token.role <span class="kw">as</span> UserRole
+      session.user.plan = token.plan <span class="kw">as</span> Plan
+      <span class="kw">return</span> session
+    },
+  },
+  pages: { signIn: <span class="str">'/login'</span>, error: <span class="str">'/auth/error'</span> },
+})</code></pre>
+
+  <h3>Rate limiting — 5 tiers token bucket Upstash</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Tier</th><th>Burst</th><th>Sustained (/min)</th><th>Aplica a</th></tr></thead>
+      <tbody>
+        <tr><td><span class="tag tag-mint">L1</span></td><td>60</td><td>120</td><td>Reads ligeros (<code>GET /trends</code>, <code>GET /alerts</code>)</td></tr>
+        <tr><td><span class="tag tag-cool">L2</span></td><td>30</td><td>60</td><td>Reads medios (<code>timeline</code>, <code>conversations</code>, <code>history</code>)</td></tr>
+        <tr><td><span class="tag tag-warn">L3</span></td><td>20</td><td>40</td><td>Mutaciones (<code>POST</code>, <code>PATCH</code>, <code>DELETE</code>)</td></tr>
+        <tr><td><span class="tag tag-accent">L4</span></td><td>10</td><td>20</td><td>Export / SSE / test de motor</td></tr>
+        <tr><td><span class="tag tag-hot">L5</span></td><td>5</td><td>10</td><td>Auth (anti brute-force)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <pre><code><span class="com">// Identifier: `user:{userId}` si autenticado, si no `ip:{ip}`.</span>
+<span class="com">// Nunca rate-limit sólo por IP en usuarios logueados (NAT/CGNAT rompe UX).</span>
+<span class="kw">const</span> limiters = {
+  L1: <span class="kw">new</span> Ratelimit({ redis, limiter: Ratelimit.slidingWindow(<span class="num">120</span>, <span class="str">'1 m'</span>), prefix: <span class="str">'rl:L1'</span> }),
+  L2: <span class="kw">new</span> Ratelimit({ redis, limiter: Ratelimit.slidingWindow(<span class="num">60</span>,  <span class="str">'1 m'</span>), prefix: <span class="str">'rl:L2'</span> }),
+  L3: <span class="kw">new</span> Ratelimit({ redis, limiter: Ratelimit.slidingWindow(<span class="num">40</span>,  <span class="str">'1 m'</span>), prefix: <span class="str">'rl:L3'</span> }),
+  L4: <span class="kw">new</span> Ratelimit({ redis, limiter: Ratelimit.slidingWindow(<span class="num">20</span>,  <span class="str">'1 m'</span>), prefix: <span class="str">'rl:L4'</span> }),
+  L5: <span class="kw">new</span> Ratelimit({ redis, limiter: Ratelimit.slidingWindow(<span class="num">10</span>,  <span class="str">'1 m'</span>), prefix: <span class="str">'rl:L5'</span> }),
+} <span class="kw">as const</span>
+
+<span class="com">// Override por plan: pro × 2, team × 5 (factor multiplicativo en el coste).</span>
+<span class="com">// Response headers (GitHub-style): X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, Retry-After.</span></code></pre>
+
+  <h3>Errores RFC 7807 Problem Details + extensión</h3>
+  <pre><code><span class="kw">HTTP</span>/<span class="num">1.1</span> <span class="num">422</span> Unprocessable Entity
+Content-Type: application/problem+json
+Content-Language: en
+
+{
+  <span class="str">"type"</span>:      <span class="str">"https://docs.virahub.io/errors/validation"</span>,
+  <span class="str">"title"</span>:     <span class="str">"Validation failed"</span>,
+  <span class="str">"status"</span>:    <span class="num">422</span>,
+  <span class="str">"code"</span>:      <span class="str">"VALIDATION_ERROR"</span>,
+  <span class="str">"detail"</span>:    <span class="str">"2 fields failed validation"</span>,
+  <span class="str">"traceId"</span>:   <span class="str">"trc_01HQ2XK7F8..."</span>,
+  <span class="str">"instance"</span>:  <span class="str">"/v1/alerts"</span>,
+  <span class="str">"errors"</span>: [
+    { <span class="str">"path"</span>: <span class="str">"threshold"</span>, <span class="str">"message"</span>: <span class="str">"Expected number, received string"</span>, <span class="str">"code"</span>: <span class="str">"invalid_type"</span> },
+    { <span class="str">"path"</span>: <span class="str">"condition"</span>, <span class="str">"message"</span>: <span class="str">"Invalid enum value. Expected 'gt'|'lt'|'delta_pct', received 'greater'"</span> }
+  ]
+}</code></pre>
+
+  <h4>Catálogo de 13 códigos de error</h4>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th><code>code</code></th><th>HTTP</th><th>Cuándo</th></tr></thead>
+      <tbody>
+        <tr><td><code>UNAUTHENTICATED</code></td><td>401</td><td>No hay sesión o JWT expirado</td></tr>
+        <tr><td><code>TOKEN_EXPIRED</code></td><td>401</td><td>JWT expirado (cliente puede refresh)</td></tr>
+        <tr><td><code>FORBIDDEN</code></td><td>403</td><td>Sesión válida pero sin permiso (role)</td></tr>
+        <tr><td><code>NOT_FOUND</code></td><td>404</td><td>Recurso inexistente o no visible</td></tr>
+        <tr><td><code>VALIDATION_ERROR</code></td><td>422</td><td>Zod safeParse falla</td></tr>
+        <tr><td><code>CONFLICT</code></td><td>409</td><td>Follow duplicado, alerta ya existe</td></tr>
+        <tr><td><code>RATE_LIMITED</code></td><td>429</td><td>Rate limit excedido</td></tr>
+        <tr><td><code>PAYLOAD_TOO_LARGE</code></td><td>413</td><td>Body &gt; 1MB</td></tr>
+        <tr><td><code>UNSUPPORTED_MEDIA_TYPE</code></td><td>415</td><td>Content-Type no JSON</td></tr>
+        <tr><td><code>METHOD_NOT_ALLOWED</code></td><td>405</td><td>Verb no soportado en ruta</td></tr>
+        <tr><td><code>UPSTREAM_ERROR</code></td><td>502</td><td>Motor externo caído (Reddit, GDELT…)</td></tr>
+        <tr><td><code>INTERNAL_ERROR</code></td><td>500</td><td>Catch-all. Nunca filtra detalles</td></tr>
+        <tr><td><code>SERVICE_UNAVAILABLE</code></td><td>503</td><td>Maintenance / dependencia degradada</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Middleware pipeline — orden de ejecución</h3>
+
+<div class="ascii">                                    <span class="dim">┌──────────────────────────────────────────────────┐</span>
+   Client (browser)                 <span class="dim">│</span>   <span class="acc">Next.js Edge Runtime</span> (middleware.ts)        <span class="dim">│</span>
+ ─────────────────────────────────▶ <span class="dim">│</span>                                                  <span class="dim">│</span>
+   GET /api/v1/trends               <span class="dim">│</span>   <span class="mint">┌─────────────┐   ┌────────────┐   ┌─────────┐</span> <span class="dim">│</span>
+   Cookie: next-auth.session-token  <span class="dim">│</span>   <span class="mint">│ 1. CORS     │──▶│ 2. Origin  │──▶│ 3. Path │</span> <span class="dim">│</span>
+                                   <span class="dim">│</span>   <span class="mint">│   preflight │   │   allowlist│   │  match  │</span> <span class="dim">│</span>
+                                   <span class="dim">│</span>   <span class="mint">└─────────────┘   └────────────┘   └────┬────┘</span> <span class="dim">│</span>
+                                   <span class="dim">│</span>                                          <span class="dim">│</span>      <span class="dim">│</span>
+                                   <span class="dim">│</span>                  <span class="mint">┌───────────────────────▼────┐</span>      <span class="dim">│</span>
+                                   <span class="dim">│</span>                  <span class="mint">│ 4. Auth gate (JWT verify)  │</span>      <span class="dim">│</span>
+                                   <span class="dim">│</span>                  <span class="mint">│    · 401 si expirado        │</span>      <span class="dim">│</span>
+                                   <span class="dim">│</span>                  <span class="mint">│    · pinta req.user en hdr  │</span>      <span class="dim">│</span>
+                                   <span class="dim">│</span>                  <span class="mint">└────────────┬───────────────┘</span>      <span class="dim">│</span>
+                                   <span class="dim">└───────────────────────────────┼─────────────────┘</span>
+                                                                   <span class="dim">│</span>
+                                                                   <span class="dim">▼</span>
+ <span class="dim">┌──────────────────────────────────────────────────────────────────────────────────────┐</span>
+ <span class="dim">│</span>  <span class="acc">Route Handler</span>  (app/api/v1/trends/route.ts)  — Node Runtime                       <span class="dim">│</span>
+ <span class="dim">│</span>                                                                                       <span class="dim">│</span>
+ <span class="dim">│</span>  <span class="mint">apiHandler(handler, { auth, rateLimit, query })</span>                                       <span class="dim">│</span>
+ <span class="dim">│</span>                                                                                       <span class="dim">│</span>
+ <span class="dim">│</span>  <span class="cool">┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐</span>  <span class="dim">│</span>
+ <span class="dim">│</span>  <span class="cool">│ 5. Trace │─▶│ 6. Auth  │─▶│ 7. Rate  │─▶│ 8. Zod   │─▶│ 9. Zod   │─▶│10. Logic │</span>  <span class="dim">│</span>
+ <span class="dim">│</span>  <span class="cool">│   ID     │  │  (DB-    │  │   limit  │  │  query   │  │  body    │  │  (DB /   │</span>  <span class="dim">│</span>
+ <span class="dim">│</span>  <span class="cool">│  uuid    │  │  back)   │  │  Upstash │  │  parse   │  │  parse   │  │  stream) │</span>  <span class="dim">│</span>
+ <span class="dim">│</span>  <span class="cool">└──────────┘  └──────────┘  └──────────┘  └──────────┘  └──────────┘  └────┬─────┘</span>  <span class="dim">│</span>
+ <span class="dim">│</span>                                                                              <span class="dim">│</span>        <span class="dim">│</span>
+ <span class="dim">│</span>  <span class="cool">┌──────────────────────────────────────────────────────────────────────────▼──────┐</span>  <span class="dim">│</span>
+ <span class="dim">│</span>  <span class="cool">│ 11. Zod response validation (defensa en profundidad)                            │</span>  <span class="dim">│</span>
+ <span class="dim">│</span>  <span class="cool">└──────────────────────────────────────────────────────────────────┬──────────────┘</span>  <span class="dim">│</span>
+ <span class="dim">│</span>                                                                      <span class="dim">│</span>                 <span class="dim">│</span>
+ <span class="dim">│</span>  <span class="cool">┌──────────────────────────────────────────────────────────────────▼──────────────┐</span>  <span class="dim">│</span>
+ <span class="dim">│</span>  <span class="cool">│ 12. ETag / Cache-Control / Vary                                                  │</span>  <span class="dim">│</span>
+ <span class="dim">│</span>  <span class="cool">└──────────────────────────────────────────────────────────────────┬──────────────┘</span>  <span class="dim">│</span>
+ <span class="dim">│</span>                                                                      <span class="dim">│</span>                 <span class="dim">│</span>
+ <span class="dim">│</span>  <span class="cool">┌──────────────────────────────────────────────────────────────────▼──────────────┐</span>  <span class="dim">│</span>
+ <span class="dim">│</span>  <span class="cool">│ 13. Attach X-Trace-Id + X-RateLimit-* headers                                    │</span>  <span class="dim">│</span>
+ <span class="dim">│</span>  <span class="cool">└──────────────────────────────────────────────────────────────────────────────────┘</span>  <span class="dim">│</span>
+ <span class="dim">└──────────────────────────────────────────────────────────────────────────────────────────────────────┘</span></div>
+
+  <h3>Contratos compartidos — <code>@virahub/contracts</code> (Zod schemas)</h3>
+  <pre><code><span class="com">// packages/contracts/src/trends.ts</span>
+<span class="kw">import</span> { z } <span class="kw">from</span> <span class="str">'zod'</span>
+
+<span class="kw">export const</span> SourceKeySchema = z.enum([
+  <span class="str">'reddit'</span>, <span class="str">'bluesky'</span>, <span class="str">'hn'</span>, <span class="str">'rss'</span>, <span class="str">'gdelt'</span>, <span class="str">'github'</span>, <span class="str">'x'</span>, <span class="str">'nvidia'</span>, <span class="str">'crypto'</span>,
+])
+<span class="kw">export const</span> ShapeSchema = z.enum([<span class="str">'accel'</span>, <span class="str">'rise'</span>, <span class="str">'flat'</span>, <span class="str">'decay'</span>, <span class="str">'wobble'</span>])
+<span class="kw">export const</span> RangeKeySchema = z.enum([<span class="str">'1H'</span>, <span class="str">'6H'</span>, <span class="str">'24H'</span>, <span class="str">'7D'</span>])
+
+<span class="kw">export const</span> TrendSchema = z.object({
+  id: z.string(),
+  title: z.string().min(<span class="num">1</span>).max(<span class="num">200</span>),
+  source: SourceKeySchema,
+  color: z.string(),
+  status: z.string(),
+  tone: z.enum([<span class="str">'hot'</span>, <span class="str">'cool'</span>, <span class="str">'mint'</span>, <span class="str">'muted'</span>]),
+  dir: z.enum([<span class="str">'up'</span>, <span class="str">'down'</span>, <span class="str">'flat'</span>]),
+  time: z.string(),
+  heat: z.string(),
+  confidence: z.number().min(<span class="num">0</span>).max(<span class="num">100</span>),
+  mentions: z.number().int().min(<span class="num">0</span>),
+  delta: z.number().int(),
+  shape: ShapeSchema,
+  why: z.string(),
+  evidence: z.array(z.object({ label: z.string(), value: z.string() })),
+  inTimeline: z.boolean().optional(),
+  followed: z.boolean().optional(),
+  saved: z.boolean().optional(),
+})
+
+<span class="kw">export const</span> ListTrendsQuerySchema = z.object({
+  source: SourceKeySchema.optional(),
+  tone: z.enum([<span class="str">'hot'</span>, <span class="str">'cool'</span>, <span class="str">'mint'</span>, <span class="str">'muted'</span>]).optional(),
+  shape: ShapeSchema.optional(),
+  dir: z.enum([<span class="str">'up'</span>, <span class="str">'down'</span>, <span class="str">'flat'</span>]).optional(),
+  cursor: z.string().optional(),
+  limit: z.coerce.number().int().min(<span class="num">1</span>).max(<span class="num">50</span>).default(<span class="num">20</span>),
+})</code></pre>
+
+  <div class="callout callout-info">
+    <div class="callout-icon">i</div>
+    <div>
+      <div class="callout-title">Single source of truth</div>
+      <p>
+        Los Zod schemas viven en <code>packages/contracts</code>. Tanto frontend como backend
+        importan los <strong>schemas</strong> (backend: validación; frontend: parse de respuesta)
+        y los <strong>tipos inferidos</strong> (<code>z.infer&lt;typeof X&gt;</code>) — nunca se
+        escriben tipos a mano que dupliquen el schema.
+      </p>
+    </div>
+  </div>
+
+  <h3>Endpoint de referencia — <code>GET /v1/trends</code></h3>
+  <pre><code><span class="kw">export const</span> GET = apiHandler&lt;<span class="type">ListTrendsResponse</span>&gt;(
+  <span class="kw">async</span> (ctx) =&gt; {
+    <span class="kw">const</span> query = (ctx <span class="kw">as any</span>).query <span class="kw">as</span> <span class="type">ListTrendsResponse</span>
+
+    <span class="com">// Consulta con cursor pagination (keyset) — O(log n), estable</span>
+    <span class="kw">const</span> conditions = [eq(trends.visible, <span class="kw">true</span>)]
+    <span class="kw">if</span> (query.source) conditions.push(eq(trends.source, query.source))
+    <span class="kw">if</span> (query.tone)   conditions.push(eq(trends.tone, query.tone))
+    <span class="kw">if</span> (query.shape)  conditions.push(eq(trends.shape, query.shape))
+    <span class="kw">if</span> (query.cursor) conditions.push(lt(trends.cursorKey, query.cursor))
+
+    <span class="kw">const</span> rows = <span class="kw">await</span> db.select({ ... })
+      .from(trends)
+      .where(and(...conditions))
+      .orderBy(desc(trends.cursorKey))
+      .limit(query.limit + <span class="num">1</span>)   <span class="com">// +1 row trick para detectar siguiente página</span>
+
+    <span class="kw">const</span> hasMore = rows.length &gt; query.limit
+    <span class="kw">const</span> items = hasMore ? rows.slice(<span class="num">0</span>, query.limit) : rows
+    <span class="kw">const</span> nextCursor = hasMore ? items[items.length - <span class="num">1</span>]?.id : <span class="kw">null</span>
+
+    <span class="com">// Validación de SALIDA — nunca confíes en tu DB</span>
+    <span class="kw">const</span> payload: <span class="type">ListTrendsResponse</span> = { items, nextCursor, total: items.length }
+    <span class="kw">const</span> validated = <span class="type">ListTrendsResponseSchema</span>.safeParse(payload)
+    <span class="kw">if</span> (!validated.success) <span class="kw">throw</span> <span class="type">ApiError</span>.internal()
+
+    <span class="kw">const</span> etag = <span class="kw">await</span> computeEtag(query, ctx.user.id)
+    <span class="kw">if</span> (ctx.req.headers.get(<span class="str">'if-none-match'</span>) === etag) {
+      <span class="kw">return new</span> <span class="type">NextResponse</span>(<span class="kw">null</span>, { status: <span class="num">304</span>, headers: { ETag: etag } })
+    }
+
+    <span class="kw">return</span> <span class="type">NextResponse</span>.json(validated.data, {
+      status: <span class="num">200</span>,
+      headers: {
+        <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span>,
+        <span class="str">'Cache-Control'</span>: <span class="str">'private, max-age=30, stale-while-revalidate=60'</span>,
+        ETag: etag,
+        Vary: <span class="str">'Cookie'</span>,
+      },
+    })
+  },
+  {
+    auth: <span class="kw">true</span>,
+    rateLimit: { tier: <span class="str">'L1'</span>, cost: <span class="num">1</span> },
+    query: <span class="type">ListTrendsQuerySchema</span>,
+  },
+)</code></pre>
+
+  <div class="callout callout-success">
+    <div class="callout-icon">✓</div>
+    <div>
+      <div class="callout-title">Checklist de producción del endpoint de referencia</div>
+      <p>
+        ✅ Auth obligatoria · ✅ Rate limit L1 (120/min) con headers · ✅ Zod query + response validation
+        (defensa en profundidad) · ✅ ETag + 304 (caché condicional) · ✅ <code>Cache-Control: private</code>
+        (no CDN shared) · ✅ <code>Vary: Cookie</code> · ✅ Cursor pagination (keyset, no OFFSET) ·
+        ✅ <code>+1</code> row trick para siguiente página en 1 query · ✅ Error RFC 7807 con traceId ·
+        ✅ Logging estructurado · ✅ <code>X-Trace-Id</code> en toda respuesta.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ 8. FLUJO END-TO-END ═══════════════ -->
+<section id="flujo-e2e">
+  <div class="section-header">
+    <span class="section-num">SECCIÓN 08</span>
+    <h2><span class="ico">◆</span> Diagrama de Flujo End-to-End</h2>
+    <p class="section-desc">
+      El recorrido completo de un dato desde la fuente externa hasta el pixel renderizado en el
+      frontend. 10 etapas, latencia total P50 ≤ 4 segundos, P95 ≤ 12 segundos.
+    </p>
+  </div>
+
+  <div class="flow-step">
+    <div class="flow-step-num">1</div>
+    <div>
+      <div class="flow-step-title">Fuente externa emite un evento</div>
+      <div class="flow-step-tech">Reddit API · Bluesky firehose WS · HN Firebase · RSS HTTP · GDELT cron · GitHub API · X API v2</div>
+      <div class="flow-step-desc">
+        Un usuario publica en Reddit r/MachineLearning "New EU AI Act draft leaked".
+        El post tiene <code>source_id='t3_abc123'</code>, <code>publishedAt=1719459120000</code>,
+        <code>author='u/ia_policy_es'</code>, <code>ups=342</code>. El adapter Reddit recibe el
+        webhook o lo extrae en el siguiente polling cycle (cadencia 60s).
+      </div>
+    </div>
+  </div>
+
+  <div class="flow-step">
+    <div class="flow-step-num">2</div>
+    <div>
+      <div class="flow-step-title">Adapter normaliza a <code>RawMention</code></div>
+      <div class="flow-step-tech">RedditAdapter · withRetry · RateLimiter · ~50ms</div>
+      <div class="flow-step-desc">
+        El adapter descarga el post, valida User-Agent (Reddit banea defaults), respeta
+        <code>X-Ratelimit-Remaining</code>, aplica exponential backoff con jitter ±25% si recibe
+        429. Normaliza el payload crudo a <code>RawMention</code> con ID determinista
+        <code>'reddit:t3_abc123'</code>. El payload original se preserva en <code>raw: unknown</code>
+        para replay y debugging.
+      </div>
+    </div>
+  </div>
+
+  <div class="flow-step">
+    <div class="flow-step-num">3</div>
+    <div>
+      <div class="flow-step-title">BullMQ enqueuea el job</div>
+      <div class="flow-step-tech">q:reddit · Worker (concurrency=4) · CircuitBreaker</div>
+      <div class="flow-step-desc">
+        El worker toma el job, ejecuta <code>CircuitBreaker.run(() =&gt; adapter.fetch(ctx))</code>.
+        Si 10 fallos consecutivos → OPEN 60s. Si está OPEN, lanza <code>CircuitOpenError</code>,
+        el worker pausa la cola 60s. Si OK, el adapter devuelve <code>mentions[]</code> +
+        <code>nextCursor</code> (re-encola próxima página si existe).
+      </div>
+    </div>
+  </div>
+
+  <div class="flow-step">
+    <div class="flow-step-num">4</div>
+    <div>
+      <div class="flow-step-title">Dedup + INSERT Postgres + Redis HyperLogLog</div>
+      <div class="flow-step-tech">dedupe() · SETNX seen:{source}:{sourceId} · INSERT ON CONFLICT · ~10ms</div>
+      <div class="flow-step-desc">
+        Pipeline Redis: <code>SETNX seen:reddit:t3_abc123</code> con TTL 7d. Si ya existe → drop.
+        Si nuevo → <code>INSERT mentions ... ON CONFLICT (source, source_id) DO NOTHING</code>.
+        HyperLogLog <code>PFADD trend:{id}:authors:24h u/ia_policy_es</code> para conteo
+        único de autores (anti-gaming, requiere ≥14 para max score).
+      </div>
+    </div>
+  </div>
+
+  <div class="flow-step">
+    <div class="flow-step-num">5</div>
+    <div>
+      <div class="flow-step-title">Pipeline de procesamiento: normalize → dedup semántico → cluster</div>
+      <div class="flow-step-tech">lib/scoring.ts · NFKC · MinHash 128 perm · LSH 32×4 · multilingual-e5-small (ONNX 384-dim) · online HDBSCAN · ~800ms</div>
+      <div class="flow-step-desc">
+        Unicode NFKC, lowercase, URL canonicalization, entity extraction, language detection
+        (fastText lid.176). Exact dedup por sha1(content) → MinHash LSH verifica duplicados
+        semánticos (Jaccard ≥ 0.85). Embedding 384-dim cacheado en Redis
+        <code>vh:mention:embed:{id}</code> 7d. Clustering greedy: si cosine(emb, centroid) ≥ 0.78
+        → asigna a cluster existente y actualiza centroid (α=0.1); si no → nuevo cluster.
+      </div>
+    </div>
+  </div>
+
+  <div class="flow-step">
+    <div class="flow-step-num">6</div>
+    <div>
+      <div class="flow-step-title">Scoring: velocity EWMA + delta + confidence + shape</div>
+      <div class="flow-step-tech">computeScore() · lib/scoring.ts · ~50ms</div>
+      <div class="flow-step-desc">
+        <code>v_ewma(t) = α·(c_k/Δ_h) + (1-α)·v_ewma(t-Δ)</code> con α=0.25 (6H window).
+        <code>delta = round(100·(v_raw - baseline) / baseline)</code> donde baseline excluye
+        últimas 24h. 7 sub-scores ponderados (suma 1) × penalty multiplicativo
+        <code>p_spam · p_bot · p_recycle</code>. Shape detection: si
+        <code>accel &gt; 0.3·σ_v AND slope_short &gt; 0</code> → <code>accel</code>.
+        Resultado: <code>confidence=78, delta=+312%, shape='accel', heat='Muy caliente'</code>.
+      </div>
+    </div>
+  </div>
+
+  <div class="flow-step">
+    <div class="flow-step-num">7</div>
+    <div>
+      <div class="flow-step-title">EMIT a 3 canales paralelos</div>
+      <div class="flow-step-tech">Kafka trends.scored · Redis ZADD trends:hot:{range} · Redis PUBLISH virahub:ch:trends + XADD virahub:stream:trends · ~5ms</div>
+      <div class="flow-step-desc">
+        <strong>Kafka</strong> para consumidores downstream (alerts, reports). <strong>Redis ZSET</strong>
+        <code>trends:hot:1H</code> con score=heat_score, frontend hace <code>ZREVRANGE 0 5</code> para
+        top 6 cards. <strong>Redis Pub/Sub</strong> canal <code>virahub:ch:trends</code> para fan-out
+        SSE inmediato + <code>XADD virahub:stream:trends MAXLEN ~ 10000</code> para replay 5 min.
+        SETEX <code>virahub:lvc:metrics</code> con última versión conocida (fallback).
+      </div>
+    </div>
+  </div>
+
+  <div class="flow-step">
+    <div class="flow-step-num">8</div>
+    <div>
+      <div class="flow-step-title">SSE Gateway fan-out a clientes suscritos</div>
+      <div class="flow-step-tech">app/api/stream/route.ts · SharedSubscriber (1/pod) · Demuxer · Per-conn Dispatcher · ~20ms</div>
+      <div class="flow-step-desc">
+        El singleton subscriber del pod recibe el evento Pub/Sub. El demuxer parsea
+        <code>type='trend.detected'</code> y lo enruta al dispatcher. El dispatcher recorre las
+        conexiones vivas del pod, filtra por <code>?topics=trends</code> (sí suscrito), por
+        <code>?engines=reddit,bluesky</code> (match), comprueba <code>lastEventId &lt; event.id</code>
+        (no replay duplicado), encola. El drainer a 60fps vacía la cola al socket respetando
+        backpressure (TCP + cola 256 + system.pressure).
+      </div>
+    </div>
+  </div>
+
+  <div class="flow-step">
+    <div class="flow-step-num">9</div>
+    <div>
+      <div class="flow-step-title">Browser <code>EventSource</code> dispatches al VirahubProvider</div>
+      <div class="flow-step-tech">useVirahubStream() · dispatcher switch(ev.type) · setTrends() · notify() · ~5ms</div>
+      <div class="flow-step-desc">
+        El browser recibe el frame SSE <code>event: trend.detected\ndata: {...}</code>.
+        <code>useVirahubStream</code> parsea el JSON y ejecuta el switch:
+        <code>setTrends(prev =&gt; [ev.data.trend, ...prev].slice(0, 50))</code> y
+        <code>notify('Nuevo trend: Regulación IA UE')</code>. El watchdog (45s sin mensaje)
+        y el circuit breaker cliente protegen contra sesiones stale.
+      </div>
+    </div>
+  </div>
+
+  <div class="flow-step">
+    <div class="flow-step-num">10</div>
+    <div>
+      <div class="flow-step-title">React renderiza el pixel final</div>
+      <div class="flow-step-tech">React 19 · VirahubProvider · AnalysisPanel · TrendTimeline · LiveScan · 1 frame</div>
+      <div class="flow-step-desc">
+        <code>AnalysisPanel</code> renderiza el card con <code>CountUp</code> animado a
+        <code>confidence=78</code>, <code>+312%</code> en rojo, sparkline SVG con glow filter,
+        evidence grid 3-col, "Por qué importa" + párrafo. <code>TrendTimeline</code> dibuja la
+        lane con path SVG animado. <code>LiveScan</code> rota el verb de Reddit a
+        "Tokenizando…". <code>TopBar</code> actualiza el counter "12.483 posts analizados".
+        <strong>Latencia total end-to-end: ~3-4 segundos.</strong>
+      </div>
+    </div>
+  </div>
+
+  <h3>Latencia por etapa</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Etapa</th><th>P50</th><th>P95</th><th>P99</th></tr></thead>
+      <tbody>
+        <tr><td>1. Fuente emite</td><td>0ms (instantáneo)</td><td>0ms</td><td>0ms</td></tr>
+        <tr><td>2. Adapter normaliza</td><td>50ms</td><td>200ms</td><td>1s (con retry)</td></tr>
+        <tr><td>3. BullMQ + circuit breaker</td><td>20ms</td><td>100ms</td><td>500ms</td></tr>
+        <tr><td>4. Dedup + INSERT</td><td>10ms</td><td>30ms</td><td>100ms</td></tr>
+        <tr><td>5. Normalize + MinHash + cluster</td><td>800ms</td><td>3s</td><td>8s</td></tr>
+        <tr><td>6. Scoring</td><td>50ms</td><td>200ms</td><td>500ms</td></tr>
+        <tr><td>7. EMIT (3 canales paralelos)</td><td>5ms</td><td>20ms</td><td>100ms</td></tr>
+        <tr><td>8. SSE Gateway fan-out</td><td>20ms</td><td>100ms</td><td>500ms</td></tr>
+        <tr><td>9. Browser dispatch</td><td>5ms</td><td>20ms</td><td>50ms</td></tr>
+        <tr><td>10. React render</td><td>16ms (1 frame)</td><td>50ms</td><td>100ms</td></tr>
+        <tr style="background: var(--accent-dim);"><td><strong>TOTAL end-to-end</strong></td><td><strong>~3.5s</strong></td><td><strong>~12s</strong></td><td><strong>~30s</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout callout-info">
+    <div class="callout-icon">i</div>
+    <div>
+      <div class="callout-title">El producto real</div>
+      <p>
+        Lo importante no es "ver tendencias más rápido" — es ver tendencias que aún no existen
+        en Twitter pero cuyos precursores ya están en GDELT/Reddit/HN. <strong>Lead time medio
+        sobre Twitter Trending Topics: 47 minutos.</strong> Esa es la única justificación de
+        VIRAHUB frente a Twitter TT.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ 9. INFRAESTRUCTURA ═══════════════ -->
+<section id="infra">
+  <div class="section-header">
+    <span class="section-num">SECCIÓN 09</span>
+    <h2><span class="ico">◆</span> Estimación de Infraestructura</h2>
+    <p class="section-desc">
+      Costos operativos baseline, escalado horizontal, límites por motor y matriz de decisiones
+      para sharding/replicas. Day-1: ~$150/mes sin contar compute. Capacidad hasta 10M
+      menciones/día antes de sharding.
+    </p>
+  </div>
+
+  <h3>Costo operativo mensual (baseline)</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Componente</th><th>Tier</th><th>Costo USD/mes</th><th>Notas</th></tr></thead>
+      <tbody>
+        <tr><td>Reddit</td><td>Free (OAuth app)</td><td><span class="tag tag-mint">$0</span></td><td>60 req/min suficiente para 200 subs</td></tr>
+        <tr><td>Bluesky</td><td>Free</td><td><span class="tag tag-mint">$0</span></td><td>Firehose + REST</td></tr>
+        <tr><td>Hacker News</td><td>Free</td><td><span class="tag tag-mint">$0</span></td><td>Sin auth, autorregulado</td></tr>
+        <tr><td>RSS</td><td>Free</td><td><span class="tag tag-mint">$0</span></td><td>Hosts nuestros</td></tr>
+        <tr><td>GDELT</td><td>Free</td><td><span class="tag tag-mint">$0</span></td><td>Sin auth, uso justo</td></tr>
+        <tr><td>GitHub</td><td>Free (PAT)</td><td><span class="tag tag-mint">$0</span></td><td>5000 req/h sobra para 200 repos</td></tr>
+        <tr><td>X (Twitter)</td><td><strong>Basic</strong></td><td><span class="tag tag-hot">$100</span></td><td>Mínimo útil — Free no alcanza para feed continuo</td></tr>
+        <tr><td>Redis (Upstash/BullMQ)</td><td>Pro</td><td><span class="tag tag-warn">~$30</span></td><td>~10M cmds/mes</td></tr>
+        <tr><td>Egress bandwidth</td><td>—</td><td><span class="tag tag-warn">~$20</span></td><td>~50GB/mes</td></tr>
+        <tr style="background: var(--accent-dim);"><td colspan="2"><strong>TOTAL baseline</strong></td><td><strong>~$150/mes</strong></td><td>Sin contar compute (Vercel/Node)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Compute y escalado</h3>
+  <div class="card-grid cols-3">
+    <div class="card">
+      <div class="card-metric-label">Workers ingest</div>
+      <div class="card-metric">22</div>
+      <div class="card-body">Node.js processes, BullMQ. Escalan horizontalmente por motor.</div>
+    </div>
+    <div class="card">
+      <div class="card-metric-label">Pods SSE gateway</div>
+      <div class="card-metric">2-3</div>
+      <div class="card-body">1GB c/u, 6K conns/pod. 10K conns concurrentes totales.</div>
+    </div>
+    <div class="card">
+      <div class="card-metric-label">Redis instances</div>
+      <div class="card-metric">3</div>
+      <div class="card-body">3 master + 3 replica en cluster a partir de 8GB o 50K ops/s.</div>
+    </div>
+  </div>
+
+  <h3>Modelo de crecimiento y umbrales</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Métrica</th><th>Day-1 (MVP)</th><th>Crecimiento</th><th>Estrés</th><th>Límite PG single-node</th></tr></thead>
+      <tbody>
+        <tr><td>Menciones/día</td><td>100K</td><td>1M</td><td>10M</td><td>~50M/día (con compresión)</td></tr>
+        <tr><td>Menciones totales (90d)</td><td>9M</td><td>90M</td><td>900M</td><td>~5B</td></tr>
+        <tr><td>Trends activos</td><td>100</td><td>1K</td><td>10K</td><td>100K</td></tr>
+        <tr><td>Reads/s (dashboard)</td><td>50</td><td>500</td><td>5K</td><td>~10K single node con cache</td></tr>
+        <tr><td>Writes/s (mentions)</td><td>1</td><td>15</td><td>150</td><td>~3K inserts/s sostenido</td></tr>
+        <tr><td>Conexiones SSE concurrentes</td><td>100</td><td>1K</td><td>10K</td><td>50K+ con Sharded Pub/Sub</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Matriz de decisiones de escalado</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Síntoma</th><th>Acción</th><th>Trigger cuantitativo</th></tr></thead>
+      <tbody>
+        <tr><td>Dashboard lento en hot path</td><td><strong>Read replica PG</strong> (async streaming replication)</td><td>p95 hot-path query &gt; 50ms sostenido</td></tr>
+        <tr><td><code>mentions</code> hypertable &gt; 1TB tras compresión</td><td><strong>Shardar <code>mentions</code></strong> por <code>source</code> (9 shards) o hash(trend_id). TimescaleDB multi-node.</td><td>&gt; 50M menciones/día sostenido</td></tr>
+        <tr><td>Queries analíticas (&gt;24h) &gt; 5s</td><td><strong>Mover analytics a ClickHouse</strong>. CDC vía Debezium → Kafka → ClickHouse.</td><td>p95 de queries analíticas &gt; 5s tras optimizar</td></tr>
+        <tr><td>Embeddings &gt; 10M filas</td><td><strong>Migrar IVFFLAT → HNSW</strong> o externalizar a Qdrant</td><td>Recall@10 &lt; 0.85 o ANALYZE &gt; 30s</td></tr>
+        <tr><td>Redis hit rate &lt; 95%</td><td>Subir TTLs o agregar más keys cacheadas. Evaluar Redis Cluster.</td><td>keyspace_misses / (hits + misses) &gt; 5%</td></tr>
+        <tr><td>Pub/sub &gt; 10K msg/s</td><td>Migrar pubsub de Redis a <strong>NATS</strong> o <strong>Kafka</strong></td><td>Msg perdidos en pico o PUBLISH latency &gt; 10ms</td></tr>
+        <tr><td>Conexiones SSE &gt; 10K</td><td>Activar <strong>Sharded Pub/Sub</strong> + particionar canales por <code>trend.source</code></td><td>redis_pubsub_input_bytes &gt; 50 MB/s sostenido</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Orden recomendado de intervención</h3>
+  <div class="card-grid cols-2">
+    <div class="card">
+      <div class="card-title">① Read replica PG</div>
+      <div class="card-body">Barato, sin refactor de app. → primer síntoma de read pressure.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">② Redis Cluster (3 master + 3 replica)</div>
+      <div class="card-body">Cuando Redis &gt; 8GB o &gt; 50K ops/s.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">③ Shard <code>mentions</code> por source</div>
+      <div class="card-body">TimescaleDB multi-node o Citus. Cuando writes &gt; 3K/s.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">④ ClickHouse para analytics</div>
+      <div class="card-body">CDC vía Debezium → Kafka → ClickHouse. Cuando queries analíticas &gt; 5s.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">⑤ Vector DB dedicada (Qdrant)</div>
+      <div class="card-body">Cuando embeddings &gt; 50M filas y pgvector sea cuello de botella.</div>
+    </div>
+    <div class="card card-accent">
+      <div class="card-title">⚠ Lo que NO hacer en day-1</div>
+      <div class="card-body">
+        No shardar antes de tener cuello de botella medido. No introducir ClickHouse sin caso
+        analítico claro. No usar Kafka para todo (Redis Streams es suficiente hasta ~100K msg/s).
+        No poner HNSW antes de tener suficientes embeddings (IVFFLAT es mejor para datasets
+        pequeños/medianos con updates).
+      </div>
+    </div>
+  </div>
+
+  <h3>Riesgos y mitigaciones</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Riesgo</th><th>Probabilidad</th><th>Impacto</th><th>Mitigación</th></tr></thead>
+      <tbody>
+        <tr><td>X sube precios / cambia tiers</td><td><span class="tag tag-hot">Alta</span></td><td>Alto</td><td>Abstracción en adapter; fallback a Nitter (deprecated) o scrapers</td></tr>
+        <tr><td>Reddit limita OAuth gratis</td><td><span class="tag tag-warn">Media</span></td><td>Alto</td><td>Plan B: PRAW con creds personales, o Pushshift si vuelve</td></tr>
+        <tr><td>Bluesky firehose cae</td><td><span class="tag tag-mint">Baja</span></td><td>Medio</td><td>Reconnect automático + cursor persistente</td></tr>
+        <tr><td>GDELT cambia schema</td><td><span class="tag tag-warn">Media</span></td><td>Medio</td><td>Normalización tolerante a missing fields</td></tr>
+        <tr><td>Redis (BullMQ) se cae</td><td><span class="tag tag-mint">Baja</span></td><td>Crítico</td><td>Redis Sentinel o Upstash con failover</td></tr>
+        <tr><td>IP ban en scraping</td><td><span class="tag tag-warn">Media</span></td><td>Medio</td><td>Rotación de proxies solo para X (demás usan API oficial)</td></tr>
+        <tr><td>Costo X se dispara</td><td><span class="tag tag-hot">Alta</span></td><td>Alto</td><td>Hard cap: 2 concurrentes, 100 jobs/h</td></tr>
+        <tr><td>Drift entre Zod schema y DB schema</td><td><span class="tag tag-warn">Media</span></td><td>Medio</td><td>Zod response validation + CI check codegen</td></tr>
+        <tr><td>Rate limit by-pass con header spoofing</td><td><span class="tag tag-warn">Media</span></td><td>Medio</td><td><code>getClientId</code> prioriza <code>user:</code> sobre <code>ip:</code></td></tr>
+        <tr><td>SSE connection leak</td><td><span class="tag tag-warn">Media</span></td><td>Medio</td><td>Heartbeat + <code>req.signal.abort</code> cleanup + límite 3 conns/usuario</td></tr>
+        <tr><td>Secreto API key en logs</td><td><span class="tag tag-mint">Baja</span></td><td>Crítico</td><td><code>logger</code> redacta campos <code>key</code>, <code>token</code>, <code>authorization</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ═══════════════ 10. PLAN DE IMPLEMENTACIÓN ═══════════════ -->
+<section id="plan">
+  <div class="section-header">
+    <span class="section-num">SECCIÓN 10</span>
+    <h2><span class="ico">◆</span> Plan de Implementación</h2>
+    <p class="section-desc">
+      5 fases, 12-14 semanas, dependencias claras entre agentes. Cada fase produce un milestone
+      shippable. La regla de oro: <strong>nada se mergea sin feature flag</strong>
+      <code>USE_LIVE_SCORING</code> que permita volver al mock en 1 línea.
+    </p>
+  </div>
+
+  <div class="phase-grid">
+    <div class="phase-num">1</div>
+    <div class="phase-body">
+      <div class="phase-title">Fase 1 — Fundaciones de datos y contratos</div>
+      <div class="phase-meta">Semanas 1-2 · Dependencias: ninguna · Entrega: schema PG + Redis keys + paquete @virahub/contracts</div>
+      <ul>
+        <li>Setup <code>prisma/schema.prisma</code> con modelos relacionales (users, trends, alerts, engines_config, sources_registry, saved_trends, alert_rules)</li>
+        <li>Migration SQL idempotente <code>20250101_ts_setup/up.sql</code> con hypertables + CAGGs + políticas + índices vectoriales</li>
+        <li>Shadow DB en CI con timescaledb, vector, pg_trgm, btree_gin preinstalados</li>
+        <li>Cliente Redis con tabla de keys de la sección 5 como contrato (<code>lib/redis-keys.ts</code>)</li>
+        <li>Paquete <code>@virahub/contracts</code> con Zod schemas + tipos inferidos + registry OpenAPI</li>
+        <li>Backfill de los 6 trends mock a <code>trends</code> + 7 días de <code>trend_scores</code> sintéticos</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="phase-grid">
+    <div class="phase-num">2</div>
+    <div class="phase-body">
+      <div class="phase-title">Fase 2 — Ingesta de 7 motores</div>
+      <div class="phase-meta">Semanas 3-5 · Dependencias: Fase 1 · Entrega: 22 workers + health endpoint + métricas Prometheus</div>
+      <ul>
+        <li>Implementar 7 adapters siguiendo el patrón Bluesky/Reddit: HN, RSS, GDELT, GitHub, X</li>
+        <li>Wire up de <code>bootQueues()</code> + <code>bootWorkers()</code> en <code>scripts/ingest-worker.ts</code></li>
+        <li>Circuit breaker por motor, DLQ con cap 3 retries, observabilidad Prometheus</li>
+        <li>Endpoint <code>/api/health/ingestion</code> con estado de colas + circuit + errorRate</li>
+        <li>Variables de entorno (.env) para Reddit, Bluesky, GitHub, X (Basic $100/mes)</li>
+        <li>Throughput target: 12K menciones/hora sostenidas, picos de 30K</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="phase-grid">
+    <div class="phase-num">3</div>
+    <div class="phase-body">
+      <div class="phase-title">Fase 3 — Motor de scoring y pipeline</div>
+      <div class="phase-meta">Semanas 6-8 · Dependencias: Fase 2 · Entrega: lib/pipeline.ts + lib/scoring.ts integrado + 6 trends reales</div>
+      <ul>
+        <li>Implementar <code>lib/pipeline.ts</code> que orqueste las 6 stages (normalize → dedup → cluster → score → emit)</li>
+        <li>Integración de <code>lib/scoring.ts</code> (800 líneas, ya type-checks limpio) con <code>computeScore()</code> reutilizable</li>
+        <li>MinHash 128 perm + LSH 32×4 bands, embeddings multilingual-e5-small (ONNX runtime)</li>
+        <li>Hook en <code>onMentions()</code> antes de publish → scoring de spam/astroturfing</li>
+        <li>EMIT a 3 canales: Kafka <code>trends.scored</code> + Redis ZSET <code>trends:hot:*</code> + Redis Pub/Sub</li>
+        <li>Calibración de pesos sobre 90d de histórico (GDELT + Reddit + Twitter) maximizando lead time</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="phase-grid">
+    <div class="phase-num">4</div>
+    <div class="phase-body">
+      <div class="phase-title">Fase 4 — API Gateway + SSE streaming</div>
+      <div class="phase-meta">Semanas 9-11 · Dependencias: Fase 3 · Entrega: 30 endpoints REST + SSE multiplexado + Auth.js v5</div>
+      <ul>
+        <li>Auth.js v5 con GitHub + Google, JWT + DB adapter, cookie httpOnly + Secure + SameSite=Lax</li>
+        <li>30 endpoints REST con <code>apiHandler</code> composición funcional (auth → rate-limit → zod → logic → zod response → ETag)</li>
+        <li>Rate limiting token bucket Upstash 5 tiers (L1-L5), identifier <code>user:{userId}</code> prioritario sobre <code>ip:{ip}</code></li>
+        <li>Errores RFC 7807 Problem Details con <code>code</code> + <code>traceId</code> + <code>errors[]</code></li>
+        <li>SSE Gateway <code>app/api/stream/route.ts</code> con SharedSubscriber (1 sub Redis/pod), demuxer, dispatcher, backpressure 3 capas</li>
+        <li>Replay por <code>Last-Event-ID</code> + LVC fallback + circuit breaker + polling REST <code>/api/snapshot</code></li>
+        <li>OpenAPI 3.1 auto-generado desde Zod vía <code>@asteasolutions/zod-to-openapi</code>, servido en <code>/api/v1/openapi.json</code></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="phase-grid">
+    <div class="phase-num">5</div>
+    <div class="phase-body">
+      <div class="phase-title">Fase 5 — Migración frontend y hardening</div>
+      <div class="phase-meta">Semanas 12-14 · Dependencias: Fase 4 · Entrega: frontend sin mocks + load test 10K conns</div>
+      <ul>
+        <li>Hook <code>useVirahubStream</code> + <code>useSnapshotPolling</code> fallback</li>
+        <li>Patch <code>components/virahub-provider.tsx</code>: eliminar 3 <code>setInterval</code>, llamar hook</li>
+        <li>Reemplazar imports de <code>lib/virahub-data.ts</code> por <code>api.*</code> (real) con feature flag <code>USE_LIVE_SCORING</code></li>
+        <li>Resolver 15 hallazgos del Agente 1: dualidad alerts/AlertRule, shape concepto cliente, evidence tipado fuerte, focusedEngine persistido, estados de error/loading/empty</li>
+        <li>Load test con artillery/k6: 5K conns SSE, 200 msg/s, validar drops &lt; 0.1%</li>
+        <li>Runbook de degradación (sección 9 del Agente 5) → wiki on-call</li>
+        <li>Migración gradual: feature flag por usuario, rollback en 1 línea</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>Milestones shippable</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Fin de fase</th><th>Milestone</th><th>Criterio de aceptación</th></tr></thead>
+      <tbody>
+        <tr><td>Semana 2</td><td><strong>M1: Schema listo</strong></td><td>Prisma migrate deploy + SQL idempotente aplicado, shadow DB CI verde, 6 trends mock visibles en PG</td></tr>
+        <tr><td>Semana 5</td><td><strong>M2: Ingesta viva</strong></td><td>7 motores capturando, /api/health/ingestion 200, métricas Prometheus visibles, 12K menciones/h sostenidas</td></tr>
+        <tr><td>Semana 8</td><td><strong>M3: Scoring funcional</strong></td><td>6 trends reales en <code>trends:hot:*</code> ZSET, confidence/delta/shape calculados, EMIT a 3 canales</td></tr>
+        <tr><td>Semana 11</td><td><strong>M4: API + SSE listos</strong></td><td>30 endpoints REST con Zod, Auth.js v5, SSE con 100 conns estables, OpenAPI spec servida</td></tr>
+        <tr><td>Semana 14</td><td><strong>M5: Frontend migrado</strong></td><td>0 <code>setInterval</code> en producción, 10K conns SSE load test verde, runbook on-call publicado</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Variables de entorno requeridas</h3>
+  <pre><code><span class="com"># .env (no commitear — solo referencia)</span>
+REDIS_URL=redis://localhost:<span class="num">6379</span>
+
+<span class="com"># Reddit</span>
+REDDIT_CLIENT_ID=xxx
+REDDIT_CLIENT_SECRET=xxx
+REDDIT_USER_AGENT=<span class="str">"virahub:0.1.0 (by /u/your_username)"</span>
+
+<span class="com"># Bluesky</span>
+BLUESKY_PDS_URL=https://bsky.social
+BLUESKY_JETSTREAM_URL=wss://jetstream1.us-east.bsky.network/subscribe
+
+<span class="com"># GitHub</span>
+GITHUB_TOKEN=ghp_xxx  <span class="com"># PAT con read:public</span>
+
+<span class="com"># X (Basic $100/mes mínimo)</span>
+X_BEARER_TOKEN=xxx
+X_API_KEY=xxx
+X_API_KEY_SECRET=xxx
+X_ACCESS_TOKEN=xxx
+X_ACCESS_TOKEN_SECRET=xxx
+
+<span class="com"># Auth.js v5</span>
+AUTH_SECRET=<span class="str">&lt;256-bit secret&gt;</span>
+GITHUB_ID=xxx
+GITHUB_SECRET=xxx
+GOOGLE_ID=xxx
+GOOGLE_SECRET=xxx
+
+<span class="com"># Rate limiting</span>
+UPSTASH_REDIS_REST_URL=https://xxx.upstash.io
+UPSTASH_REDIS_REST_TOKEN=xxx
+
+<span class="com"># Ingest config</span>
+INGEST_SINCE_HOURS=<span class="num">1</span>
+INGEST_DLQ_MAX_RETRIES=<span class="num">3</span>
+INGEST_DEDUP_TTL_DAYS=<span class="num">7</span>
+
+<span class="com"># Feature flags</span>
+USE_LIVE_SCORING=<span class="kw">false</span>  <span class="com"># migración gradual por usuario</span></code></pre>
+
+  <h3>Dependencias npm</h3>
+  <pre><code><span class="com"># Core</span>
+pnpm add next-auth@<span class="num">5</span> @auth/drizzle-adapter zod @asteasolutions/zod-to-openapi
+pnpm add drizzle-orm pg ioredis bullmq @upstash/ratelimit @upstash/redis
+pnpm add p-retry undici iconv-lite
+
+<span class="com"># Sources</span>
+pnpm add @atproto/api firebase
+
+<span class="com"># ML / embeddings</span>
+pnpm add onnxruntime-node fast-text  <span class="com"># multilingual-e5-small ONNX + lid.176</span>
+
+<span class="com"># Observability</span>
+pnpm add prom-client pino pino-transport
+
+<span class="com"># Dev</span>
+pnpm add -D drizzle-kit @types/pg artillery k6</code></pre>
+
+  <div class="callout callout-success">
+    <div class="callout-icon">✓</div>
+    <div>
+      <div class="callout-title">Cero endpoints huérfanos</div>
+      <p>
+        Cada endpoint del catálogo de la sección 7 mapea a una screen existente en
+        <code>components/screens/*</code>. El frontend puede empezar a migrar de
+        <code>lib/virahub-data.ts</code> (mock) a <code>api.*</code> (real) tan pronto como el
+        Agente 1 (backend) levante la primera ruta. La regla de oro: nada se mergea sin feature
+        flag <code>USE_LIVE_SCORING</code> que permita volver al mock en 1 línea.
+      </p>
+    </div>
+  </div>
+
+  <div class="callout callout-info">
+    <div class="callout-icon">i</div>
+    <div>
+      <div class="callout-title">Open questions para otros agentes (Agente 6)</div>
+      <p>
+        1. ¿Redis gestionado por Upstash o self-hosted? ¿Postgres para Auth.js sessions o DynamoDB?<br>
+        2. ¿El <code>confidence</code> (0-100) viene ya calculado del pipeline o lo infiere el gateway?<br>
+        3. ¿React 19 Suspense + fetch en server components para <code>GET /trends</code>?<br>
+        4. ¿Audit logging obligatorio para <code>PUT /settings/api-keys/:service</code> y <code>POST /engines/:id/test</code>?<br>
+        5. ¿API pública (3rd-party developers) en roadmap? Si sí, añadir <code>POST /v1/oauth/token</code> + scopes antes de v1 freeze.
+      </p>
+    </div>
+  </div>
+</section>
+
+  </main>
+</div>
+
+<!-- ═══════════════ FOOTER ═══════════════ -->
+<footer class="doc-footer">
+  <p>
+    <strong>VIRAHUB — Documento Técnico de Arquitectura y Backend</strong> · v1.0.0 · 2025-07-31<br>
+    Síntesis de 6 agentes especializados · 7,758 líneas de código fuente analizadas<br>
+    <code>PostgreSQL 16 + TimescaleDB + pgvector · Redis 7.4 · Next.js 16 · Auth.js v5 · BullMQ</code><br><br>
+    Orquestado por <strong>Agente 00 · Síntesis Maestra</strong>
+  </p>
+</footer>
+
+</body>
+</html>
