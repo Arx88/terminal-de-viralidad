@@ -126,7 +126,13 @@ export function AnalysisPanel() {
       <div className="flex items-center justify-between">
         <h2 className="flex items-center gap-2 text-[15px] font-semibold">
           En análisis
-          <span className="rounded-full bg-white/[0.08] px-2 py-0.5 text-[11px] font-medium text-muted-foreground tabular-nums">
+          <span className="flex items-center gap-1.5 rounded-full bg-white/[0.08] px-2 py-0.5 text-[11px] font-medium text-muted-foreground tabular-nums">
+            {live && (
+              <span
+                className="size-1.5 rounded-full bg-[var(--mint)]"
+                style={{ animation: 'vh-pulse 1.4s ease-in-out infinite' }}
+              />
+            )}
             {trends.length}
           </span>
         </h2>
@@ -157,6 +163,12 @@ export function AnalysisPanel() {
               >
                 {active && (
                   <span className="absolute inset-y-1.5 left-0 w-[3px] animate-in fade-in slide-in-from-left-1 rounded-full bg-[var(--hot)] duration-300" />
+                )}
+                {active && (
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-0 rounded-lg bg-gradient-to-r from-[var(--hot)]/[0.06] to-transparent"
+                  />
                 )}
                 <span className="flex size-6 shrink-0 items-center justify-center">
                   {t.id === 'ia' ? (

@@ -113,7 +113,7 @@ export function TopBar() {
         </div>
         <p className="flex flex-wrap items-center gap-x-2 text-[12px] text-muted-foreground">
           <span>
-            <span className="text-foreground/85">6 motores</span> activos
+            <span className="text-foreground/85">{ENGINES.length} motores</span> activos
           </span>
           <span className="text-muted-foreground/40">•</span>
           <span>

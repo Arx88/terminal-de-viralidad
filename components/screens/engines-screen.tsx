@@ -63,6 +63,17 @@ const ENGINE_META: EngineMeta[] = [
     auth: 'OAuth',
   },
   {
+    id: 'x',
+    description: 'Timeline pública y conversaciones de X (Twitter).',
+    defaultInterval: 4,
+    intervalOptions: [1, 3, 5, 10, 15],
+    queryLabel: 'Términos y hashtags',
+    queryPlaceholder: '#IA, #regulación, OpenAI',
+    defaultQueries: ['#IA', '#regulación', 'OpenAI'],
+    rateLimit: '450 req/15min',
+    auth: 'OAuth',
+  },
+  {
     id: 'hn',
     description: 'Front page y comentarios de Hacker News.',
     defaultInterval: 10,
@@ -119,12 +130,14 @@ type LogEntry = {
 const INITIAL_LOGS: LogEntry[] = [
   { id: 'l1', engine: 'reddit', ts: '12:32:14', level: 'info', message: 'Lote 1.4k posts procesado en 1.2s' },
   { id: 'l2', engine: 'bluesky', ts: '12:32:11', level: 'info', message: 'Firehose activa · 432 evt/min' },
-  { id: 'l3', engine: 'hn', ts: '12:31:58', level: 'warn', message: 'Rate limit cercano al 80%' },
-  { id: 'l4', engine: 'rss', ts: '12:31:42', level: 'info', message: '24 feeds sincronizados · 0 nuevos' },
-  { id: 'l5', engine: 'gdelt', ts: '12:31:30', level: 'error', message: 'Timeout en consulta theme:TECH' },
-  { id: 'l6', engine: 'github', ts: '12:31:15', level: 'info', message: '12 repos verificados · 3 changelogs nuevos' },
-  { id: 'l7', engine: 'reddit', ts: '12:30:55', level: 'info', message: 'OAuth token refrescado' },
-  { id: 'l8', engine: 'bluesky', ts: '12:30:32', level: 'info', message: 'Deduplicación · 17 posts colisionados' },
+  { id: 'l3', engine: 'x', ts: '12:32:07', level: 'info', message: 'Stream v2 conectado · 287 tweets/min' },
+  { id: 'l4', engine: 'hn', ts: '12:31:58', level: 'warn', message: 'Rate limit cercano al 80%' },
+  { id: 'l5', engine: 'rss', ts: '12:31:42', level: 'info', message: '24 feeds sincronizados · 0 nuevos' },
+  { id: 'l6', engine: 'gdelt', ts: '12:31:30', level: 'error', message: 'Timeout en consulta theme:TECH' },
+  { id: 'l7', engine: 'github', ts: '12:31:15', level: 'info', message: '12 repos verificados · 3 changelogs nuevos' },
+  { id: 'l8', engine: 'reddit', ts: '12:30:55', level: 'info', message: 'OAuth token refrescado' },
+  { id: 'l9', engine: 'x', ts: '12:30:38', level: 'warn', message: 'Hashtag #IA saturado · muestreo activado' },
+  { id: 'l10', engine: 'bluesky', ts: '12:30:32', level: 'info', message: 'Deduplicación · 17 posts colisionados' },
 ]
 
 type EngineConfigState = {

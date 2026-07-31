@@ -241,6 +241,16 @@
   }
 }
 
+/* Flowing dashed background for pipeline tracks */
+@keyframes vh-flow-bg {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 16px 0;
+  }
+}
+
 /* Gentle vertical float for small circles */
 @keyframes vh-float {
   0%,

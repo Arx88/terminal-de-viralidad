@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useRef, useState } from 'react'
+import { Fragment, useMemo, useRef, useState } from 'react'
 import { Eye, EyeOff, MoveHorizontal } from 'lucide-react'
 import { useVirahub } from '@/components/virahub-provider'
 import { SourceGlyph } from '@/components/source-icon'
@@ -13,14 +13,17 @@ import {
 } from '@/lib/virahub-data'
 import { cn } from '@/lib/utils'
 
-const X0 = 24
-const X1 = 942
-const LANE_H = 44
-const LANE_GAP = 12
-const AMP = 34
+const CHART_W = 1000
+const LANE_H = 54
+const LINE_AMP = 18 // vertical half-amplitude within lane (line spans center ± LINE_AMP)
 
-function laneCenter(i: number) {
-  return LANE_H / 2 + i * (LANE_H + LANE_GAP)
+function lanePath(values: number[]) {
+  const pts: [number, number][] = values.map((v, i) => {
+    const x = (i / (values.length - 1)) * CHART_W
+    const y = LANE_H / 2 - (v - 0.5) * LINE_AMP * 2
+    return [x, y]
+  })
+  return smoothPath(pts, 0.5)
 }
 
 function toMinutes(label: string) {
@@ -43,6 +46,9 @@ function hoverLabel(range: RangeKey, t: number, clock: string) {
   return fmt(start + t * (end - start))
 }
 
+const GRID_cls =
+  'grid grid-cols-[170px_1fr] gap-x-2 sm:grid-cols-[210px_1fr] sm:gap-x-3 lg:grid-cols-[250px_1fr] lg:gap-x-4'
+
 export function TrendTimeline() {
   const {
     range,
@@ -57,49 +63,45 @@ export function TrendTimeline() {
     live,
   } = useVirahub()
 
-  const wrapRef = useRef<HTMLDivElement>(null)
-  const [hoverX, setHoverX] = useState<number | null>(null)
+  const chartRef = useRef<HTMLDivElement>(null)
+  const [hoverRatio, setHoverRatio] = useState<number | null>(null)
 
   const lanes = useMemo(() => trends.filter((t) => t.inTimeline), [trends])
   const labels = RANGE_CONFIG[range].labels
 
   const data = useMemo(
     () =>
-      lanes.map((lane, i) => {
+      lanes.map((lane) => {
         const values = buildSeries(lane.id, lane.shape, range, step)
-        const pts = values.map(
-          (v, idx) =>
-            [
-              X0 + (idx / (values.length - 1)) * (X1 - X0),
-              laneCenter(i) - (v - 0.5) * AMP,
-            ] as [number, number],
-        )
-        return { lane, values, pts, d: smoothPath(pts) }
+        return { lane, values, d: lanePath(values) }
       }),
     [lanes, range, step],
   )
 
   const n = data[0]?.values.length ?? 2
   const hoverIndex =
-    hoverX === null
+    hoverRatio === null
       ? null
-      : Math.max(
-          0,
-          Math.min(n - 1, Math.round(((hoverX - X0) / (X1 - X0)) * (n - 1))),
-        )
+      : Math.max(0, Math.min(n - 1, Math.round(hoverRatio * (n - 1))))
 
   function handleMove(e: React.MouseEvent<HTMLDivElement>) {
-    const rect = wrapRef.current?.getBoundingClientRect()
+    const rect = chartRef.current?.getBoundingClientRect()
     if (!rect) return
-    setHoverX(((e.clientX - rect.left) / rect.width) * 1000)
+    setHoverRatio(Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)))
   }
 
   return (
-    <section className="rounded-2xl border border-border bg-card px-6 pt-5 pb-4">
-      <div className="flex items-center justify-between gap-4">
-        <h2 className="text-[11px] font-semibold tracking-[0.16em] text-muted-foreground uppercase">
-          Línea de tiempo de tendencias
-        </h2>
+    <section className="relative rounded-2xl border border-border bg-card px-4 pt-5 pb-4 sm:px-6">
+      {/* HEADER */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <h2 className="text-[11px] font-semibold tracking-[0.16em] text-muted-foreground uppercase">
+            Línea de tiempo de tendencias
+          </h2>
+          <span className="rounded-md bg-white/[0.04] px-1.5 py-0.5 text-[10.5px] font-medium text-muted-foreground tabular-nums">
+            {lanes.length} activas
+          </span>
+        </div>
         <div className="flex items-center gap-1 rounded-lg bg-white/[0.04] p-1">
           {RANGES.map((r) => (
             <button
@@ -108,7 +110,7 @@ export function TrendTimeline() {
               onClick={() => setRange(r)}
               aria-pressed={range === r}
               className={cn(
-                'cursor-pointer rounded-md px-3 py-1 text-[12px] font-medium transition-all duration-200',
+                'cursor-pointer rounded-md px-2.5 py-1 text-[12px] font-medium transition-all duration-200',
                 range === r
                   ? 'bg-white/[0.09] text-foreground shadow-[inset_0_0_0_1px_var(--border)]'
                   : 'text-muted-foreground hover:bg-white/[0.04] hover:text-foreground',
@@ -120,284 +122,263 @@ export function TrendTimeline() {
         </div>
       </div>
 
-      <div className="mt-5 flex items-center justify-between pr-1 text-[11px] text-muted-foreground tabular-nums">
-        {labels.map((h) => (
-          <span key={h} className="animate-in fade-in duration-500">
-            {h}
-          </span>
-        ))}
-        <span className="flex items-center gap-1.5 font-semibold tracking-wide text-foreground/90">
-          {live && (
-            <span
-              className="size-1.5 rounded-full bg-primary"
-              style={{ animation: 'vh-pulse 1.4s ease-in-out infinite' }}
-            />
+      {/* TIME AXIS ROW */}
+      <div className={`mt-4 ${GRID_cls}`}>
+        <div className="flex items-end justify-end pr-1 pb-1 text-[10px] tracking-wide text-muted-foreground/70 uppercase">
+          timeline
+        </div>
+        <div
+          ref={chartRef}
+          onMouseMove={handleMove}
+          onMouseLeave={() => setHoverRatio(null)}
+          className="relative"
+        >
+          <div className="flex items-center justify-between pr-1 text-[10.5px] text-muted-foreground tabular-nums">
+            {labels.map((h) => (
+              <span key={h} className="animate-in fade-in duration-500">
+                {h}
+              </span>
+            ))}
+            <span className="flex items-center gap-1.5 font-semibold tracking-wide text-foreground/90">
+              {live && (
+                <span
+                  className="size-1.5 rounded-full bg-primary"
+                  style={{ animation: 'vh-pulse 1.4s ease-in-out infinite' }}
+                />
+              )}
+              AHORA
+            </span>
+          </div>
+
+          {/* TOOLTIP — anchored to chart column, just below time axis */}
+          {hoverIndex !== null && (
+            <div
+              className="pointer-events-none absolute top-full left-0 z-20 mt-2 w-full"
+              aria-hidden="true"
+            >
+              <div
+                className="absolute w-[176px] rounded-xl border border-border bg-popover/95 p-3 shadow-2xl backdrop-blur-sm"
+                style={{
+                  left: `${hoverRatio! * 100}%`,
+                  transform: `translateX(${
+                    hoverRatio! > 0.85
+                      ? '-90%'
+                      : hoverRatio! < 0.15
+                        ? '-10%'
+                        : '-50%'
+                  })`,
+                }}
+              >
+                <p className="text-[11px] font-semibold tracking-wide text-muted-foreground tabular-nums">
+                  {hoverLabel(range, hoverIndex / (n - 1), clock)}
+                </p>
+                <ul className="mt-2 flex flex-col gap-1.5">
+                  {data.map(({ lane, values }) => (
+                    <li
+                      key={`tt-${lane.id}`}
+                      className={cn(
+                        'flex items-center gap-2 text-[11.5px]',
+                        hiddenLanes.includes(lane.id) && 'opacity-40',
+                      )}
+                    >
+                      <span
+                        className="size-1.5 shrink-0 rounded-full"
+                        style={{ background: lane.color }}
+                      />
+                      <span className="min-w-0 flex-1 truncate text-muted-foreground">
+                        {lane.title}
+                      </span>
+                      <span className="font-semibold tabular-nums">
+                        {Math.round(values[hoverIndex] * 120)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
           )}
-          AHORA
-        </span>
+        </div>
       </div>
 
-      <div
-        ref={wrapRef}
-        className="relative mt-3 h-[210px]"
-        onMouseMove={handleMove}
-        onMouseLeave={() => setHoverX(null)}
-      >
-        {/* lane rows */}
-        <div className="absolute inset-x-0 top-0 flex flex-col" style={{ gap: LANE_GAP }}>
-          {data.map(({ lane, values }, i) => {
-            const hidden = hiddenLanes.includes(lane.id)
-            const isSel = selectedId === lane.id
-            const last = values[values.length - 1]
-            return (
+      {/* LANES */}
+      <div className={`mt-1 ${GRID_cls}`}>
+        {data.map(({ lane, values, d }) => {
+          const hidden = hiddenLanes.includes(lane.id)
+          const isSel = selectedId === lane.id
+          const last = values[values.length - 1]
+          const delta = lane.delta
+          const lastY = LANE_H / 2 - (last - 0.5) * LINE_AMP * 2
+          return (
+            <Fragment key={lane.id}>
+              {/* LABEL CELL */}
               <div
-                key={lane.id}
                 className={cn(
-                  'group relative flex items-center rounded-lg transition-colors duration-300',
-                  isSel ? 'bg-white/[0.05]' : 'bg-white/[0.025] hover:bg-white/[0.04]',
+                  'group flex items-center gap-2 rounded-l-lg border-r border-border/40 px-2 transition-colors',
+                  isSel ? 'bg-white/[0.05]' : 'bg-white/[0.02] hover:bg-white/[0.04]',
                   hidden && 'opacity-45',
                 )}
                 style={{ height: LANE_H }}
               >
                 <span
-                  className="absolute inset-y-0 left-0 w-[3px] rounded-l-lg transition-all duration-300"
+                  className="h-7 w-[3px] shrink-0 rounded-full transition-all duration-300"
                   style={{
                     background: lane.color,
-                    opacity: hidden ? 0.3 : 0.95,
                     boxShadow: isSel ? `0 0 12px ${lane.color}` : 'none',
                   }}
                 />
                 <button
                   type="button"
                   onClick={() => select(lane.id)}
-                  aria-label={`Seleccionar ${lane.title}`}
                   aria-pressed={isSel}
-                  className="flex cursor-pointer items-center gap-2 pl-4 text-left"
+                  aria-label={`Seleccionar ${lane.title}`}
+                  className="flex min-w-0 flex-1 cursor-pointer items-center gap-1.5 text-left"
                 >
-                  <SourceGlyph source={lane.source} className="size-3.5" />
-                  <span className="text-[13px] font-medium">{lane.title}</span>
+                  <SourceGlyph source={lane.source} className="size-3.5 shrink-0" />
+                  <span className="truncate text-[12.5px] font-medium">{lane.title}</span>
                 </button>
-
-                <span className="ml-auto flex items-center gap-3 pr-3">
-                  <span
-                    className="rounded-md px-1.5 py-0.5 text-[11px] font-semibold tabular-nums opacity-0 transition-opacity duration-200 group-hover:opacity-100"
-                    style={{ color: lane.color, background: 'oklch(1 0 0 / 6%)' }}
-                  >
-                    {Math.round(last * 120)}/h
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => toggleLane(lane.id)}
-                    title={hidden ? 'Mostrar serie' : 'Ocultar serie'}
-                    aria-label={hidden ? `Mostrar serie ${lane.title}` : `Ocultar serie ${lane.title}`}
-                    aria-pressed={!hidden}
-                    className="cursor-pointer text-muted-foreground/60 transition-colors hover:text-foreground"
-                  >
-                    {hidden ? (
-                      <EyeOff className="size-3.5" strokeWidth={1.8} />
-                    ) : (
-                      <Eye className="size-3.5" strokeWidth={1.8} />
-                    )}
-                    <span className="sr-only">
-                      {hidden ? 'Mostrar serie' : 'Ocultar serie'}
-                    </span>
-                  </button>
+                <span
+                  className={cn(
+                    'shrink-0 text-[11px] font-semibold tabular-nums',
+                    delta > 0
+                      ? 'text-[var(--hot)]'
+                      : delta < 0
+                        ? 'text-muted-foreground/80'
+                        : 'text-muted-foreground',
+                  )}
+                >
+                  {delta > 0 ? '+' : ''}
+                  {delta}%
                 </span>
+                <button
+                  type="button"
+                  onClick={() => toggleLane(lane.id)}
+                  aria-pressed={!hidden}
+                  aria-label={
+                    hidden ? `Mostrar serie ${lane.title}` : `Ocultar serie ${lane.title}`
+                  }
+                  className="cursor-pointer text-muted-foreground/60 transition-colors hover:text-foreground"
+                >
+                  {hidden ? (
+                    <EyeOff className="size-3.5" strokeWidth={1.8} />
+                  ) : (
+                    <Eye className="size-3.5" strokeWidth={1.8} />
+                  )}
+                </button>
               </div>
-            )
-          })}
-        </div>
 
-        {/* chart overlay */}
-        <svg
-          className="pointer-events-none absolute inset-0 h-full w-full"
-          viewBox="0 0 1000 210"
-          preserveAspectRatio="none"
-          aria-hidden="true"
-        >
-          <defs>
-            <linearGradient
-              id="vh-now"
-              gradientUnits="userSpaceOnUse"
-              x1="942"
-              y1="0"
-              x2="942"
-              y2="210"
-            >
-              <stop offset="0%" stopColor="oklch(0.72 0.2 300)" stopOpacity="0.1" />
-              <stop offset="45%" stopColor="oklch(0.65 0.24 295)" stopOpacity="1" />
-              <stop offset="100%" stopColor="oklch(0.55 0.24 285)" stopOpacity="0.15" />
-            </linearGradient>
-            <linearGradient id="vh-sweep" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor="oklch(0.75 0.2 300)" stopOpacity="0" />
-              <stop offset="50%" stopColor="oklch(0.75 0.2 300)" stopOpacity="0.5" />
-              <stop offset="100%" stopColor="oklch(0.75 0.2 300)" stopOpacity="0" />
-            </linearGradient>
-            <filter id="vh-glow" x="-40%" y="-60%" width="180%" height="220%">
-              <feGaussianBlur stdDeviation="5" result="b" />
-              <feMerge>
-                <feMergeNode in="b" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
-          </defs>
-
-          {live && (
-            <rect
-              x="0"
-              y="0"
-              width="120"
-              height="210"
-              fill="url(#vh-sweep)"
-              style={{ animation: 'vh-sweep 6s linear infinite' }}
-            />
-          )}
-
-          {data.map(({ lane, d, pts }) => {
-            const hidden = hiddenLanes.includes(lane.id)
-            const isSel = selectedId === lane.id
-            return (
-              <g
-                key={lane.id}
-                style={{
-                  opacity: hidden ? 0.12 : isSel ? 1 : 0.6,
-                  transition: 'opacity .35s ease',
-                }}
+              {/* CHART CELL */}
+              <div
+                className={cn(
+                  'relative rounded-r-lg transition-colors',
+                  isSel ? 'bg-white/[0.05]' : 'bg-white/[0.02] hover:bg-white/[0.04]',
+                  hidden && 'opacity-45',
+                )}
+                style={{ height: LANE_H }}
+                onMouseMove={handleMove}
+                onMouseLeave={() => setHoverRatio(null)}
               >
-                <path
-                  key={`${lane.id}-${range}`}
-                  d={d}
-                  fill="none"
-                  stroke={lane.color}
-                  strokeWidth={isSel ? 2.4 : 1.7}
-                  strokeLinecap="round"
-                  vectorEffect="non-scaling-stroke"
-                  filter="url(#vh-glow)"
-                  style={{
-                    strokeDasharray: 3000,
-                    animation: 'vh-draw 1s ease-out forwards',
-                  }}
-                />
-                {!hidden &&
-                  pts
-                    .filter((_, i) => i % 6 === 3)
-                    .map(([x, y]) => (
+                <svg
+                  className="absolute inset-0 h-full w-full"
+                  viewBox={`0 0 ${CHART_W} ${LANE_H}`}
+                  preserveAspectRatio="none"
+                  aria-hidden="true"
+                >
+                  <defs>
+                    <linearGradient id={`fill-${lane.id}`} x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={lane.color} stopOpacity="0.22" />
+                      <stop offset="100%" stopColor={lane.color} stopOpacity="0" />
+                    </linearGradient>
+                  </defs>
+                  {/* fill area */}
+                  <path
+                    d={`${d} L ${CHART_W} ${LANE_H} L 0 ${LANE_H} Z`}
+                    fill={`url(#fill-${lane.id})`}
+                    style={{
+                      opacity: hidden ? 0.06 : isSel ? 0.95 : 0.55,
+                      transition: 'opacity .35s ease',
+                    }}
+                  />
+                  {/* line */}
+                  <path
+                    key={`${lane.id}-${range}`}
+                    d={d}
+                    fill="none"
+                    stroke={lane.color}
+                    strokeWidth={isSel ? 2.4 : 1.7}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    vectorEffect="non-scaling-stroke"
+                    style={{
+                      opacity: hidden ? 0.12 : 1,
+                      strokeDasharray: 3000,
+                      animation: 'vh-draw 1s ease-out forwards',
+                      transition: 'opacity .35s ease',
+                    }}
+                  />
+                  {/* hover crosshair + dot inside this lane */}
+                  {hoverIndex !== null && !hidden && (
+                    <>
+                      <line
+                        x1={(hoverIndex / (n - 1)) * CHART_W}
+                        y1={0}
+                        x2={(hoverIndex / (n - 1)) * CHART_W}
+                        y2={LANE_H}
+                        stroke="oklch(1 0 0 / 22%)"
+                        strokeWidth="1"
+                        strokeDasharray="3 4"
+                        vectorEffect="non-scaling-stroke"
+                      />
                       <circle
-                        key={`${x.toFixed(0)}-${y.toFixed(0)}`}
-                        cx={x}
-                        cy={y}
-                        r="3.4"
-                        fill="var(--background)"
-                        stroke={lane.color}
+                        cx={(hoverIndex / (n - 1)) * CHART_W}
+                        cy={LANE_H / 2 - (values[hoverIndex] - 0.5) * LINE_AMP * 2}
+                        r="4"
+                        fill={lane.color}
+                        stroke="var(--background)"
                         strokeWidth="2"
                         vectorEffect="non-scaling-stroke"
                       />
-                    ))}
-              </g>
-            )
-          })}
-
-          {/* crosshair */}
-          {hoverIndex !== null && (
-            <line
-              x1={data[0].pts[hoverIndex][0]}
-              y1="0"
-              x2={data[0].pts[hoverIndex][0]}
-              y2="210"
-              stroke="oklch(1 0 0 / 22%)"
-              strokeWidth="1"
-              strokeDasharray="3 4"
-              vectorEffect="non-scaling-stroke"
-            />
-          )}
-          {hoverIndex !== null &&
-            data.map(({ lane, pts }) =>
-              hiddenLanes.includes(lane.id) ? null : (
-                <circle
-                  key={`h-${lane.id}`}
-                  cx={pts[hoverIndex][0]}
-                  cy={pts[hoverIndex][1]}
-                  r="5"
-                  fill={lane.color}
-                  filter="url(#vh-glow)"
-                />
-              ),
-            )}
-
-          <line
-            x1="942"
-            y1="4"
-            x2="942"
-            y2="206"
-            stroke="url(#vh-now)"
-            strokeWidth="2"
-            vectorEffect="non-scaling-stroke"
-          />
-          {data.map(({ lane, pts }) =>
-            hiddenLanes.includes(lane.id) ? null : (
-              <g key={`now-${lane.id}`}>
-                <circle
-                  cx={942}
-                  cy={pts[pts.length - 1][1]}
-                  r="4.5"
-                  fill={lane.color}
-                  filter="url(#vh-glow)"
-                />
-                {live && (
-                  <circle
-                    cx={942}
-                    cy={pts[pts.length - 1][1]}
-                    r="4.5"
-                    fill="none"
+                    </>
+                  )}
+                  {/* NOW marker */}
+                  <line
+                    x1={CHART_W}
+                    y1={6}
+                    x2={CHART_W}
+                    y2={LANE_H - 6}
                     stroke={lane.color}
                     strokeWidth="1.5"
+                    strokeOpacity="0.55"
                     vectorEffect="non-scaling-stroke"
-                    style={{
-                      animation: 'vh-ripple 2.2s ease-out infinite',
-                      transformOrigin: `942px ${pts[pts.length - 1][1]}px`,
-                    }}
                   />
-                )}
-              </g>
-            ),
-          )}
-        </svg>
-
-        {/* tooltip */}
-        {hoverIndex !== null && (
-          <div
-            className="pointer-events-none absolute top-0 z-10 w-[176px] -translate-x-1/2 rounded-xl border border-border bg-popover/95 p-3 shadow-2xl backdrop-blur-sm"
-            style={{
-              left: `${Math.min(88, Math.max(12, (data[0].pts[hoverIndex][0] / 1000) * 100))}%`,
-            }}
-          >
-            <p className="text-[11px] font-semibold tracking-wide text-muted-foreground tabular-nums">
-              {hoverLabel(range, hoverIndex / (n - 1), clock)}
-            </p>
-            <ul className="mt-2 flex flex-col gap-1.5">
-              {data.map(({ lane, values }) => (
-                <li
-                  key={`tt-${lane.id}`}
-                  className={cn(
-                    'flex items-center gap-2 text-[11.5px]',
-                    hiddenLanes.includes(lane.id) && 'opacity-40',
+                  <circle
+                    cx={CHART_W}
+                    cy={lastY}
+                    r="4"
+                    fill={lane.color}
+                    stroke="var(--background)"
+                    strokeWidth="2"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                  {live && !hidden && (
+                    <circle
+                      cx={CHART_W}
+                      cy={lastY}
+                      r="4"
+                      fill="none"
+                      stroke={lane.color}
+                      strokeWidth="1.5"
+                      vectorEffect="non-scaling-stroke"
+                      style={{
+                        animation: 'vh-ripple 2.2s ease-out infinite',
+                        transformOrigin: `${CHART_W}px ${lastY}px`,
+                      }}
+                    />
                   )}
-                >
-                  <span
-                    className="size-1.5 shrink-0 rounded-full"
-                    style={{ background: lane.color }}
-                  />
-                  <span className="min-w-0 flex-1 truncate text-muted-foreground">
-                    {lane.title}
-                  </span>
-                  <span className="font-semibold tabular-nums">
-                    {Math.round(values[hoverIndex] * 120)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+                </svg>
+              </div>
+            </Fragment>
+          )
+        })}
       </div>
 
       <p className="mt-4 flex items-center justify-center gap-2 text-[12px] text-muted-foreground">

@@ -9,6 +9,7 @@ export type SourceKey =
   | 'rss'
   | 'gdelt'
   | 'github'
+  | 'x'
   | 'nvidia'
   | 'crypto'
 
@@ -244,6 +245,7 @@ export function smoothPath(pts: [number, number][], tension = 0.5) {
 export const ENGINES = [
   { id: 'reddit', name: 'Reddit', verbs: ['Extrayendo…', 'Rastreando…', 'Leyendo hilos…'] },
   { id: 'bluesky', name: 'Bluesky', verbs: ['Analizando…', 'Escuchando…', 'Midiendo señal…'] },
+  { id: 'x', name: 'X (Twitter)', verbs: ['Escaneando…', 'Monitoreando…', 'Detectando…'] },
   { id: 'hn', name: 'Hacker News', verbs: ['Clasificando…', 'Puntuando…', 'Ordenando…'] },
   { id: 'rss', name: 'RSS Feeds', verbs: ['Indexando…', 'Sincronizando…', 'Deduplicando…'] },
   { id: 'gdelt', name: 'GDELT', verbs: ['Procesando…', 'Traduciendo…', 'Geolocalizando…'] },

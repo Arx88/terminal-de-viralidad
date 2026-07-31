@@ -8,12 +8,14 @@ import {
   NvidiaIcon,
   RedditIcon,
   RssIcon,
+  XIcon,
 } from '@/components/brand-icons'
 import { cn } from '@/lib/utils'
 
 const MAP = {
   reddit: { Icon: RedditIcon, tile: 'bg-[#ff4500] text-white', solo: 'text-[#ff4500]' },
   bluesky: { Icon: BlueskyIcon, tile: 'bg-[#0a7aff] text-white', solo: 'text-[#4a9df8]' },
+  x: { Icon: XIcon, tile: 'bg-black text-white', solo: 'text-foreground' },
   hn: { Icon: HnIcon, tile: 'bg-[#ff6600] text-white', solo: 'text-[#ff6600]' },
   rss: { Icon: RssIcon, tile: 'bg-[#f26522] text-white', solo: 'text-[#f26522]' },
   gdelt: { Icon: GdeltIcon, tile: 'bg-[#3b4ee0] text-white', solo: 'text-[#5c6ff0]' },

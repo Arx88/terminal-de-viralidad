@@ -29,7 +29,7 @@ export function LeftRail() {
   return (
     <nav
       aria-label="Navegación principal"
-      className="flex w-[92px] shrink-0 flex-col items-center pt-2 pb-6"
+      className="sticky top-0 flex h-svh w-[92px] shrink-0 flex-col items-center overflow-y-auto pt-4 pb-6 self-start scrollbar-thin"
     >
       <ul className="flex w-full flex-col items-center gap-1">
         {items.map(({ id, label, Icon }) => {

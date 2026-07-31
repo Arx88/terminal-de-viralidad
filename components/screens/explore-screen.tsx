@@ -412,8 +412,8 @@ function FuentesPanel({ trend }: { trend: Trend }) {
           </thead>
           <tbody>
             {ENGINES.map((e, i) => {
-              const pct = [312, 128, 61, 18, 42, 96][i] || 0
-              const menc = [14, 9, 3, 5, 8, 2][i] || 0
+              const pct = [312, 128, 244, 61, 18, 42, 96][i] || 0
+              const menc = [14, 9, 11, 3, 5, 8, 2][i] || 0
               return (
                 <tr key={e.id} className="border-b border-border/50 transition-colors hover:bg-white/[0.02]">
                   <td className="py-3"><SourceTile source={e.id as SourceKey} className="size-8 rounded-lg" /></td>
