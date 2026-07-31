@@ -6,7 +6,7 @@
 import { NextRequest } from 'next/server'
 import { apiOk, apiError, parseZod, CreateAlertBodySchema } from '@/lib/server/api/schemas'
 import type { AlertRuleDTO, AlertChannel } from '@/lib/types'
-import { store } from '@/lib/server/core/store'
+import { store } from '@/lib/server/core/redis-store'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -25,7 +25,7 @@ export async function POST(req: NextRequest): Promise<Response> {
   // FK validation: if clusterId is provided, it must exist in the store.
   // Prevents orphan alerts pointing to phantom clusters.
   if (b.value.clusterId) {
-    const cluster = store.getCluster(b.value.clusterId)
+    const cluster = await store.getCluster(b.value.clusterId)
     if (!cluster) {
       return apiError(422, 'Invalid clusterId', `Cluster ${b.value.clusterId} does not exist`, [
         { path: 'clusterId', message: `Cluster ${b.value.clusterId} not found in store` },

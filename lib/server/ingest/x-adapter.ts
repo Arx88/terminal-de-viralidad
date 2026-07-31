@@ -8,7 +8,7 @@
  *
  * 1. POOL DINÁMICO: cuando una cuenta es citada en Reddit/Bluesky/HN
  *    en <30min, ingresa al pool de rastreo en X por 2 horas.
- *    extractXHandlesFromOtherSources() escanea menciones buscando @handles.
+ *    await extractXHandlesFromOtherSources() escanea menciones buscando @handles.
  *
  * 2. BÚSQUEDA REACTIVA POR PERFILES: si un cluster sobre "DeepSeek V4"
  *    acelera en HN+Reddit, y alguien en Reddit menciona @someuser,
@@ -25,7 +25,7 @@ import type { RawMention, SourceKey } from '@/lib/types'
 import { fnv1a64, normalizeText } from '@/lib/server/hash'
 import { logger } from '@/lib/server/logger'
 import type { Adapter } from '@/lib/server/ingest/types'
-import { store } from '@/lib/server/core/store'
+import { store } from '@/lib/server/core/redis-store'
 
 const BROWSER_UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
@@ -88,10 +88,10 @@ function cleanSeedPool(): void {
  * Si alguien en Reddit dice "check what @someuser said", esa cuenta
  * entra al pool dinámico.
  */
-function extractXHandlesFromOtherSources(): void {
-  const clusters = store.getAllClusters(20)
+async function extractXHandlesFromOtherSources(): Promise<void> {
+  const clusters = await store.getAllClusters(20)
   for (const cluster of clusters) {
-    const mentions = store.getClusterMentions(cluster.id, 5)
+    const mentions = await store.getClusterMentions(cluster.id, 5)
     for (const m of mentions) {
       if (m.source === 'reddit' || m.source === 'bluesky' || m.source === 'hn') {
         // Buscar patrones @username típicos de X
@@ -110,11 +110,11 @@ function extractXHandlesFromOtherSources(): void {
  * NO son celebrities hardcoded — son los usuarios que están generando
  * las señales que detectamos en HN AHORA MISMO.
  */
-function getActiveAuthorsAsSeeds(): string[] {
-  const clusters = store.getTrending(5)
+async function getActiveAuthorsAsSeeds(): Promise<string[]> {
+  const clusters = await store.getTrending(5)
   const authors = new Set<string>()
   for (const cluster of clusters) {
-    const mentions = store.getClusterMentions(cluster.id, 5)
+    const mentions = await store.getClusterMentions(cluster.id, 5)
     for (const m of mentions) {
       if (m.source === 'hn' || m.source === 'reddit') {
         // El authorId de HN es el username de HN — no el de X.
@@ -236,8 +236,8 @@ function isRelevantTweet(text: string, activeKeywords: string[]): boolean {
 /**
  * Extrae keywords de los clusters activos para usar como filtro de relevancia.
  */
-function getActiveKeywords(): string[] {
-  const clusters = store.getTrending(5)
+async function getActiveKeywords(): Promise<string[]> {
+  const clusters = await store.getTrending(5)
   const keywords: string[] = []
   for (const cluster of clusters) {
     // Palabras significativas del título
@@ -263,10 +263,10 @@ export class XAdapter implements Adapter {
 
   async fetch(): Promise<RawMention[]> {
     cleanSeedPool()
-    extractXHandlesFromOtherSources()
+    await extractXHandlesFromOtherSources()
 
     // Keywords activas de las otras 6 fuentes — para filtrar tweets relevantes
-    const activeKeywords = getActiveKeywords()
+    const activeKeywords = await getActiveKeywords()
 
     // Pool dinámico: cuentas descubiertas en otras fuentes (NO hardcoded)
     const dynamicAccounts = Array.from(seedPool.values())
@@ -276,7 +276,7 @@ export class XAdapter implements Adapter {
 
     let accountsToScrape = dynamicAccounts
     if (accountsToScrape.length === 0) {
-      accountsToScrape = getActiveAuthorsAsSeeds()
+      accountsToScrape = await getActiveAuthorsAsSeeds()
     }
     // Bootstrap mínimo: solo cuando el pool está vacío
     if (accountsToScrape.length === 0) {

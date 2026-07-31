@@ -6,7 +6,7 @@
  * so a re-ingest will produce the same id and the briefing will resolve.
  */
 import { NextRequest } from 'next/server'
-import { store, generateExtractiveBriefing, ingestMentions } from '@/lib/server/core/store'
+import { store, generateExtractiveBriefing, ingestMentions } from '@/lib/server/core/redis-store'
 import { TrendIdParamsSchema, BriefingQuerySchema, apiOk, apiError, parseZod } from '@/lib/server/api/schemas'
 import { runIngestion } from '@/lib/server/ingest/adapters'
 import { ALL_SOURCES } from '@/lib/types'
@@ -26,7 +26,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   const q = parseZod(BriefingQuerySchema, sp)
   if (!q.ok) return q.response
 
-  let cluster = store.getCluster(p.value.id)
+  let cluster = await store.getCluster(p.value.id)
 
   // One-shot ingest if cluster not found (Vercel stateless cold-start)
   if (!cluster && !briefingOneShotDone) {
@@ -34,7 +34,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     try {
       const mentions = await runIngestion(ALL_SOURCES)
       ingestMentions(mentions)
-      cluster = store.getCluster(p.value.id)
+      cluster = await store.getCluster(p.value.id)
     } catch {
       // swallow
     }
@@ -42,7 +42,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
 
   if (!cluster) return apiError(404, 'Not found', `Cluster ${p.value.id} not found after ingest`)
 
-  const mentions = store.getClusterMentions(p.value.id, 10)
+  const mentions = await store.getClusterMentions(p.value.id, 10)
   const { narrative, keyPoints, riskFlags, confidence, evidenceMentionIds } = generateExtractiveBriefing(cluster, mentions)
 
   return apiOk({

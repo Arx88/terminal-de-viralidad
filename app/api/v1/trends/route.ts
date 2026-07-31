@@ -6,7 +6,7 @@
  * the user always gets fresh data on page load.
  */
 import { NextRequest } from 'next/server'
-import { store, clusterToTrend, ingestMentions } from '@/lib/server/core/store'
+import { store, clusterToTrend, ingestMentions } from '@/lib/server/core/redis-store'
 import { ListTrendsQuerySchema, apiOk, apiError, parseZod } from '@/lib/server/api/schemas'
 import { startIngestLoop, getIngestStats, updateEngineStatesFromIngest } from '@/lib/server/streaming/loop'
 import { runIngestion } from '@/lib/server/ingest/adapters'
@@ -24,7 +24,7 @@ export async function GET(req: NextRequest): Promise<Response> {
   startIngestLoop()
 
   // One-shot ingest if stale (covers Vercel stateless lambdas)
-  const stats = getIngestStats()
+  const stats = await getIngestStats()
   const now = Date.now()
   if (stats.totalClusters === 0 || now - (stats.lastIngestAt || 0) > ONE_SHOT_STALE_MS) {
     if (now - lastOneShotAt > ONE_SHOT_STALE_MS) {
@@ -46,7 +46,7 @@ export async function GET(req: NextRequest): Promise<Response> {
 
   const { source, phase, minScore, q, limit } = parsed.value
 
-  let clusters = store.getTrending(100)
+  let clusters = await store.getTrending(100)
   if (source) clusters = clusters.filter((c) => c.primarySource === source)
   if (phase) clusters = clusters.filter((c) => c.phase === phase)
   if (typeof minScore === 'number') clusters = clusters.filter((c) => c.score >= minScore)

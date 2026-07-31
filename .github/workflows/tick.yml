@@ -1,0 +1,24 @@
+name: VIRAHUB Tick
+on:
+  schedule:
+    # Cada 5 minutos (GitHub Actions cron mínimo es 5 min)
+    - cron: '*/5 * * * *'
+  workflow_dispatch: # Permitir trigger manual
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger ingestion tick
+        run: |
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+            -H "x-tick-key: ${{ secrets.VIRAHUB_INGEST_API_KEY || 'virahub-local-2025' }}" \
+            "https://terminal-de-viralidad.vercel.app/api/v1/tick")
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | head -n -1)
+          echo "HTTP $HTTP_CODE"
+          echo "$BODY"
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "::error::Tick failed with HTTP $HTTP_CODE"
+            exit 1
+          fi

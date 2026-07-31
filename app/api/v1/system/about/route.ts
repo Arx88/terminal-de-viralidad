@@ -4,7 +4,7 @@
 import { apiOk } from '@/lib/server/api/schemas'
 import { getIngestStats } from '@/lib/server/streaming/loop'
 import { updateEngineStatesFromIngest } from '@/lib/server/streaming/loop'
-import { store, ingestMentions } from '@/lib/server/core/store'
+import { store, ingestMentions } from '@/lib/server/core/redis-store'
 import { runIngestion } from '@/lib/server/ingest/adapters'
 import { ALL_SOURCES } from '@/lib/types'
 
@@ -28,13 +28,13 @@ export async function GET(): Promise<Response> {
     }
   }
 
-  const stats = getIngestStats()
+  const stats = await getIngestStats()
   return apiOk({
     version: '2.0.0',
     uptime: process.uptime(),
     ingest: stats,
-    clusters: store.totalClusters(),
-    mentions: store.totalMentions(),
+    clusters: await store.totalClusters(),
+    mentions: await store.totalMentions(),
     ollama: 'not-configured-v2.0-local',
     postgres: 'in-memory',
     redis: 'in-memory',

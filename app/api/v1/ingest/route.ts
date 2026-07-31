@@ -9,7 +9,7 @@
  * Body: { apiKey: string, mentions: RawMention[] }
  */
 import { NextRequest } from 'next/server'
-import { ingestMentions, store, clusterToTrend } from '@/lib/server/core/store'
+import { ingestMentions, store, clusterToTrend } from '@/lib/server/core/redis-store'
 import { sseBus } from '@/lib/server/streaming/bus'
 import { apiOk, apiError } from '@/lib/server/api/schemas'
 import type { RawMention, SourceKey } from '@/lib/types'
@@ -61,15 +61,15 @@ export async function POST(req: NextRequest): Promise<Response> {
   if (valid.length === 0) {
     return apiOk({ ingested: 0, message: 'No valid mentions in payload' })
   }
-  const result = ingestMentions(valid)
+  const result = await ingestMentions(valid)
   for (const clusterId of result.updatedClusters) {
-    const cluster = store.getCluster(clusterId)
+    const cluster = await store.getCluster(clusterId)
     if (cluster) sseBus.publish('trend.upserted', clusterToTrend(cluster))
   }
   return apiOk({
     ingested: result.ingested,
     newClusters: result.newClusters,
     updatedClusters: result.updatedClusters.size,
-    totalClusters: store.totalClusters(),
+    totalClusters: await store.totalClusters(),
   })
 }

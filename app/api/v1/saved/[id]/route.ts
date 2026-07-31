@@ -7,7 +7,7 @@
  */
 import { NextRequest } from 'next/server'
 import { apiOk, apiError, parseZod, SaveTrendBodySchema } from '@/lib/server/api/schemas'
-import { store, clusterToTrend, ingestMentions } from '@/lib/server/core/store'
+import { store, clusterToTrend, ingestMentions } from '@/lib/server/core/redis-store'
 import type { SavedTrendDTO } from '@/lib/types'
 import { saved } from '@/app/api/v1/saved/route'
 import { runIngestion } from '@/lib/server/ingest/adapters'
@@ -21,7 +21,7 @@ let savedOneShotDone = false
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }): Promise<Response> {
   const params = await ctx.params
-  let cluster = store.getCluster(params.id)
+  let cluster = await store.getCluster(params.id)
 
   // One-shot ingest if cluster not found (Vercel stateless cold-start)
   if (!cluster && !savedOneShotDone) {
@@ -29,7 +29,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     try {
       const mentions = await runIngestion(ALL_SOURCES)
       ingestMentions(mentions)
-      cluster = store.getCluster(params.id)
+      cluster = await store.getCluster(params.id)
     } catch {
       // swallow
     }

@@ -8,7 +8,7 @@ import { SOURCE_CONFIGS } from '@/lib/server/config/sources'
 import { apiOk } from '@/lib/server/api/schemas'
 import type { EngineStatusDTO, EngineLogDTO } from '@/lib/types'
 import { runIngestion } from '@/lib/server/ingest/adapters'
-import { ingestMentions } from '@/lib/server/core/store'
+import { ingestMentions } from '@/lib/server/core/redis-store'
 import { updateEngineStatesFromIngest } from '@/lib/server/streaming/loop'
 import { ALL_SOURCES } from '@/lib/types'
 

@@ -13,7 +13,7 @@
 import { NextRequest } from 'next/server'
 import { sseBus, formatSseEvent, generateEventId } from '@/lib/server/streaming/bus'
 import { startIngestLoop, stopIngestLoop, getIngestStats, updateEngineStatesFromIngest } from '@/lib/server/streaming/loop'
-import { store, clusterToTrend, ingestMentions } from '@/lib/server/core/store'
+import { store, clusterToTrend, ingestMentions } from '@/lib/server/core/redis-store'
 import { runIngestion } from '@/lib/server/ingest/adapters'
 import { ALL_SOURCES } from '@/lib/types'
 
@@ -81,10 +81,11 @@ export async function GET(req: NextRequest): Promise<Response> {
       //    or when resync is required). Use bus.publish so events get a
       //    monotonic id and are added to the ring buffer for future replays.
       if (!skipSnapshot) {
-        const top = store.getTrending(15)
-        for (const c of top) {
-          sseBus.publish('trend.upserted', clusterToTrend(c))
-        }
+        store.getTrending(15).then((top) => {
+          for (const c of top) {
+            safeEnqueue(formatSseEvent(sseBus.publish('trend.upserted', clusterToTrend(c))))
+          }
+        }).catch(() => {})
       }
 
       // 3. Subscribe to live events
@@ -94,13 +95,19 @@ export async function GET(req: NextRequest): Promise<Response> {
 
       // 4. Heartbeat every 15s — uses bus.publish for monotonic id
       const heartbeat = setInterval(() => {
-        const stats = getIngestStats()
-        sseBus.publish('connection.heartbeat', {
-          ts: new Date().toISOString(),
-          clients: sseBus.clientCount,
-          eventsPerSec: sseBus.eventsPerSec,
-          ingest: stats,
-        })
+        getIngestStats().then((stats) => {
+          safeEnqueue(formatSseEvent({
+            id: generateEventId(),
+            type: 'connection.heartbeat',
+            data: {
+              ts: new Date().toISOString(),
+              clients: sseBus.clientCount,
+              eventsPerSec: sseBus.eventsPerSec,
+              ingest: stats,
+            },
+            ts: new Date().toISOString(),
+          }))
+        }).catch(() => {})
       }, 15000)
 
       // 5. Cleanup on abort

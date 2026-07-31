@@ -10,9 +10,9 @@
 
 import { ALL_SOURCES, type SourceKey, type RawMention } from '@/lib/types'
 import { runIngestion, getAdapterLatency } from '@/lib/server/ingest/adapters'
-import { ingestMentions, store, startGcLoop } from '@/lib/server/core/store'
+import { ingestMentions, store } from '@/lib/server/core/redis-store'
 import { sseBus } from '@/lib/server/streaming/bus'
-import { clusterToTrend, generateExtractiveBriefing } from '@/lib/server/core/store'
+import { clusterToTrend, generateExtractiveBriefing } from '@/lib/server/core/redis-store'
 import { logger } from '@/lib/server/logger'
 
 let loopRunning = false
@@ -104,7 +104,7 @@ async function tick(): Promise<void> {
 
   try {
     const mentions = await runIngestion(activeSources)
-    const result = ingestMentions(mentions)
+    const result = await ingestMentions(mentions)
     totalIngested += result.ingested
     lastIngestAt = startTs
     lastIngestDurationMs = Date.now() - startTs
@@ -132,7 +132,7 @@ async function tick(): Promise<void> {
 
     // Publish trend upserts for updated clusters
     for (const clusterId of result.updatedClusters) {
-      const cluster = store.getCluster(clusterId)
+      const cluster = await store.getCluster(clusterId)
       if (!cluster) continue
       const trend = clusterToTrend(cluster)
       sseBus.publish('trend.upserted', trend)
@@ -157,7 +157,7 @@ async function tick(): Promise<void> {
       tick: tickCount,
       ingested: result.ingested,
       updatedClusters: result.updatedClusters.size,
-      totalClusters: store.totalClusters(),
+      totalClusters: await store.totalClusters(),
       durationMs: lastIngestDurationMs,
     })
   } catch (err) {
@@ -177,7 +177,6 @@ function scheduleNext(): void {
 export function startIngestLoop(): void {
   if (loopRunning) return
   loopRunning = true
-  startGcLoop()
   // Kick off first tick immediately
   tick().catch(() => {})
   logger.info('ingest loop started', { intervalMs: POLL_INTERVAL_MS })
@@ -189,28 +188,28 @@ export function stopIngestLoop(): void {
   loopTimer = null
 }
 
-export function getIngestStats(): {
+export async function getIngestStats(): Promise<{
   tickCount: number
   totalIngested: number
   lastIngestAt: number
   lastIngestDurationMs: number
   totalClusters: number
-} {
+}> {
   return {
     tickCount,
     totalIngested,
     lastIngestAt,
     lastIngestDurationMs,
-    totalClusters: store.totalClusters(),
+    totalClusters: await store.totalClusters(),
   }
 }
 
 /** Generate briefing for a cluster, publishing the result via SSE. */
-export function generateAndPublishBriefing(clusterId: string, range: string = '6H'): void {
-  const cluster = store.getCluster(clusterId)
+export async function generateAndPublishBriefing(clusterId: string, range: string = '6H'): Promise<void> {
+  const cluster = await store.getCluster(clusterId)
   if (!cluster) return
-  const mentions = store.getClusterMentions(clusterId, 10)
-  const { narrative, keyPoints, riskFlags, confidence } = generateExtractiveBriefing(cluster, mentions)
+  const mentions = await store.getClusterMentions(clusterId, 10)
+  const { narrative, keyPoints, riskFlags, confidence, evidenceMentionIds } = generateExtractiveBriefing(cluster, mentions)
   sseBus.publish('briefing.generated', {
     clusterId,
     narrative,

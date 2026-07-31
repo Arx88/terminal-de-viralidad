@@ -3,7 +3,7 @@
  */
 import { NextRequest } from 'next/server'
 import { apiOk, parseZod, RangeKeySchema } from '@/lib/server/api/schemas'
-import { store } from '@/lib/server/core/store'
+import { store } from '@/lib/server/core/redis-store'
 import { ALL_SOURCES } from '@/lib/types'
 
 export const runtime = 'nodejs'
@@ -12,12 +12,12 @@ export const dynamic = 'force-dynamic'
 export async function GET(req: NextRequest): Promise<Response> {
   const sp = Object.fromEntries(req.nextUrl.searchParams)
   const q = parseZod(RangeKeySchema, sp.range ?? '6H')
-  if (!q.ok) return apiOk({ range: '6H', totals: buildReport('6H') })
-  return apiOk({ range: q.value, totals: buildReport(q.value) })
+  if (!q.ok) return apiOk({ range: '6H', totals: await buildReport('6H') })
+  return apiOk({ range: q.value, totals: await buildReport(q.value) })
 }
 
-function buildReport(range: string) {
-  const clusters = store.getAllClusters(200)
+async function buildReport(range: string) {
+  const clusters = await store.getAllClusters(200)
   const totalMentions = clusters.reduce((s, c) => s + c.mentionsCount, 0)
   const bySource = Object.fromEntries(ALL_SOURCES.map((s) => [s, 0])) as Record<string, number>
   for (const c of clusters) bySource[c.primarySource]++

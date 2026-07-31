@@ -6,7 +6,7 @@
  * a re-ingest will produce the same id and the detail will resolve.
  */
 import { NextRequest } from 'next/server'
-import { store, clusterToTrend, ingestMentions } from '@/lib/server/core/store'
+import { store, clusterToTrend, ingestMentions } from '@/lib/server/core/redis-store'
 import { TrendIdParamsSchema, TrendDetailQuerySchema, apiOk, apiError, parseZod } from '@/lib/server/api/schemas'
 import { runIngestion } from '@/lib/server/ingest/adapters'
 import { ALL_SOURCES } from '@/lib/types'
@@ -26,7 +26,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   const q = parseZod(TrendDetailQuerySchema, sp)
   if (!q.ok) return q.response
 
-  let cluster = store.getCluster(p.value.id)
+  let cluster = await store.getCluster(p.value.id)
 
   // One-shot ingest if cluster not found
   if (!cluster && !detailOneShotDone) {
@@ -34,7 +34,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     try {
       const mentions = await runIngestion(ALL_SOURCES)
       ingestMentions(mentions)
-      cluster = store.getCluster(p.value.id)
+      cluster = await store.getCluster(p.value.id)
     } catch {
       // swallow
     }
@@ -43,6 +43,6 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   if (!cluster) return apiError(404, 'Not found', `Cluster ${p.value.id} not found after ingest`)
 
   const trend = clusterToTrend(cluster)
-  trend.history = store.getClusterHistory(p.value.id)
+  trend.history = await store.getClusterHistory(p.value.id)
   return apiOk(trend)
 }
