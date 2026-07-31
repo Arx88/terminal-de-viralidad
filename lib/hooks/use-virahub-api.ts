@@ -218,6 +218,21 @@ export function useSseStats(): {
     connected: false,
     lastTickAt: 0,
   })
+
+  // Bootstrap initial stats from /api/v1/system/about (covers no-SSE case)
+  useEffect(() => {
+    apiGet<{ ingest: { totalIngested: number; lastIngestDurationMs: number; tickCount: number } }>('/api/v1/system/about')
+      .then((info) => {
+        setStats((s) => ({
+          ...s,
+          analyzed: info.ingest?.totalIngested ?? 0,
+          latency: (info.ingest?.lastIngestDurationMs ?? 1200) / 1000,
+          step: info.ingest?.tickCount ?? 0,
+        }))
+      })
+      .catch(() => {})
+  }, [])
+
   useEffect(() => {
     const unsub = sseClient.subscribe((event) => {
       if (event.type === 'scan.tick') {
