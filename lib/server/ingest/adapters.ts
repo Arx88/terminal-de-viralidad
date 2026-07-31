@@ -370,79 +370,63 @@ class GDELTAdapter implements Adapter {
 class GitHubAdapter implements Adapter {
   source: SourceKey = 'github'
   async fetch(): Promise<RawMention[]> {
-    // Buscar repos trending con MANY stars recently (not just pushed)
-    // Use the /search/repositories endpoint with sort=stars for top repos
-    const queries = [
-      `stars:>500+pushed:>2025-07-24+topic:llm`,
-      `stars:>500+pushed:>2025-07-24+topic:agent`,
-      `stars:>500+pushed:>2025-07-24+topic:ai`,
-    ]
-    const out: RawMention[] = []
-    for (const q of queries) {
-      const r = await httpGet(
-        `https://api.github.com/search/repositories?q=${q}&sort=stars&order=desc&per_page=10`,
-        {
-          headers: { Accept: 'application/vnd.github+json' },
-          timeoutMs: 8000,
-        },
-      )
-      if (!r.ok) continue
-      try {
-        const data = JSON.parse(r.body) as { items?: Array<Record<string, unknown>> }
-        for (const repo of data.items ?? []) {
-          const full = String(repo['full_name'] ?? '')
-          const desc = String(repo['description'] ?? '')
-          if (!full) continue
-          const stars = Number(repo['stargazers_count'] ?? 0)
-          const forks = Number(repo['forks_count'] ?? 0)
-          const pushedAt = String(repo['pushed_at'] ?? '')
-          const createdAt = String(repo['created_at'] ?? '')
+    // GitHub NO es fuente primaria de viralidad. Solo contribuimos cuando
+    // hay aceleración EXTREMA de stars (>50 stars/día = viralidad real).
+    // Un repo con push reciente pero pocos stars NO es viralidad — es desarrollo normal.
+    // Esto evita que GitHub inunde el dashboard con ruido de desarrollo.
+    const r = await httpGet(
+      `https://api.github.com/search/repositories?q=stars:>2000+pushed:>2025-07-28&sort=stars&order=desc&per_page=5`,
+      {
+        headers: { Accept: 'application/vnd.github+json' },
+        timeoutMs: 8000,
+      },
+    )
+    if (!r.ok) return []
+    try {
+      const data = JSON.parse(r.body) as { items?: Array<Record<string, unknown>> }
+      const out: RawMention[] = []
+      for (const repo of data.items ?? []) {
+        const full = String(repo['full_name'] ?? '')
+        const desc = String(repo['description'] ?? '')
+        if (!full) continue
+        const stars = Number(repo['stargazers_count'] ?? 0)
+        const pushedAt = String(repo['pushed_at'] ?? '')
+        const createdAt = String(repo['created_at'] ?? '')
 
-          // FIX: Filtrar repos nuevos (creados hace <7 días) — no son tendencia, son spam
-          const createdDate = new Date(createdAt)
-          if (!isNaN(createdDate.getTime())) {
-            const daysSinceCreate = (Date.now() - createdDate.getTime()) / 86400_000
-            if (daysSinceCreate < 7 && stars < 100) continue // repo muy nuevo + pocos stars
-          }
+        // FILTRO EXTREMO: solo repos con >50 stars/día (viralidad real)
+        const createdDate = new Date(createdAt)
+        if (isNaN(createdDate.getTime())) continue
+        const daysSinceCreate = Math.max(1, (Date.now() - createdDate.getTime()) / 86400_000)
+        const starsPerDay = stars / daysSinceCreate
+        if (starsPerDay < 50) continue // <50 stars/día = NO es viralidad, es desarrollo normal
 
-          // FIX: Calcular aceleración de stars (stars por día desde creación)
-          const pushedDate = new Date(pushedAt)
-          if (isNaN(pushedDate.getTime())) continue
-          const daysSincePush = (Date.now() - pushedDate.getTime()) / 86400_000
-          if (daysSincePush > 7) continue // repo inactivo
+        // Solo repos con push en las últimas 48h
+        const pushedDate = new Date(pushedAt)
+        if (isNaN(pushedDate.getTime())) continue
+        const daysSincePush = (Date.now() - pushedDate.getTime()) / 86400_000
+        if (daysSincePush > 2) continue
 
-          // Calcular stars-per-day desde creación
-          const createdDate2 = new Date(createdAt)
-          if (!isNaN(createdDate2.getTime())) {
-            const daysSinceCreate = Math.max(1, (Date.now() - createdDate2.getTime()) / 86400_000)
-            const starsPerDay = stars / daysSinceCreate
-            // FIX: Solo aceptar si starsPerDay > 2 (mínimo 2 stars/día = tendencia real)
-            // Esto filtra commits/releases comunes que no son viralidad
-            if (starsPerDay < 2) continue
-          }
-
-          const text = `${full}: ${desc}`
-          const owner = repo['owner'] as Record<string, unknown> | undefined
-          const ownerLogin = String(owner?.['login'] ?? 'unknown')
-          out.push({
-            contentHash: fnv1a64(normalizeText(text + String(repo['id'] ?? ''))),
-            source: 'github',
-            externalId: String(repo['id'] ?? full),
-            authorId: ownerLogin,
-            authorHandle: ownerLogin,
-            text,
-            language: 'en',
-            publishedAt: pushedAt,
-            url: String(repo['html_url'] ?? `https://github.com/${full}`),
-            hasMedia: false,
-            rawPayload: JSON.stringify({ ...repo, _starsPerDay: stars / Math.max(1, (Date.now() - createdDate2.getTime()) / 86400_000) }),
-          })
-        }
-      } catch {
-        // ignore
+        const text = `${full}: ${desc}`
+        const owner = repo['owner'] as Record<string, unknown> | undefined
+        const ownerLogin = String(owner?.['login'] ?? 'unknown')
+        out.push({
+          contentHash: fnv1a64(normalizeText(text + String(repo['id'] ?? ''))),
+          source: 'github',
+          externalId: String(repo['id'] ?? full),
+          authorId: ownerLogin,
+          authorHandle: ownerLogin,
+          text,
+          language: 'en',
+          publishedAt: pushedAt,
+          url: String(repo['html_url'] ?? `https://github.com/${full}`),
+          hasMedia: false,
+          rawPayload: JSON.stringify({ ...repo, _starsPerDay: starsPerDay }),
+        })
       }
+      return out
+    } catch {
+      return []
     }
-    return out
   }
 }
 

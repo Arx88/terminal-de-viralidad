@@ -167,8 +167,10 @@ function entitiesRigidVeto(a: Entity[], b: Entity[]): boolean {
 // ---------------------------------------------------------------------------
 // Scoring helpers (igual que antes)
 // ---------------------------------------------------------------------------
-const SOURCE_ORIGIN: Record<SourceKey, number> = { hn:0.95, gdelt:0.88, rss:0.82, github:0.78, reddit:0.7, bluesky:0.6, x:0.55 }
-const SOURCE_TRUST: Record<SourceKey, number> = { hn:0.9, gdelt:0.85, rss:0.8, reddit:0.7, github:0.75, bluesky:0.65, x:0.55 }
+// X y Reddit son las fuentes MÁS importantes para viralidad social.
+// GitHub es la MENOS importante — solo contribuye con aceleración extrema.
+const SOURCE_ORIGIN: Record<SourceKey, number> = { x:0.95, reddit:0.90, bluesky:0.82, hn:0.80, gdelt:0.75, rss:0.70, github:0.40 }
+const SOURCE_TRUST: Record<SourceKey, number> = { x:0.90, reddit:0.85, bluesky:0.75, hn:0.80, gdelt:0.70, rss:0.65, github:0.45 }
 
 function originScoreForSource(s: SourceKey): number { return SOURCE_ORIGIN[s] ?? 0.5 }
 function sourceTrustForCluster(sources: SourceKey[]): number {

@@ -1,0 +1,139 @@
+name: VIRAHUB X Scraper
+on:
+  schedule:
+    # Cada 3 minutos
+    - cron: '*/3 * * * *'
+  workflow_dispatch:
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Playwright
+        run: |
+          npm init -y
+          npm install playwright
+          npx playwright install chromium --with-deps
+
+      - name: Scrape X and send to Vercel
+        env:
+          VERCEL_URL: https://terminal-de-viralidad.vercel.app
+          API_KEY: ${{ secrets.VIRAHUB_INGEST_API_KEY || 'virahub-local-2025' }}
+        run: |
+          node -e '
+          const { chromium } = require("playwright");
+          const VERCEL_URL = process.env.VERCEL_URL;
+          const API_KEY = process.env.API_KEY;
+
+          // Términos de búsqueda reactivos: leer trends de Vercel
+          async function getReactiveQueries() {
+            try {
+              const resp = await fetch(VERCEL_URL + "/api/v1/trends?limit=10");
+              const data = await resp.json();
+              const trends = data.data?.trends || [];
+              return trends
+                .filter(t => t.id !== "_empty")
+                .map(t => {
+                  const words = t.title.replace(/[^a-zA-Z0-9\s]/g, " ").split(/\s+/).filter(w => w.length > 3);
+                  return words.slice(0, 3).join(" ");
+                })
+                .filter(q => q.length > 5)
+                .slice(0, 3);
+            } catch { return []; }
+          }
+
+          // Términos fijos de viralidad social (no tech-only)
+          const FIXED_QUERIES = [
+            "AI OR artificial intelligence",
+            "crypto OR bitcoin OR ethereum",
+            "breaking news",
+            "viral OR trending",
+            "Elon Musk OR OpenAI OR Sam Altman",
+          ];
+
+          async function searchX(browser, query) {
+            const context = await browser.newContext({
+              userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/121.0.0.0",
+              viewport: { width: 1920, height: 1080 },
+            });
+            const page = await context.newPage();
+            try {
+              await page.goto("https://xcancel.com/search?q=" + encodeURIComponent(query) + "&f=tweets", {
+                waitUntil: "networkidle",
+                timeout: 12000,
+              });
+              await page.waitForSelector(".tweet-content", { timeout: 8000 }).catch(() => {});
+              const tweets = await page.evaluate(() => {
+                const results = [];
+                const contents = document.querySelectorAll(".tweet-content");
+                const links = document.querySelectorAll("a[href*=\"/status/\"]");
+                const texts = [];
+                contents.forEach(el => { const t = el.textContent?.trim(); if (t && t.length > 20) texts.push(t); });
+                const ids = [];
+                links.forEach(el => {
+                  const m = el.getAttribute("href")?.match(/^\/([^/]+)\/status\/(\d+)$/);
+                  if (m) ids.push({ user: m[1], id: m[2] });
+                });
+                const count = Math.min(texts.length, ids.length, 8);
+                for (let i = 0; i < count; i++) {
+                  results.push({ text: texts[i], user: ids[i].user, id: ids[i].id });
+                }
+                return results;
+              });
+              return tweets.map(t => ({
+                contentHash: t.id,
+                source: "x",
+                externalId: t.id,
+                authorId: t.user,
+                authorHandle: "@" + t.user,
+                text: t.text,
+                language: "und",
+                publishedAt: new Date().toISOString(),
+                url: "https://x.com/" + t.user + "/status/" + t.id,
+                hasMedia: false,
+                rawPayload: JSON.stringify({ user: t.user, id: t.id }),
+              }));
+            } catch { return []; }
+            finally { await context.close(); }
+          }
+
+          async function sendToVercel(tweets) {
+            if (!tweets.length) return { ingested: 0 };
+            const resp = await fetch(VERCEL_URL + "/api/v1/ingest", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ apiKey: API_KEY, mentions: tweets }),
+            });
+            const data = await resp.json();
+            return data.data || { ingested: 0 };
+          }
+
+          (async () => {
+            console.log("Starting X scraper...");
+            const browser = await chromium.launch({ headless: true, args: ["--no-sandbox"] });
+            const reactive = await getReactiveQueries();
+            const queries = [...reactive, ...FIXED_QUERIES].slice(0, 5);
+            console.log("Queries:", queries);
+            const allTweets = [];
+            for (const q of queries) {
+              console.log("Searching:", q);
+              const tweets = await searchX(browser, q);
+              console.log("  Found:", tweets.length);
+              allTweets.push(...tweets);
+            }
+            await browser.close();
+            // Dedup
+            const seen = new Set();
+            const deduped = allTweets.filter(t => !seen.has(t.externalId) && seen.add(t.externalId));
+            console.log("Total unique tweets:", deduped.length);
+            const result = await sendToVercel(deduped);
+            console.log("Ingested:", result.ingested, "Updated clusters:", result.updatedClusters);
+          })().catch(e => { console.error(e); process.exit(1); });
+          '
