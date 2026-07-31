@@ -100,11 +100,9 @@ export class XAdapter implements Adapter {
   source: SourceKey = 'x'
 
   async fetch(): Promise<RawMention[]> {
-    // 3 accounts en PARALELO (no secuencial) para no exceder timeout total
-    const accounts = [...X_WATCH_ACCOUNTS]
-      .sort(() => Math.random() - 0.5)
-      .slice(0, 3)
-
+    // Usar SIEMPRE elonmusk como cuenta de prueba (sabemos que devuelve 83KB
+    // con tweets desde Vercel). Si funciona, rotar a otras cuentas.
+    const accounts = ['elonmusk', 'OpenAI', 'sama']
     const results = await Promise.allSettled(accounts.map((a) => fetchXcancelProfile(a)))
     const out: RawMention[] = []
     for (const r of results) {
@@ -113,7 +111,15 @@ export class XAdapter implements Adapter {
       }
     }
     if (out.length === 0) {
-      logger.warn('x adapter: no tweets from any account')
+      logger.warn('x adapter: no tweets from any account', {
+        accounts,
+        results: results.map((r, i) => ({
+          account: accounts[i],
+          status: r.status,
+          count: r.status === 'fulfilled' ? r.value.length : 0,
+          reason: r.status === 'rejected' ? String(r.reason) : undefined,
+        })),
+      })
     }
     return out
   }
