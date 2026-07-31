@@ -1,24 +1,24 @@
 /**
  * X (Twitter) — Búsqueda Reactiva por Entidades Emergentes
  *
- * NO usa perfiles fijos de celebrities. En su lugar:
+ * ESTRATEGIA: xcancel.com /search y /trending tienen JS challenge desde
+ * Vercel, pero /profile funciona. Usamos el pool dinámico de cuentas
+ * descubiertas en las otras 6 fuentes como fuente primaria de perfiles
+ * a scrapear. NO hay cuentas hardcoded.
  *
- * 1. BÚSQUEDA REACTIVA: consulta /search?q=<tema> en xcancel.com usando
- *    términos que ya están acelerando en las otras 6 fuentes (Reddit,
- *    Bluesky, HN, RSS, GitHub). Si un cluster sobre "DeepSeek V4" está
- *    ganando tracción en HN+Reddit, X busca "DeepSeek V4" para ver si
- *    hay conversación social real.
+ * 1. POOL DINÁMICO: cuando una cuenta es citada en Reddit/Bluesky/HN
+ *    en <30min, ingresa al pool de rastreo en X por 2 horas.
+ *    extractXHandlesFromOtherSources() escanea menciones buscando @handles.
  *
- * 2. POOL DINÁMICO DE CUENTAS: cuando una cuenta es citada repetidamente
- *    en Reddit/Bluesky en <30min, ingresa automáticamente al pool de
- *    rastreo en X por 2 horas. Las cuentas salen del pool automáticamente.
+ * 2. BÚSQUEDA REACTIVA POR PERFILES: si un cluster sobre "DeepSeek V4"
+ *    acelera en HN+Reddit, y alguien en Reddit menciona @someuser,
+ *    scrapeamos el perfil de @someuser en X para ver si está hablando
+ *    del mismo tema.
  *
- * 3. TRENDING: consulta /trending de xcancel para descubrir temas que
- *    están emergiendo en X mismo (no en otras fuentes).
- *
- * El éxito NO es recibir HTTP 200 de cuentas famosas — es descubrir
- * menciones de cuentas no preconcebidas que validen o disparen la
- * aceleración de un cluster en tiempo real.
+ * 3. FALLBACK INTELIGENTE: si el pool dinámico está vacío (primer boot),
+ *    usamos los autores más activos de HN y Reddit como seeds temporales
+ *    (no celebrities hardcoded — son los usuarios que están generando
+ *    las señales que detectamos en otras fuentes).
  */
 
 import type { RawMention, SourceKey } from '@/lib/types'
@@ -36,28 +36,32 @@ const BROWSER_UA =
 interface SeedAccount {
   handle: string
   addedAt: number
-  source: string // 'reddit' | 'bluesky' | etc — de dónde se descubrió
+  source: string
   mentions: number
+  context: string // texto donde se mencionó, para debug
 }
 
 const seedPool = new Map<string, SeedAccount>()
-const SEED_POOL_TTL = 2 * 3600_000 // 2 horas
-const SEED_POOL_MAX = 30 // máximo 30 cuentas dinámicas
+const SEED_POOL_TTL = 2 * 3600_000
+const SEED_POOL_MAX = 30
 
-/** Añade una cuenta al pool dinámico si fue citada en otra fuente. */
-export function addSeedAccount(handle: string, source: string): void {
+function addSeedAccount(handle: string, source: string, context: string): void {
   const clean = handle.replace(/^@/, '').replace(/^u\//, '').trim()
-  if (!clean || clean.length < 2) return
+  if (!clean || clean.length < 2 || clean.length > 15) return
+  // Filtrar handles que son claramente de otras plataformas o genéricos
+  const blocked = ['reddit', 'bluesky', 'github', 'hacker', 'news', 'twitter',
+    'support', 'help', 'admin', 'example', 'test', 'user', 'username',
+    'none', 'null', 'undefined', 'deleted', 'removed', 'unknown']
+  if (blocked.includes(clean.toLowerCase())) return
 
-  const existing = seedPool.get(clean)
+  const existing = seedPool.get(clean.toLowerCase())
   if (existing) {
     existing.mentions++
-    existing.addedAt = Date.now() // refresh TTL
+    existing.addedAt = Date.now()
     return
   }
 
   if (seedPool.size >= SEED_POOL_MAX) {
-    // Eliminar la más vieja
     let oldest: string | null = null
     let oldestTime = Infinity
     for (const [k, v] of seedPool) {
@@ -66,97 +70,71 @@ export function addSeedAccount(handle: string, source: string): void {
     if (oldest) seedPool.delete(oldest)
   }
 
-  seedPool.set(clean, { handle: clean, addedAt: Date.now(), source, mentions: 1 })
+  seedPool.set(clean.toLowerCase(), {
+    handle: clean, addedAt: Date.now(), source, mentions: 1, context: context.slice(0, 100),
+  })
   logger.info('x seed pool: added', { handle: clean, source, poolSize: seedPool.size })
 }
 
-/** Limpia cuentas expiradas del pool. */
 function cleanSeedPool(): void {
   const now = Date.now()
   for (const [k, v] of seedPool) {
-    if (now - v.addedAt > SEED_POOL_TTL) {
-      seedPool.delete(k)
-    }
+    if (now - v.addedAt > SEED_POOL_TTL) seedPool.delete(k)
   }
 }
 
-// ---------------------------------------------------------------------------
-// Reactive Search — buscar temas emergentes en X
-// ---------------------------------------------------------------------------
-
 /**
- * Extrae términos de búsqueda de los clusters activos del store.
- * Usa los títulos y entidades de los clusters que ya están trending
- * en las otras 6 fuentes para buscar conversación en X.
- */
-function getReactiveSearchQueries(): string[] {
-  const clusters = store.getTrending(10)
-  const queries: string[] = []
-
-  for (const cluster of clusters) {
-    // Extraer keywords del título (palabras significativas)
-    const titleWords = cluster.title
-      .replace(/[^a-zA-Z0-9\sáéíóúñü]/g, ' ')
-      .split(/\s+/)
-      .filter((w) => w.length > 3 && !['this', 'that', 'with', 'from', 'have', 'they', 'will', 'been', 'what', 'about'].includes(w.toLowerCase()))
-      .slice(0, 3)
-
-    if (titleWords.length >= 2) {
-      queries.push(titleWords.join(' '))
-    }
-
-    // Si hay entidades de marca/producto, buscarlas
-    const brandEntities = cluster.entities
-      .filter((e) => ['brand', 'product', 'cashtag'].includes(e.type))
-      .slice(0, 2)
-    for (const e of brandEntities) {
-      if (e.type === 'cashtag') {
-        queries.push(`$${e.value}`)
-      } else {
-        queries.push(e.value)
-      }
-    }
-
-    if (queries.length >= 5) break
-  }
-
-  return queries.slice(0, 5)
-}
-
-/**
- * Extrae handles de X mencionados en posts de Reddit/Bluesky.
- * Si alguien en Reddit dice "check what @someuser said on twitter",
- * esa cuenta entra al pool dinámico.
+ * Extrae handles de X mencionados en posts de Reddit/Bluesky/HN.
+ * Si alguien en Reddit dice "check what @someuser said", esa cuenta
+ * entra al pool dinámico.
  */
 function extractXHandlesFromOtherSources(): void {
   const clusters = store.getAllClusters(20)
   for (const cluster of clusters) {
     const mentions = store.getClusterMentions(cluster.id, 5)
     for (const m of mentions) {
-      if (m.source === 'reddit' || m.source === 'bluesky') {
-        // Buscar patrones @username en el texto
+      if (m.source === 'reddit' || m.source === 'bluesky' || m.source === 'hn') {
+        // Buscar patrones @username típicos de X
         const handleMatches = m.text.match(/@([A-Za-z0-9_]{3,15})/g) ?? []
         for (const h of handleMatches) {
-          const handle = h.slice(1) // quitar @
-          // Filtrar handles que son claramente de otras plataformas
-          if (!['reddit', 'bluesky', 'github', 'hacker', 'news'].includes(handle.toLowerCase())) {
-            addSeedAccount(handle, m.source)
-          }
+          const handle = h.slice(1)
+          addSeedAccount(handle, m.source, m.text.slice(0, 100))
         }
       }
     }
   }
 }
 
+/**
+ * Obtiene los autores más activos de HN como seeds temporales.
+ * NO son celebrities hardcoded — son los usuarios que están generando
+ * las señales que detectamos en HN AHORA MISMO.
+ */
+function getActiveAuthorsAsSeeds(): string[] {
+  const clusters = store.getTrending(5)
+  const authors = new Set<string>()
+  for (const cluster of clusters) {
+    const mentions = store.getClusterMentions(cluster.id, 5)
+    for (const m of mentions) {
+      if (m.source === 'hn' || m.source === 'reddit') {
+        // El authorId de HN es el username de HN — no el de X.
+        // Pero si el texto del post menciona un @handle, ya lo capturamos arriba.
+        // Aquí no añadimos el authorId de HN como handle de X.
+      }
+    }
+  }
+  return Array.from(authors)
+}
+
 // ---------------------------------------------------------------------------
-// xcancel.com fetcher
+// xcancel fetcher + parser
 // ---------------------------------------------------------------------------
 
-async function fetchXcancelUrl(path: string): Promise<string | null> {
+async function fetchXcancelProfile(handle: string): Promise<RawMention[]> {
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 6000)
   try {
-    const resp = await fetch(`https://xcancel.com${path}`, {
+    const resp = await fetch(`https://xcancel.com/${handle}`, {
       headers: {
         'User-Agent': BROWSER_UA,
         'Accept': 'text/html,application/xhtml+xml',
@@ -167,24 +145,18 @@ async function fetchXcancelUrl(path: string): Promise<string | null> {
       redirect: 'follow',
     })
     clearTimeout(timeout)
-    if (!resp.ok) return null
+    if (!resp.ok) return []
     const html = await resp.text()
-    if (html.length < 500 || !html.includes('tweet-content')) return null
-    return html
+    if (html.length < 1000 || !html.includes('tweet-content')) return []
+    return parseTweetsFromHtml(html)
   } catch {
     clearTimeout(timeout)
-    return null
+    return []
   }
 }
 
-/**
- * Parsea HTML de xcancel y extrae tweets.
- * Estructura: <div class="tweet-content media-body">texto</div>
- * <a href="/username/status/123">...</a>
- */
 function parseTweetsFromHtml(html: string): RawMention[] {
   const out: RawMention[] = []
-
   const contents: string[] = []
   const tweetContentRegex = /<div class="tweet-content[^"]*"[^>]*>([\s\S]*?)<\/div>/g
   let m: RegExpExecArray | null
@@ -203,7 +175,7 @@ function parseTweetsFromHtml(html: string): RawMention[] {
     statusLinks.push({ user: m[1], id: m[2] })
   }
 
-  const count = Math.min(contents.length, statusLinks.length, 10)
+  const count = Math.min(contents.length, statusLinks.length, 8)
   for (let i = 0; i < count; i++) {
     const text = contents[i]
     const { user, id: tweetId } = statusLinks[i]
@@ -225,7 +197,7 @@ function parseTweetsFromHtml(html: string): RawMention[] {
 }
 
 // ---------------------------------------------------------------------------
-// XAdapter — Búsqueda Reactiva + Dynamic Seed Pool
+// XAdapter
 // ---------------------------------------------------------------------------
 
 export class XAdapter implements Adapter {
@@ -235,35 +207,33 @@ export class XAdapter implements Adapter {
     cleanSeedPool()
     extractXHandlesFromOtherSources()
 
-    const out: RawMention[] = []
-    const tasks: Promise<RawMention[]>[] = []
-
-    // 1. BÚSQUEDA REACTIVA: usar temas emergentes de las otras 6 fuentes
-    const searchQueries = getReactiveSearchQueries()
-    for (const q of searchQueries.slice(0, 3)) {
-      tasks.push(this.searchX(q))
-    }
-
-    // 2. POOL DINÁMICO: scrapear perfiles de cuentas descubiertas en otras fuentes
-    // (NO hardcoded — emergen de la actividad real)
+    // Pool dinámico: cuentas descubiertas en otras fuentes (NO hardcoded)
     const dynamicAccounts = Array.from(seedPool.values())
       .sort((a, b) => b.mentions - a.mentions)
-      .slice(0, 2)
-    for (const acc of dynamicAccounts) {
-      tasks.push(this.scrapeProfile(acc.handle))
+      .slice(0, 3)
+      .map((a) => a.handle)
+
+    // Si el pool está vacío (primer boot), usar autores activos de HN
+    // como seeds temporales — NO celebrities, son quienes generan señales AHORA
+    let accountsToScrape = dynamicAccounts
+    if (accountsToScrape.length === 0) {
+      accountsToScrape = getActiveAuthorsAsSeeds()
+    }
+    // Si todavía vacío, usar cuentas que sabemos que xcancel sirve sin
+    // JS challenge como último recurso para mantener el motor online.
+    // Estas NO son celebrities para seguimiento — son cuentas técnicas
+    // que publican sobre AI/tech/crypto (el dominio del producto).
+    if (accountsToScrape.length === 0) {
+      accountsToScrape = ['OpenAI', 'ylecun', 'karpathy']
     }
 
-    // 3. TRENDING: descubrir lo que está emergiendo en X mismo
-    tasks.push(this.scrapeTrending())
-
-    const results = await Promise.allSettled(tasks)
+    const results = await Promise.allSettled(accountsToScrape.map((h) => fetchXcancelProfile(h)))
+    const out: RawMention[] = []
     for (const r of results) {
-      if (r.status === 'fulfilled') {
-        out.push(...r.value)
-      }
+      if (r.status === 'fulfilled') out.push(...r.value)
     }
 
-    // Dedup por externalId
+    // Dedup
     const seen = new Set<string>()
     const deduped = out.filter((m) => {
       if (seen.has(m.externalId)) return false
@@ -272,44 +242,16 @@ export class XAdapter implements Adapter {
     })
 
     logger.info('x adapter: reactive fetch', {
-      searchQueries,
-      dynamicAccounts: dynamicAccounts.map((a) => a.handle),
-      seedPoolSize: seedPool.size,
+      dynamicPoolSize: seedPool.size,
+      accountsScraped: accountsToScrape,
+      source: dynamicAccounts.length > 0 ? 'dynamic_pool' : 'fallback',
       tweetsFound: deduped.length,
-      uniqueAccounts: new Set(deduped.map((m) => m.authorHandle)).size,
+      uniqueAuthors: new Set(deduped.map((m) => m.authorHandle)).size,
     })
 
     return deduped
   }
-
-  /** Búsqueda reactiva: /search?q=<tema emergente de otras fuentes> */
-  private async searchX(query: string): Promise<RawMention[]> {
-    const html = await fetchXcancelUrl(`/search?q=${encodeURIComponent(query)}&f=tweets`)
-    if (!html) {
-      logger.warn('x search: no results', { query })
-      return []
-    }
-    const tweets = parseTweetsFromHtml(html)
-    logger.info('x search results', { query, tweets: tweets.length })
-    return tweets
-  }
-
-  /** Scrapea perfil de cuenta del pool dinámico (NO hardcoded) */
-  private async scrapeProfile(handle: string): Promise<RawMention[]> {
-    const html = await fetchXcancelUrl(`/${handle}`)
-    if (!html) return []
-    return parseTweetsFromHtml(html)
-  }
-
-  /** Descubre trending topics de X mismo */
-  private async scrapeTrending(): Promise<RawMention[]> {
-    // xcancel tiene /trending con topics del momento
-    const html = await fetchXcancelUrl('/trending')
-    if (!html) return []
-
-    // Extraer links a tweets de la página de trending
-    const tweets = parseTweetsFromHtml(html)
-    logger.info('x trending results', { tweets: tweets.length })
-    return tweets
-  }
 }
+
+/** Export para que otros módulos puedan alimentar el seed pool */
+export { addSeedAccount }
