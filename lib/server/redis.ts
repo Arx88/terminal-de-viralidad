@@ -76,7 +76,12 @@ export async function rHGetAll(key: string): Promise<Record<string, string> | nu
   if (r) {
     const result = await r.hgetall(key)
     if (!result || Object.keys(result).length === 0) return null
-    return result as Record<string, string>
+    // Convert all values to strings (Upstash may return non-string types)
+    const out: Record<string, string> = {}
+    for (const [k, v] of Object.entries(result)) {
+      out[k] = typeof v === 'string' ? v : String(v)
+    }
+    return out
   }
   const val = memoryStore.get(key)
   if (!val) return null
@@ -101,7 +106,9 @@ export async function rZAdd(key: string, score: number, member: string): Promise
 export async function rZRangeByScore(key: string, min: number, max: number): Promise<string[]> {
   const r = getRedis()
   if (r) {
-    return await r.zrange(key, min, max, { byScore: true }) as string[]
+    const result = await r.zrange(key, min, max, { byScore: true })
+    // @upstash/redis may return strings or objects depending on what was stored
+    return (result as unknown[]).map(item => typeof item === 'string' ? item : JSON.stringify(item))
   }
   const k = `zset:${key}`
   const val = memoryStore.get(k)
