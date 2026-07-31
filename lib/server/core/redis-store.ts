@@ -525,7 +525,7 @@ class RedisClusterStore {
     const HOUR_24 = now - 24 * 3600_000
     // Redis sorted set tiene clusterIds ordenados por score
     // Filtramos por lastSeen > 24h y score > 0
-    const allMembers = await rZRangeByScore('clusters:trending', 1, Infinity)
+    const allMembers = await rZRangeByScore('clusters:trending', 1, 9999999999999)
     // Reverse para score desc
     const reversed = allMembers.reverse()
     const clusters: Cluster[] = []
