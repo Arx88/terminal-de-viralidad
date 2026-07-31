@@ -580,6 +580,11 @@ class RedisClusterStore {
     return await rZCard('clusters:all')
   }
 
+  /** Recalculate cluster score (for time-decay without new mentions). */
+  async recalculateCluster(clusterId: string): Promise<void> {
+    await this.updateClusterState(clusterId)
+  }
+
   async gc(): Promise<number> {
     // GC en Redis: eliminar clusters con lastSeen > 6h y < 3 menciones
     const now = Date.now()

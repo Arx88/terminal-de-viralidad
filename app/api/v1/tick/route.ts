@@ -47,6 +47,15 @@ export async function POST(req: NextRequest): Promise<Response> {
     const result = await ingestMentions(mentions)
     await updateEngineStatesFromIngest(mentions, Date.now() - start)
 
+    // Re-calcular scores de clusters existentes (time-decay los baja con el tiempo)
+    const allClusters = await store.getAllClusters(50)
+    for (const cluster of allClusters) {
+      // updateClusterState se llama dentro de addMention, pero para clusters
+      // que no recibieron menciones nuevas este tick, hay que recalcular
+      // porque el score decae con el tiempo
+      await store.recalculateCluster(cluster.id)
+    }
+
     // Publicar eventos SSE
     sseBus.publish('scan.tick', {
       step: await rIncr('system:tick_count'),
