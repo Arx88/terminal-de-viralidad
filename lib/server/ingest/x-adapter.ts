@@ -196,6 +196,64 @@ function parseTweetsFromHtml(html: string): RawMention[] {
   return out
 }
 
+/**
+ * Filtra tweets por relevancia. Un tweet entra SOLO si:
+ * 1. Menciona un tema que ya está activo en las otras 6 fuentes, O
+ * 2. Menciona keywords del dominio del producto (AI, crypto, tech, regulation)
+ *
+ * Esto evita que tweets irrelevantes de celebrities ("you will be alerted
+ * via X messaging") contaminen el dashboard.
+ */
+function isRelevantTweet(text: string, activeKeywords: string[]): boolean {
+  const lower = text.toLowerCase()
+
+  // 1. Si menciona un tema activo de las otras fuentes → relevante
+  for (const kw of activeKeywords) {
+    if (kw.length > 3 && lower.includes(kw.toLowerCase())) return true
+  }
+
+  // 2. Keywords del dominio del producto
+  const DOMAIN_KEYWORDS = [
+    'ai', 'artificial intelligence', 'gpt', 'llm', 'openai', 'anthropic',
+    'claude', 'gemini', 'mistral', 'deepseek', 'agent', 'rag',
+    'crypto', 'bitcoin', 'ethereum', 'solana', 'defi', 'blockchain',
+    'gpu', 'nvidia', 'chip', 'semiconductor', 'tsmc',
+    'regulation', 'eu ', 'europe', 'policy', 'law',
+    'fusion', 'energy', 'nuclear',
+    'startup', 'funding', 'series a', 'series b', 'vc',
+    'github', 'open source', 'repository',
+    'twitter', 'x.com', 'bluesky', 'reddit',
+    'cybersecurity', 'cve', 'vulnerability', 'breach',
+    'quantum', 'biotech', 'crispr',
+  ]
+  for (const kw of DOMAIN_KEYWORDS) {
+    if (lower.includes(kw)) return true
+  }
+
+  return false
+}
+
+/**
+ * Extrae keywords de los clusters activos para usar como filtro de relevancia.
+ */
+function getActiveKeywords(): string[] {
+  const clusters = store.getTrending(5)
+  const keywords: string[] = []
+  for (const cluster of clusters) {
+    // Palabras significativas del título
+    const words = cluster.title
+      .replace(/[^a-zA-Z0-9\sáéíóúñü]/g, ' ')
+      .split(/\s+/)
+      .filter((w) => w.length > 3)
+    keywords.push(...words.slice(0, 4))
+    // Entidades de marca/producto
+    for (const e of cluster.entities.slice(0, 3)) {
+      keywords.push(e.value)
+    }
+  }
+  return keywords
+}
+
 // ---------------------------------------------------------------------------
 // XAdapter
 // ---------------------------------------------------------------------------
@@ -207,39 +265,39 @@ export class XAdapter implements Adapter {
     cleanSeedPool()
     extractXHandlesFromOtherSources()
 
+    // Keywords activas de las otras 6 fuentes — para filtrar tweets relevantes
+    const activeKeywords = getActiveKeywords()
+
     // Pool dinámico: cuentas descubiertas en otras fuentes (NO hardcoded)
     const dynamicAccounts = Array.from(seedPool.values())
       .sort((a, b) => b.mentions - a.mentions)
       .slice(0, 3)
       .map((a) => a.handle)
 
-    // Si el pool está vacío (primer boot), usar autores activos de HN
-    // como seeds temporales — NO celebrities, son quienes generan señales AHORA
     let accountsToScrape = dynamicAccounts
     if (accountsToScrape.length === 0) {
       accountsToScrape = getActiveAuthorsAsSeeds()
     }
-    // Bootstrap mínimo: solo cuentas verificadas que xcancel sirve SIN
-    // JS challenge desde Vercel. Estas NO son el objetivo del detector —
-    // son el bootstrap para que el motor arranque mientras el pool dinámico
-    // se llena con cuentas descubiertas en otras fuentes.
-    // El pool dinámico TIENE prioridad: si tiene cuentas, se usan primero.
+    // Bootstrap mínimo: solo cuando el pool está vacío
     if (accountsToScrape.length === 0) {
       accountsToScrape = ['elonmusk', 'sama']
     } else {
-      // Si el pool dinámico tiene cuentas, añadir 1 bootstrap para diversificar
       accountsToScrape.push('elonmusk')
     }
 
     const results = await Promise.allSettled(accountsToScrape.map((h) => fetchXcancelProfile(h)))
-    const out: RawMention[] = []
+    const allTweets: RawMention[] = []
     for (const r of results) {
-      if (r.status === 'fulfilled') out.push(...r.value)
+      if (r.status === 'fulfilled') allTweets.push(...r.value)
     }
+
+    // FILTRO DE RELEVANCIA: solo tweets que mencionan temas activos o
+    // keywords del dominio. Esto elimina tweets irrelevantes de celebrities.
+    const filtered = allTweets.filter((t) => isRelevantTweet(t.text, activeKeywords))
 
     // Dedup
     const seen = new Set<string>()
-    const deduped = out.filter((m) => {
+    const deduped = filtered.filter((m) => {
       if (seen.has(m.externalId)) return false
       seen.add(m.externalId)
       return true
@@ -249,7 +307,10 @@ export class XAdapter implements Adapter {
       dynamicPoolSize: seedPool.size,
       accountsScraped: accountsToScrape,
       source: dynamicAccounts.length > 0 ? 'dynamic_pool' : 'fallback',
-      tweetsFound: deduped.length,
+      tweetsScraped: allTweets.length,
+      tweetsAfterFilter: deduped.length,
+      filtered: allTweets.length - deduped.length,
+      activeKeywords: activeKeywords.slice(0, 5),
       uniqueAuthors: new Set(deduped.map((m) => m.authorHandle)).size,
     })
 
