@@ -3,27 +3,29 @@
 import { useEffect, useRef, useState } from 'react'
 
 export function useCountUp(target: number, duration = 700) {
-  const [value, setValue] = useState(target)
-  const from = useRef(target)
+  const safe = Number.isFinite(target) ? target : 0
+  const [value, setValue] = useState(safe)
+  const from = useRef(safe)
   const raf = useRef<number | null>(null)
 
   useEffect(() => {
+    const t = Number.isFinite(target) ? target : 0
     const start = performance.now()
     const initial = from.current
-    const delta = target - initial
+    const delta = t - initial
     if (delta === 0) return
 
     const loop = (now: number) => {
-      const t = Math.min(1, (now - start) / duration)
-      const eased = 1 - Math.pow(1 - t, 3)
+      const p = Math.min(1, (now - start) / duration)
+      const eased = 1 - Math.pow(1 - p, 3)
       setValue(initial + delta * eased)
-      if (t < 1) raf.current = requestAnimationFrame(loop)
-      else from.current = target
+      if (p < 1) raf.current = requestAnimationFrame(loop)
+      else from.current = t
     }
     raf.current = requestAnimationFrame(loop)
     return () => {
       if (raf.current) cancelAnimationFrame(raf.current)
-      from.current = target
+      from.current = t
     }
   }, [target, duration])
 
@@ -38,17 +40,20 @@ export function CountUp({
   suffix = '',
   locale,
 }: {
-  value: number
+  value: number | null | undefined
   decimals?: number
   className?: string
   prefix?: string
   suffix?: string
   locale?: string
 }) {
-  const animated = useCountUp(value)
-  const text = locale
-    ? Math.round(animated).toLocaleString(locale)
-    : animated.toFixed(decimals)
+  const safe = Number.isFinite(value as number) ? (value as number) : 0
+  const animated = useCountUp(safe)
+  const text = Number.isFinite(animated)
+    ? locale
+      ? Math.round(animated).toLocaleString(locale)
+      : animated.toFixed(decimals)
+    : '—'
   return (
     <span className={className}>
       {prefix}

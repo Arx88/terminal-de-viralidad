@@ -16,31 +16,28 @@ import { useVirahub } from '@/components/virahub-provider'
 import { ENGINES } from '@/lib/virahub-data'
 import { cn } from '@/lib/utils'
 
-const stats = [
+const STAT_META = [
   {
-    value: 3,
+    key: 'emerging' as const,
     label: 'Tendencias emergentes',
     Icon: TrendingUp,
-    color: 'text-[var(--hot)]',
-    glow: 'group-hover/stat:shadow-[0_0_24px_-6px_var(--hot)]',
+    colorVar: 'var(--hot)',
     screen: 'explorar' as const,
     hint: 'Explorar',
   },
   {
-    value: 12,
+    key: 'weak' as const,
     label: 'Señales débiles',
     Icon: Waves,
-    color: 'text-[var(--cool)]',
-    glow: 'group-hover/stat:shadow-[0_0_24px_-6px_var(--cool)]',
+    colorVar: 'var(--cool)',
     screen: 'explorar' as const,
     hint: 'Explorar',
   },
   {
-    value: 2,
+    key: 'anomalies' as const,
     label: 'Anomalías detectadas',
     Icon: AlertTriangle,
-    color: 'text-[var(--hot)]',
-    glow: 'group-hover/stat:shadow-[0_0_24px_-6px_var(--hot)]',
+    colorVar: 'var(--hot)',
     screen: 'alertas' as const,
     hint: 'Alertas',
   },
@@ -53,8 +50,15 @@ const steps = [
 ]
 
 export function HeroCard() {
-  const { setScreen, live } = useVirahub()
+  const { setScreen, live, trends, alerts } = useVirahub()
   const [howOpen, setHowOpen] = useState(false)
+
+  // Real derived stats
+  const realStats = {
+    emerging: trends.filter((t) => t.id !== '_empty' && (t.phase === 'forming' || t.phase === 'rising')).length,
+    weak: trends.filter((t) => t.id !== '_empty' && t.confidence < 50 && t.confidence >= 20).length,
+    anomalies: alerts.length,
+  }
 
   return (
     <section
@@ -183,43 +187,41 @@ export function HeroCard() {
             <span className="h-px flex-1 bg-gradient-to-r from-border to-transparent" />
           </div>
           <ul className="grid grid-cols-3 gap-2 lg:grid-cols-1 lg:gap-2.5">
-            {stats.map(({ value, label, Icon, color, glow, screen, hint }) => (
-              <li key={label}>
-                <button
-                  type="button"
-                  onClick={() => setScreen(screen)}
-                  aria-label={`Ir a ${hint}: ${label}. Valor actual: ${value}.`}
-                  title={`Ver ${label.toLowerCase()} en ${hint}`}
-                  className="group/stat relative flex h-full w-full cursor-pointer flex-col gap-2 rounded-xl border border-border/60 bg-white/[0.02] p-2.5 text-left transition-all duration-300 hover:-translate-y-0.5 hover:border-border hover:bg-white/[0.05] lg:flex-row lg:items-center lg:gap-3 lg:p-3"
-                >
-                  {/* Always-visible arrow indicator — makes the card's
-                      clickability explicit on every breakpoint (VLM issue
-                      #6). Dim at rest, brightens + nudges on hover. */}
-                  <ChevronRight
-                    className="absolute right-2 top-2 size-3.5 text-muted-foreground opacity-40 transition-all duration-300 group-hover/stat:translate-x-0.5 group-hover/stat:opacity-100 group-hover/stat:text-foreground lg:right-3 lg:top-3"
-                    strokeWidth={2.4}
-                    aria-hidden="true"
-                  />
-                  <span
-                    className={cn(
-                      'flex size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-white/[0.04] transition-all duration-300 lg:size-10',
-                      glow,
-                    )}
+            {STAT_META.map(({ key, label, Icon, colorVar, screen, hint }) => {
+              const value = realStats[key]
+              return (
+                <li key={label}>
+                  <button
+                    type="button"
+                    onClick={() => setScreen(screen)}
+                    aria-label={`Ir a ${hint}: ${label}. Valor actual: ${value}.`}
+                    title={`Ver ${label.toLowerCase()} en ${hint}`}
+                    className="group/stat relative flex h-full w-full cursor-pointer flex-col gap-2 rounded-xl border border-border/60 bg-white/[0.02] p-2.5 text-left transition-all duration-300 hover:-translate-y-0.5 hover:border-border hover:bg-white/[0.05] lg:flex-row lg:items-center lg:gap-3 lg:p-3"
                   >
-                    <Icon className={`size-4 ${color}`} strokeWidth={2.2} />
-                  </span>
-                  <span className="flex min-w-0 flex-1 flex-col gap-0.5 lg:pr-5">
-                    <CountUp
-                      value={value}
-                      className="text-xl leading-none font-semibold tabular-nums text-foreground transition-transform duration-300 group-hover/stat:scale-105 sm:text-2xl lg:text-[2rem]"
+                    <ChevronRight
+                      className="absolute right-2 top-2 size-3.5 text-muted-foreground opacity-40 transition-all duration-300 group-hover/stat:translate-x-0.5 group-hover/stat:opacity-100 group-hover/stat:text-foreground lg:right-3 lg:top-3"
+                      strokeWidth={2.4}
+                      aria-hidden="true"
                     />
-                    <span className="truncate text-[10px] leading-tight text-muted-foreground transition-colors group-hover/stat:text-foreground lg:text-[11px]">
-                      {label}
+                    <span
+                      className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-white/[0.04] transition-shadow duration-300 lg:size-10 group-hover/stat:shadow-[0_0_24px_-6px_var(--primary)]"
+                      style={{ ['--glow' as string]: colorVar }}
+                    >
+                      <Icon className="size-4" strokeWidth={2.2} style={{ color: colorVar }} />
                     </span>
-                  </span>
-                </button>
-              </li>
-            ))}
+                    <span className="flex min-w-0 flex-1 flex-col gap-0.5 lg:pr-5">
+                      <CountUp
+                        value={value}
+                        className="text-xl leading-none font-semibold tabular-nums text-foreground transition-transform duration-300 group-hover/stat:scale-105 sm:text-2xl lg:text-[2rem]"
+                      />
+                      <span className="truncate text-[10px] leading-tight text-muted-foreground transition-colors group-hover/stat:text-foreground lg:text-[11px]">
+                        {label}
+                      </span>
+                    </span>
+                  </button>
+                </li>
+              )
+            })}
           </ul>
         </div>
       </div>
