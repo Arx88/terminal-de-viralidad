@@ -2,510 +2,588 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>FOGÓN — Detector de tendencias</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-<script>
-  tailwind.config = {
-    theme: {
-      extend: {
-        colors: {
-          card:    '#0f0f0f',
-          accent:  '#d946ef',
-          accent2: '#9F7AEA',
-          muted:   '#a0a0a0',
-        },
-        fontFamily: {
-          sans: ['Inter', 'system-ui', 'sans-serif'],
-        }
-      }
-    }
-  }
-</script>
+<link rel="preload" href="/galaxy.jpg" as="image">
 <style>
-  *{ -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+/* === TOKENS EXACTOS DE WORMHOLE === */
+:root {
+  --purple-200: #D6BCFA;
+  --purple-300: #B794F4;
+  --purple-400: #9F7AEA;
+  --purple-500: #805AD5;
+  --purple-600: #6B46C1;
+  --pink-400: #ED64A6;
+  --pink-500: #D53F8C;
+  --gray-700: #2D3748;
+  --gray-800: #1A202C;
+  --gray-900: #171923;
+  --white: #FFFFFF;
+  --whiteAlpha-100: rgba(255,255,255,0.06);
+  --whiteAlpha-200: rgba(255,255,255,0.08);
+  --whiteAlpha-300: rgba(255,255,255,0.16);
+  --whiteAlpha-500: rgba(255,255,255,0.36);
+  --whiteAlpha-600: rgba(255,255,255,0.48);
+  --whiteAlpha-700: rgba(255,255,255,0.64);
+  --blackAlpha-600: rgba(0,0,0,0.48);
+  --blackAlpha-800: rgba(0,0,0,0.80);
+  --blackAlpha-900: rgba(0,0,0,0.92);
+  --radius: 12px;
+  --font: system-ui, -apple-system, sans-serif;
+  --mono: SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: var(--font);
+  color: var(--white);
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+}
 
-  html { scroll-behavior: smooth; }
+/* === GALAXIA — la imagen real de Wormhole === */
+.galaxy-bg {
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  z-index: -10;
+  background: url('/galaxy.jpg') center/cover no-repeat fixed;
+}
 
-  body{
-    background: #050007;
-    color: #ffffff;
-    font-family: 'Inter', system-ui, sans-serif;
-    min-height: 100vh;
-    overflow-x: hidden;
-    position: relative;
-  }
+/* === HEADER — sticky con gradient como Wormhole === */
+header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  padding: 16px 24px;
+  padding-top: max(env(safe-area-inset-top), 16px);
+  background-image: linear-gradient(to bottom, var(--blackAlpha-600), transparent);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.logo {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.logo-icon {
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #7928CA, #FF0080);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+.header-actions { display: flex; gap: 8px; }
 
-  /* ===== Galaxy / nebula background ===== */
-  .nebula{
-    position: fixed;
-    inset: 0;
-    z-index: -3;
-    background:
-      radial-gradient(ellipse 80% 60% at 14% 28%, rgba(59, 130, 246, 0.38) 0%, transparent 50%),
-      radial-gradient(ellipse 70% 55% at 82% 18%, rgba(217, 70, 239, 0.38) 0%, transparent 50%),
-      radial-gradient(ellipse 90% 70% at 70% 88%, rgba(59, 130, 246, 0.30) 0%, transparent 55%),
-      radial-gradient(ellipse 60% 50% at 22% 75%, rgba(139, 92, 246, 0.28) 0%, transparent 50%),
-      radial-gradient(ellipse 55% 45% at 50% 50%, rgba(236, 72, 153, 0.20) 0%, transparent 55%),
-      radial-gradient(circle at 88% 62%, rgba(124, 58, 237, 0.28) 0%, transparent 38%),
-      radial-gradient(circle at 8% 60%, rgba(6, 182, 212, 0.22) 0%, transparent 42%),
-      radial-gradient(ellipse 100% 100% at 50% 50%, transparent 40%, rgba(5, 0, 10, 0.55) 100%),
-      #040008;
-    filter: saturate(1.05);
-  }
+/* === BOTONES — estilo exacto Wormhole === */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  height: 40px;
+  padding: 0 16px;
+  cursor: pointer;
+  transition: all 0.15s ease-out;
+  white-space: nowrap;
+  border: none;
+  text-decoration: none;
+}
+.btn-primary {
+  background: var(--purple-200);
+  color: var(--gray-800);
+}
+.btn-primary:hover { background: var(--purple-300); }
+.btn-outline {
+  background: transparent;
+  color: var(--purple-200);
+  border: 1px solid currentColor;
+  height: 36px;
+  font-size: 13px;
+  padding: 0 12px;
+}
+.btn-outline:hover { background: var(--whiteAlpha-100); }
+.btn-sm {
+  height: 32px;
+  font-size: 13px;
+  padding: 0 12px;
+}
 
-  .nebula::after{
-    content: '';
-    position: absolute;
-    inset: 0;
-    background:
-      radial-gradient(ellipse 100% 80% at 50% 100%, rgba(15, 5, 30, 0.6) 0%, transparent 60%),
-      radial-gradient(ellipse 100% 80% at 50% 0%, rgba(5, 0, 15, 0.5) 0%, transparent 60%);
-  }
+/* === MAIN — centrado como Wormhole === */
+main {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 32px 24px;
+  padding-bottom: max(env(safe-area-inset-bottom), 48px);
+}
 
-  /* subtle swirl overlay */
-  .swirl{
-    position: fixed;
-    inset: 0;
-    z-index: -2;
-    background:
-      conic-gradient(from 210deg at 30% 40%, transparent 0deg, rgba(217, 70, 239, 0.08) 60deg, transparent 120deg, rgba(159, 122, 234, 0.08) 180deg, transparent 240deg, rgba(59, 130, 246, 0.06) 300deg, transparent 360deg);
-    opacity: 0.6;
-    mix-blend-mode: screen;
-    animation: swirl 80s linear infinite;
-  }
-  @keyframes swirl{
-    from{ transform: rotate(0deg); }
-    to{ transform: rotate(360deg); }
-  }
+/* === HERO TEXT === */
+.hero {
+  text-align: center;
+  margin-bottom: 32px;
+}
+.hero h1 {
+  font-size: clamp(32px, 5vw, 44px);
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  margin-bottom: 8px;
+}
+.gradient-text {
+  background-image: linear-gradient(to left, #7928CA, #FF0080);
+  color: transparent;
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+.hero p {
+  font-size: 16px;
+  color: var(--whiteAlpha-600);
+  max-width: 440px;
+  margin: 0 auto;
+  line-height: 1.5;
+}
 
-  /* ===== Stars layer ===== */
-  .stars{
-    position: fixed;
-    inset: 0;
-    z-index: -1;
-    pointer-events: none;
-  }
-  .star{
-    position: absolute;
-    background: #ffffff;
-    border-radius: 50%;
-    opacity: 0.85;
-    animation: twinkle 4s ease-in-out infinite;
-  }
-  @keyframes twinkle{
-    0%, 100% { opacity: 0.25; }
-    50%      { opacity: 0.95; }
-  }
+/* === CARD PRINCIPAL — estilo Wormhole === */
+.card {
+  background: var(--gray-900);
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--whiteAlpha-100);
+}
+.card-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--whiteAlpha-100);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.card-header h2 {
+  font-size: 18px;
+  font-weight: 700;
+}
+.card-header .count {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--whiteAlpha-500);
+}
 
-  /* ===== Gradient text ===== */
-  .grad-text{
-    background: linear-gradient(135deg, #d946ef 0%, #9F7AEA 60%, #6366f1 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    color: transparent;
-  }
+/* === LISTA DE TENDENCIAS === */
+.trend-item {
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--whiteAlpha-100);
+  cursor: pointer;
+  transition: background 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.trend-item:hover { background: var(--whiteAlpha-100); }
+.trend-item:last-child { border-bottom: none; }
 
-  /* ===== Glass card ===== */
-  .glass{
-    background:
-      radial-gradient(ellipse 90% 50% at 50% 0%, rgba(217, 70, 239, 0.06) 0%, transparent 60%),
-      rgba(15, 15, 15, 0.74);
-    backdrop-filter: blur(22px) saturate(1.15);
-    -webkit-backdrop-filter: blur(22px) saturate(1.15);
-    border: 1px solid rgba(255, 255, 255, 0.09);
-    border-radius: 14px;
-    box-shadow:
-      0 0 0 1px rgba(255,255,255,0.02) inset,
-      0 24px 60px -20px rgba(0,0,0,0.75),
-      0 8px 28px -8px rgba(217, 70, 239, 0.07);
-  }
+.trend-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.trend-dot.creciendo { background: #F97316; box-shadow: 0 0 8px rgba(249,115,22,0.5); }
+.trend-dot.nacer { background: var(--purple-400); box-shadow: 0 0 8px rgba(159,122,234,0.5); }
+.trend-dot.nacida { background: #10B981; box-shadow: 0 0 8px rgba(16,185,129,0.4); }
+.trend-dot.muriendo { background: #6B7280; }
 
-  /* ===== Outline button ===== */
-  .btn-outline{
-    border: 1px solid rgba(255,255,255,0.14);
-    background: rgba(255,255,255,0.02);
-    color: #f5f5f5;
-    transition: all 200ms ease;
-    font-weight: 500;
-  }
-  .btn-outline:hover{
-    background: rgba(255,255,255,0.08);
-    border-color: rgba(255,255,255,0.22);
-  }
+.trend-content { flex: 1; min-width: 0; }
+.trend-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 2px;
+  color: var(--white);
+}
+.trend-meta {
+  font-size: 12px;
+  color: var(--whiteAlpha-500);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.trend-metric {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.trend-metric.creciendo { color: #F97316; }
+.trend-metric.nacer { color: var(--purple-300); }
+.trend-metric.nacida { color: #10B981; }
+.trend-metric.muriendo { color: #6B7280; }
 
-  .btn-primary{
-    background: linear-gradient(135deg, #d946ef 0%, #9F7AEA 100%);
-    color: #fff;
-    border: none;
-    transition: all 200ms ease;
-    font-weight: 600;
-    box-shadow: 0 4px 20px -4px rgba(217,70,239,0.45);
-  }
-  .btn-primary:hover{
-    filter: brightness(1.08);
-    box-shadow: 0 6px 28px -4px rgba(217,70,239,0.6);
-  }
+.trend-spark {
+  flex-shrink: 0;
+  width: 60px;
+  height: 24px;
+}
 
-  /* ===== Trend list item ===== */
-  .trend-item{
-    cursor: pointer;
-    transition: background 200ms ease, border-color 200ms ease;
-    border: 1px solid transparent;
-    border-radius: 10px;
-  }
-  .trend-item:hover{
-    background: rgba(255,255,255,0.035);
-    border-color: rgba(255,255,255,0.06);
-  }
-  .trend-item:focus-visible{
-    outline: 2px solid rgba(217, 70, 239, 0.5);
-    outline-offset: 2px;
-  }
+/* === MODAL — estilo Wormhole === */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--blackAlpha-800);
+  z-index: 200;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--gray-900);
+  border-radius: var(--radius);
+  border: 1px solid var(--whiteAlpha-200);
+  max-width: 560px;
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+.modal-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--whiteAlpha-100);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.modal-body { padding: 24px; }
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--whiteAlpha-500);
+  cursor: pointer;
+  font-size: 20px;
+  padding: 4px;
+}
+.modal-close:hover { color: var(--white); }
 
-  /* status dots */
-  .dot{
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    display: inline-block;
-    flex-shrink: 0;
-    box-shadow: 0 0 8px currentColor;
-  }
-  .dot-growing  { background:#F97316; color:#F97316; }
-  .dot-budding  { background:#9F7AEA; color:#9F7AEA; }
-  .dot-born     { background:#10B981; color:#10B981; }
-  .dot-dying    { background:#6b7280; color:#6b7280; box-shadow:none; }
+.modal-section {
+  margin-bottom: 20px;
+}
+.modal-section h3 {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--whiteAlpha-500);
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+.modal-section p {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--whiteAlpha-700);
+}
 
-  /* fade-in entrance */
-  .fade-in{
-    opacity: 0;
-    transform: translateY(8px);
-    animation: fadeIn 600ms ease-out forwards;
-  }
-  @keyframes fadeIn{
-    to { opacity: 1; transform: translateY(0); }
-  }
+.mention-card {
+  background: var(--gray-800);
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 8px;
+}
+.mention-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.mention-avatar {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: white;
+}
+.mention-author {
+  font-size: 13px;
+  font-weight: 600;
+}
+.mention-source {
+  font-size: 11px;
+  color: var(--whiteAlpha-500);
+  margin-left: auto;
+}
+.mention-text {
+  font-size: 13px;
+  color: var(--whiteAlpha-700);
+  line-height: 1.5;
+  margin-bottom: 6px;
+}
+.mention-stats {
+  display: flex;
+  gap: 12px;
+  font-size: 11px;
+  color: var(--whiteAlpha-500);
+  font-family: var(--mono);
+}
+.mention-stats span { display: flex; align-items: center; gap: 3px; }
+.mention-date {
+  font-size: 11px;
+  color: var(--whiteAlpha-500);
+  font-family: var(--mono);
+}
 
-  /* modal */
-  .modal-backdrop{
-    background: rgba(5, 0, 12, 0.7);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-  }
+/* === FOOTER — estilo Wormhole === */
+footer {
+  padding: 16px 24px;
+  padding-bottom: max(env(safe-area-inset-bottom), 16px);
+  text-align: center;
+  background-image: linear-gradient(to top, var(--blackAlpha-600), transparent);
+}
+footer a {
+  color: var(--whiteAlpha-500);
+  font-size: 12px;
+  text-decoration: none;
+  margin: 0 8px;
+}
+footer a:hover { color: var(--whiteAlpha-700); }
+.footer-info {
+  font-size: 11px;
+  color: var(--whiteAlpha-500);
+  margin-top: 8px;
+  font-family: var(--mono);
+}
 
-  /* scrollbar */
-  ::-webkit-scrollbar{ width: 8px; height: 8px; }
-  ::-webkit-scrollbar-track{ background: transparent; }
-  ::-webkit-scrollbar-thumb{ background: rgba(255,255,255,0.08); border-radius: 8px; }
-  ::-webkit-scrollbar-thumb:hover{ background: rgba(255,255,255,0.16); }
+/* === BADGE === */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.badge.creciendo { background: rgba(249,115,22,0.15); color: #F97316; }
+.badge.nacer { background: rgba(159,122,234,0.15); color: var(--purple-300); }
+.badge.nacida { background: rgba(16,185,129,0.15); color: #10B981; }
+.badge.muriendo { background: rgba(107,114,128,0.15); color: #6B7280; }
 
-  /* logo glyph */
-  .logo-glyph{
-    width: 22px; height: 22px;
-    border-radius: 6px;
-    background: linear-gradient(135deg, #d946ef 0%, #9F7AEA 100%);
-    box-shadow: 0 0 12px rgba(217,70,239,0.5);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .logo-glyph::after{
-    content:'';
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    background: #0f0f0f;
-  }
+/* fade in */
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.fade-in { animation: fadeIn 0.4s ease-out; }
 
-  /* sparkline */
-  .spark{ opacity: 0.85; }
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-thumb { background: var(--whiteAlpha-200); border-radius: 3px; }
 </style>
 </head>
 <body>
 
-<!-- Cosmic background layers -->
-<div class="nebula" aria-hidden="true"></div>
-<div class="swirl" aria-hidden="true"></div>
-<div class="stars" id="stars" aria-hidden="true"></div>
+<div class="galaxy-bg"></div>
 
-<!-- ===== HEADER ===== -->
-<header class="relative z-10 px-6 sm:px-10 py-6 flex items-center justify-between">
-  <div class="flex items-center gap-2.5">
-    <span class="logo-glyph"></span>
-    <span class="text-lg font-semibold tracking-tight">FOGÓN</span>
+<header>
+  <div class="logo">
+    <div class="logo-icon">🔥</div>
+    FOGÓN
   </div>
-  <nav class="flex items-center gap-2.5">
-    <button class="btn-outline text-sm px-4 py-2 rounded-lg" onclick="rescan()">
-      Re-escanear
-    </button>
-    <button class="btn-outline text-sm px-4 py-2 rounded-lg">
-      Configurar
-    </button>
-  </nav>
+  <div class="header-actions">
+    <button class="btn btn-outline btn-sm" onclick="rescan()">Re-escanear</button>
+    <button class="btn btn-primary btn-sm" onclick="window.scrollTo({top:0,behavior:'smooth'})">Configurar</button>
+  </div>
 </header>
 
-<!-- ===== HERO ===== -->
-<main class="relative z-10 px-6 sm:px-10 pt-10 pb-20 flex flex-col items-center text-center">
-  <div class="fade-in" style="animation-delay: 80ms">
-    <span class="inline-flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-muted font-medium mb-6">
-      <span class="dot" style="width:6px;height:6px;background:#d946ef;color:#d946ef"></span>
-      Motor de detección · en vivo
-    </span>
+<main>
+  <div class="hero">
+    <h1>Detectamos lo que está por <span class="gradient-text">explotar</span></h1>
+    <p>Monitoreo de señales en ascenso en Bluesky, Mastodon, Hacker News, GDELT y RSS.</p>
   </div>
 
-  <h1 class="fade-in text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-[1.05] max-w-3xl" style="animation-delay: 160ms">
-    Detectamos lo que está
-    <br class="hidden sm:block">
-    por <span class="grad-text">explotar</span>
-  </h1>
-
-  <p class="fade-in text-muted text-base sm:text-lg mt-5 max-w-xl leading-relaxed" style="animation-delay: 240ms">
-    Escuchamos Bluesky, Reddit, arXiv, HN y GitHub en tiempo real para encontrar señales antes que todos.
-  </p>
-
-  <!-- ===== MAIN CARD ===== -->
-  <section class="fade-in glass w-full max-w-[700px] mt-12 p-5 sm:p-6 text-left" style="animation-delay: 320ms">
-    <div class="flex items-center justify-between mb-4 px-1">
-      <h2 class="text-sm font-semibold text-white/90 tracking-tight">Tendencias detectadas</h2>
-      <span class="text-xs text-muted">6 señales · actualizado hace 2 min</span>
+  <div class="card fade-in">
+    <div class="card-header">
+      <h2>Tendencias activas</h2>
+      <span class="count">6 detectadas · hace 12 min</span>
     </div>
-
-    <ul id="trend-list" class="flex flex-col gap-1"></ul>
-  </section>
-
-  <!-- ===== FOOTER ===== -->
-  <footer class="fade-in mt-16 text-center" style="animation-delay: 440ms">
-    <p class="text-xs text-muted/80 leading-relaxed max-w-md">
-      FOGÓN escanea 5 fuentes cada 90 segundos. Las señales <span class="text-white/70">“por nacer”</span> son predicciones de tendencia,
-      no hechos consumados.
-    </p>
-    <p class="text-[11px] text-muted/50 mt-3">v0.4 · motor de detección · sin telemetry</p>
-  </footer>
+    <div id="trendList"></div>
+  </div>
 </main>
 
-<!-- ===== MODAL ===== -->
-<div id="modal" class="hidden fixed inset-0 z-50 modal-backdrop items-center justify-center p-4 sm:p-6">
-  <div class="glass w-full max-w-[560px] max-h-[85vh] overflow-y-auto p-6 sm:p-7" role="dialog" aria-modal="true">
-    <div class="flex items-start justify-between gap-4 mb-5">
-      <div class="flex-1 min-w-0">
-        <div class="flex items-center gap-2 mb-2">
-          <span id="m-dot" class="dot"></span>
-          <span id="m-status" class="text-xs uppercase tracking-wider text-muted font-medium"></span>
-        </div>
-        <h3 id="m-title" class="text-xl sm:text-2xl font-semibold leading-tight"></h3>
-        <p id="m-meta" class="text-sm text-muted mt-1.5"></p>
-      </div>
-      <button onclick="closeModal()" class="btn-outline w-9 h-9 rounded-lg flex items-center justify-center text-lg leading-none flex-shrink-0" aria-label="Cerrar">
-        ×
-      </button>
-    </div>
+<footer>
+  <a href="#">Cómo funciona</a>
+  <a href="#">Fuentes</a>
+  <a href="#">Roadmap</a>
+  <a href="#">Seguridad</a>
+  <div class="footer-info">FOGÓN · experimental · Nemotron-3-Ultra-550B · thinking:false</div>
+</footer>
 
-    <div class="border-t border-white/5 pt-5">
-      <h4 class="text-xs uppercase tracking-wider text-muted mb-2.5 font-medium">Briefing</h4>
-      <p id="m-briefing" class="text-sm leading-relaxed text-white/85"></p>
-    </div>
-
-    <div class="border-t border-white/5 pt-5 mt-5">
-      <h4 class="text-xs uppercase tracking-wider text-muted mb-3 font-medium">Menciones recientes</h4>
-      <ul id="m-mentions" class="flex flex-col gap-3"></ul>
-    </div>
-  </div>
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal" id="modalContent"></div>
 </div>
 
 <script>
-  /* ===== Stars ===== */
-  (function buildStars(){
-    const layer = document.getElementById('stars');
-    const N = 120;
-    const frag = document.createDocumentFragment();
-    for (let i=0; i<N; i++){
-      const s = document.createElement('span');
-      s.className = 'star';
-      const size = Math.random() < 0.85 ? (Math.random()*1.2 + 0.6) : (Math.random()*1.8 + 1.6);
-      s.style.width = size + 'px';
-      s.style.height = size + 'px';
-      s.style.left = (Math.random()*100) + 'vw';
-      s.style.top = (Math.random()*100) + 'vh';
-      s.style.animationDelay = (Math.random()*4) + 's';
-      s.style.animationDuration = (3 + Math.random()*4) + 's';
-      if (Math.random() < 0.15) s.style.boxShadow = `0 0 ${size*3}px rgba(255,255,255,0.6)`;
-      frag.appendChild(s);
-    }
-    layer.appendChild(frag);
-  })();
+const trends = [
+  { id:1, title:"Regulación de IA en la UE", state:"creciendo", stateLabel:"Creciendo",
+    metric:"+312% / 24h", sources:"Bluesky · Reddit", time:"hace 2h",
+    spark:[2,3,2,5,8,12,18,25,38,52,68,82],
+    briefing:"Borrador filtrado de la Comisión Europea genera debate en Bluesky y r/spain. 14 posts en 2h, sin cobertura en medios tradicionales aún.",
+    velocity:"82 menc/h", confidence:"82%",
+    mentions:[
+      {author:"@ia_policy_es",name:"IA Policy ES",source:"Bluesky",text:"El borrador filtrado sobre IA general del artículo 7 es preocupante. Define 'modelo de uso general' de forma demasiado amplia.",date:"30 jul 14:32",likes:1243,reposts:284,replies:97,avatar:"#9F7AEA"},
+      {author:"@dev_es",name:"Dev España",source:"Bluesky",text:"Hilo sobre implicaciones del artículo 7 para devs independientes. Si se aprueba tal cual, cualquier dev que use modelos de +10B params tendría que registrar el uso.",date:"30 jul 15:18",likes:456,reposts:112,replies:43,avatar:"#D53F8C"},
+      {author:"u/tech_observer",name:"Tech Observer",source:"Reddit",text:"¿Alguien leyó el borrador de la UE? Lo subí a r/spain pero pasó desaparecido. Ahora está explotando en Bluesky.",date:"30 jul 15:47",score:847,comments:213,avatar:"#ED64A6"},
+    ]},
+  { id:2, title:"Brote de actividad solar", state:"nacer", stateLabel:"Por nacer",
+    metric:"señal débil", sources:"arXiv · Bluesky", time:"hace 45min",
+    spark:[0,0,1,0,1,2,1,2,3,2,3,4],
+    briefing:"Preprint de arXiv sobre tormenta solar mencionado por 3 cuentas técnicas. Señal débil pero de calidad alta en el originador.",
+    velocity:"4 menc/h", confidence:"65%",
+    mentions:[
+      {author:"@solar_physics",name:"Solar Physics",source:"Bluesky",text:"Nuevo preprint sobre ciclo solar 25 — los datos son significativos. Tormenta clase X9.3 detectada.",date:"30 jul 15:45",likes:89,reposts:34,replies:12,avatar:"#9F7AEA"},
+      {author:"@astro_es",name:"Astro España",source:"Bluesky",text:"Si esto se confirma, las auroras van a ser visibles mucho más al sur de lo habitual.",date:"30 jul 16:00",likes:67,reposts:28,replies:8,avatar:"#D53F8C"},
+    ]},
+  { id:3, title:"Despidos en tech", state:"muriendo", stateLabel:"Muriendo",
+    metric:"−40% velocity", sources:"HN · Reddit", time:"hace 3 días",
+    spark:[45,52,48,40,35,28,22,18,15,12,10,8],
+    briefing:"Tema de despidos tech pierde tracción después de 3 días. Velocity decreciendo 40% vs ayer. Ya no genera conversación nueva.",
+    velocity:"8 menc/h", confidence:"85%",
+    mentions:[
+      {author:"throwaway_dev",name:"anonymous",source:"HN",text:"Another round of layoffs at big tech. This time hitting senior engineers.",date:"29 jul 11:22",points:342,comments:128,avatar:"#F97316"},
+    ]},
+  { id:4, title:"Cripto recupera", state:"nacida", stateLabel:"Nacida",
+    metric:"recién detectada", sources:"Reddit", time:"hace 1h",
+    spark:[5,4,3,4,6,8,10,14,18,22,28,35],
+    briefing:"Subreddit r/CryptoCurrency muestra aumento de actividad positiva tras semana de baja. Sentimiento cambiando de negativo a neutral.",
+    velocity:"35 menc/h", confidence:"70%",
+    mentions:[
+      {author:"u/crypto_watch",name:"Crypto Watch",source:"Reddit",text:"BTC sube 5% en 1h — primero en 2 semanas. Volume está 40% por encima de la media de 7d.",date:"30 jul 15:40",score:1247,comments:389,avatar:"#10B981"},
+      {author:"u/satoshi_es",name:"Satoshi ES",source:"Reddit",text:"¿Cambió el sentimiento o es pump? Mirando los wallets grandes, hay acumulación en las últimas 4h.",date:"30 jul 16:00",score:456,comments:98,avatar:"#10B981"},
+    ]},
+  { id:5, title:"Cumbre climática", state:"creciendo", stateLabel:"Creciendo",
+    metric:"+184% / 24h", sources:"Mastodon · RSS", time:"hace 5h",
+    spark:[3,4,3,5,7,6,9,14,20,28,35,42],
+    briefing:"Decisión de la ONU sobre fondos climáticos empieza a viralizar en Mastodon y medios ES. Cobertura cruzada emergiendo.",
+    velocity:"42 menc/h", confidence:"78%",
+    mentions:[
+      {author:"@climate_es@masto.es",name:"Climate ES",source:"Mastodon",text:"La ONU aprobó fondos climáticos — esto es enorme. $300B anual para países en desarrollo.",date:"30 jul 11:30",likes:234,reposts:89,replies:34,avatar:"#9F7AEA"},
+    ]},
+  { id:6, title:"Nueva API de Bluesky", state:"nacer", stateLabel:"Por nacer",
+    metric:"47 ★ / 24h", sources:"GitHub · HN", time:"hace 30min",
+    spark:[0,0,5,8,12,18,22,28,35,40,44,47],
+    briefing:"GitHub trending: nuevo SDK para Bluesky firehose. 47 stars en 1 día. Mencionado en HN por 2 usuarios técnicos.",
+    velocity:"47 ★/24h", confidence:"68%",
+    mentions:[
+      {author:"@bluesky-dev",name:"Bluesky Dev",source:"GitHub",text:"New firehose SDK — 3x faster than official, handles backpressure automatically. MIT license.",date:"30 jul 16:00",stars:47,forks:3,avatar:"#9F7AEA"},
+    ]},
+];
 
-  /* ===== Data ===== */
-  const TRENDS = [
-    {
-      id:1, title:'Regulación de IA en la UE', status:'growing', statusLabel:'creciendo',
-      metric:'+312% / 24h', sources:['Bluesky','Reddit'], time:'hace 2h',
-      spark:[12,18,22,19,28,34,42,55,68,82],
-      briefing:'La discusión sobre el AI Act se aceleró tras una nueva ronda de votaciones. Las menciones crecieron 312% en 24h, concentradas en cuentas técnicas europeas. Coincide con un pico de actividad en Reddit sobre compliance y modelos abiertos.',
-      mentions:[
-        {src:'Bluesky', user:'@europolicy.bsky.social', text:'El AI Act entra en fase final. Las multas pueden llegar al 7% de la facturación global.', ints:'142 reposts · 318 likes'},
-        {src:'Reddit',  user:'r/technology',            text:'Hilo megadiscutido sobre cómo afecta esto a modelos abiertos tipo Llama.', ints:'2.1k upvotes · 847 comentarios'},
-        {src:'Bluesky', user:'@airesearcher.bsky.social',text:'Papers sobre compliance ya están circulando. Esto va a redefinir el mercado europeo.', ints:'89 reposts · 211 likes'}
-      ]
-    },
-    {
-      id:2, title:'Brote de actividad solar', status:'budding', statusLabel:'por nacer',
-      metric:'señal débil', sources:['arXiv','Bluesky'], time:'hace 45min',
-      spark:[8,9,11,10,12,14,13,16,19,24],
-      briefing:'Astrónomos publicaron en arXiv mediciones inusuales del campo magnético solar. La señal es débil pero creciente en Bluesky entre cuentas científicas. Todavía no cruzó a medios principales.',
-      mentions:[
-        {src:'arXiv',  user:'arxiv.org/abs/2410.18234', text:'Ciclo solar 25: anomalías en la mancha solar AR3842 durante octubre 2024.', ints:'34 citas · 7 discusiones'},
-        {src:'Bluesky',user:'@astrofeed.bsky.social',   text:'Si esto se confirma, podríamos ver auroras visibles hasta latitudes inusuales esta semana.', ints:'27 reposts · 64 likes'},
-        {src:'Bluesky',user:'@helio.bsky.social',       text:'Magnetograma interesante esta mañana. A vigilar.', ints:'12 reposts · 31 likes'}
-      ]
-    },
-    {
-      id:3, title:'Despidos en tech', status:'dying', statusLabel:'muriendo',
-      metric:'−40% velocity', sources:['HN','Reddit'], time:'hace 3 días',
-      spark:[60,55,48,44,38,32,28,24,20,16],
-      briefing:'El tema de despidos en tech perdió tracción. La velocidad de menciones cayó 40% en la última semana. Ya no genera conversación nueva — la atención migró a otros temas.',
-      mentions:[
-        {src:'HN',     user:'news.ycombinator.com',      text:'Hilo de hace 3 días con poca actividad nueva. La conversación se enfrió.', ints:'412 upvotes · 38 comentarios'},
-        {src:'Reddit', user:'r/cscareerquestions',       text:'Post sobre despidos en una Big Tech — apenas 12 respuestas esta semana.', ints:'88 upvotes · 12 comentarios'}
-      ]
-    },
-    {
-      id:4, title:'Cripto recupera', status:'born', statusLabel:'nacida',
-      metric:'recién detectada', sources:['Reddit'], time:'hace 1h',
-      spark:[2,4,6,8,12,18,26,35,46,58],
-      briefing:'Tendencia nueva detectada en Reddit en la última hora. El sentimiento cambió de negativo a neutro-positivo en subreddits clave. Todavía temprano para saber si sostiene.',
-      mentions:[
-        {src:'Reddit', user:'r/CryptoCurrency',     text:'“¿Estamos viendo el fondo?” — post que disparó la conversación.', ints:'1.4k upvotes · 624 comentarios'},
-        {src:'Reddit', user:'r/Bitcoin',            text:'Volumen de menciones a BTC subiendo fuerte en las últimas 2h.', ints:'620 upvotes · 198 comentarios'}
-      ]
-    },
-    {
-      id:5, title:'Cumbre climática', status:'growing', statusLabel:'creciendo',
-      metric:'+184% / 24h', sources:['Mastodon','RSS'], time:'hace 5h',
-      spark:[10,14,18,22,28,30,38,48,60,75],
-      briefing:'La cobertura de la próxima cumbre climática creció 184% en 24h, impulsada por feeds RSS de medios europeos y Mastodon. Tema central: compromisos sobre metano.',
-      mentions:[
-        {src:'Mastodon', user:'@climate@mas.to',     text:'Borrador del acuerdo filtra menciones de reducción de metano del 30% para 2030.', ints:'78 boost · 142 favs'},
-        {src:'RSS',      user:'the-guardian.com',    text:'“World leaders push for methane cuts ahead of summit” — artículo en home.', ints:'3.2k shares'},
-        {src:'Mastodon', user:'@policy@econtwitter.net', text:'Las ONG ambientalistas están pidiendo metas vinculantes, no voluntarias.', ints:'52 boost · 96 favs'}
-      ]
-    },
-    {
-      id:6, title:'Nueva API de Bluesky', status:'budding', statusLabel:'por nacer',
-      metric:'47 ★ / 24h', sources:['GitHub','HN'], time:'hace 30min',
-      spark:[5,7,10,14,19,22,28,35,41,47],
-      briefing:'Un repo nuevo en GitHub expone una API no oficial de Bluesky con features que la oficial no tiene. Empezó a ganar estrellas en HN hace 30 minutos. Señal débil pero ascendente.',
-      mentions:[
-        {src:'GitHub', user:'github.com/user/bsky-extra', text:'Repo abierto hace 6h, ya tiene 47 estrellas y 12 issues abiertos.', ints:'47 ★ · 12 issues · 8 PRs'},
-        {src:'HN',     user:'news.ycombinator.com',      text:'“Show HN: API no oficial de Bluesky con search avanzada” — subiendo.', ints:'89 upvotes · 24 comentarios'}
-      ]
-    }
-  ];
+function sparkSVG(data, color) {
+  const max = Math.max(...data, 1);
+  const w = 60, h = 24;
+  const stepX = w / (data.length - 1);
+  const pts = data.map((v,i) => `${i*stepX},${h - (v/max)*(h-4) - 2}`).join(' ');
+  return `<svg class="trend-spark" viewBox="0 0 ${w} ${h}"><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+}
 
-  /* ===== Render list ===== */
-  function renderSpark(values, color){
-    const w=44, h=22, pad=2;
-    const max = Math.max(...values), min = Math.min(...values);
-    const range = max - min || 1;
-    const step = (w - pad*2) / (values.length - 1);
-    const pts = values.map((v,i) => {
-      const x = pad + i*step;
-      const y = h - pad - ((v - min) / range) * (h - pad*2);
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    });
-    return `<svg class="spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" fill="none">
-      <polyline points="${pts.join(' ')}" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>`;
-  }
+const stateColors = {
+  creciendo: '#F97316', nacer: '#9F7AEA', nacida: '#10B981', muriendo: '#6B7280'
+};
 
-  const STATUS_META = {
-    growing: { dot:'dot-growing', color:'#F97316', label:'creciendo' },
-    budding: { dot:'dot-budding', color:'#9F7AEA', label:'por nacer' },
-    born:    { dot:'dot-born',    color:'#10B981', label:'nacida' },
-    dying:   { dot:'dot-dying',   color:'#6b7280', label:'muriendo' },
-  };
-
-  const list = document.getElementById('trend-list');
-  TRENDS.forEach((t, i) => {
-    const meta = STATUS_META[t.status];
-    const li = document.createElement('li');
-    li.className = 'trend-item fade-in flex items-center gap-3 px-3 py-3';
-    li.style.animationDelay = (380 + i*60) + 'ms';
-    li.tabIndex = 0;
-    li.setAttribute('role','button');
-    li.setAttribute('aria-label', `Ver detalle de ${t.title}`);
-    li.innerHTML = `
-      <span class="dot ${meta.dot}"></span>
-      <div class="flex-1 min-w-0">
-        <div class="text-sm font-medium text-white truncate">${t.title}</div>
-        <div class="text-xs text-muted mt-0.5 truncate">
-          <span style="color:${meta.color}" class="font-medium">${t.metric}</span>
-          <span class="text-muted/40 mx-1">·</span>
-          ${t.sources.join(', ')}
-          <span class="text-muted/40 mx-1">·</span>
-          ${t.time}
-        </div>
+function renderTrends() {
+  document.getElementById('trendList').innerHTML = trends.map((t,i) => `
+    <div class="trend-item fade-in" style="animation-delay:${i*0.06}s" onclick="openModal(${t.id})">
+      <div class="trend-dot ${t.state}"></div>
+      <div class="trend-content">
+        <div class="trend-title">${t.title}</div>
+        <div class="trend-meta">${t.sources} · ${t.time}</div>
       </div>
-      ${renderSpark(t.spark, meta.color)}
-    `;
-    li.addEventListener('click', () => openModal(t));
-    li.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openModal(t); } });
-    list.appendChild(li);
-  });
+      <div class="trend-metric ${t.state}">${t.metric}</div>
+      ${sparkSVG(t.spark, stateColors[t.state])}
+    </div>
+  `).join('');
+}
 
-  /* ===== Modal ===== */
-  const modal = document.getElementById('modal');
+function openModal(id) {
+  const t = trends.find(x => x.id === id);
+  if (!t) return;
+  const c = stateColors[t.state];
 
-  function openModal(t){
-    const meta = STATUS_META[t.status];
-    document.getElementById('m-dot').className = 'dot ' + meta.dot;
-    document.getElementById('m-status').textContent = meta.label;
-    document.getElementById('m-title').textContent = t.title;
-    document.getElementById('m-meta').innerHTML = `<span style="color:${meta.color}">${t.metric}</span> · ${t.sources.join(', ')} · ${t.time}`;
-    document.getElementById('m-briefing').textContent = t.briefing;
+  const mentionsHTML = t.mentions.map(m => {
+    const initials = (m.name||'?').slice(0,2).toUpperCase();
+    let stats = '';
+    if (m.likes !== undefined) {
+      stats = `<div class="mention-stats">
+        <span>♥ ${m.likes.toLocaleString()}</span>
+        <span>↻ ${m.reposts||0}</span>
+        <span>💬 ${m.replies||0}</span>
+        ${m.views ? `<span>👁 ${m.views}</span>` : ''}
+      </div>`;
+    } else if (m.score !== undefined) {
+      stats = `<div class="mention-stats"><span>↑ ${m.score}</span><span>💬 ${m.comments||0}</span></div>`;
+    } else if (m.stars !== undefined) {
+      stats = `<div class="mention-stats"><span>★ ${m.stars}</span><span>⑂ ${m.forks||0}</span></div>`;
+    } else if (m.points !== undefined) {
+      stats = `<div class="mention-stats"><span>↑ ${m.points}</span><span>💬 ${m.comments||0}</span></div>`;
+    }
+    return `<div class="mention-card">
+      <div class="mention-header">
+        <div class="mention-avatar" style="background:${m.avatar}">${initials}</div>
+        <span class="mention-author">${m.name}</span>
+        <span class="mention-source">${m.source}</span>
+      </div>
+      <p class="mention-text">${m.text}</p>
+      <div class="mention-date">${m.date}</div>
+      ${stats}
+    </div>`;
+  }).join('');
 
-    const ul = document.getElementById('m-mentions');
-    ul.innerHTML = '';
-    t.mentions.forEach(m => {
-      const li = document.createElement('li');
-      li.className = 'rounded-lg bg-white/[0.03] border border-white/[0.06] p-4';
-      li.innerHTML = `
-        <div class="flex items-center justify-between gap-2 mb-2">
-          <span class="text-xs font-semibold text-white/85">${m.src}</span>
-          <span class="text-[11px] text-white/55 font-medium tabular-nums">${m.ints}</span>
-        </div>
-        <div class="text-xs text-muted mb-2">${m.user}</div>
-        <p class="text-sm text-white/85 leading-relaxed">${m.text}</p>
-      `;
-      ul.appendChild(li);
-    });
+  document.getElementById('modalContent').innerHTML = `
+    <div class="modal-header">
+      <div>
+        <span class="badge ${t.state}">${t.stateLabel}</span>
+        <span style="font-family:var(--mono);font-size:12px;color:var(--whiteAlpha-500);margin-left:8px">${t.time}</span>
+      </div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <h2 style="font-size:24px;font-weight:800;margin-bottom:4px;letter-spacing:-0.02em">${t.title}</h2>
+      <div style="font-family:var(--mono);font-size:12px;color:var(--whiteAlpha-500);margin-bottom:20px">vel: ${t.velocity} · conf: ${t.confidence}</div>
 
-    modal.classList.remove('hidden');
-    modal.classList.add('flex');
-    document.body.style.overflow = 'hidden';
-  }
+      <div class="modal-section">
+        <h3>Briefing</h3>
+        <p>${t.briefing}</p>
+      </div>
 
-  function closeModal(){
-    modal.classList.add('hidden');
-    modal.classList.remove('flex');
-    document.body.style.overflow = '';
-  }
+      <div class="modal-section">
+        <h3>Menciones (${t.mentions.length})</h3>
+        ${mentionsHTML}
+      </div>
 
-  modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !modal.classList.contains('hidden')) closeModal(); });
+      <div style="display:flex;gap:8px;margin-top:20px">
+        <button class="btn btn-primary btn-sm" style="flex:1" onclick="closeModal()">Seguir tendencia</button>
+        <button class="btn btn-outline btn-sm" onclick="closeModal()">Cerrar</button>
+      </div>
+    </div>
+  `;
+  document.getElementById('modalOverlay').classList.add('open');
+}
 
-  function rescan(){
-    const list = document.getElementById('trend-list');
-    list.style.opacity = '0.4';
-    list.style.transition = 'opacity 200ms';
-    setTimeout(() => { list.style.opacity = '1'; }, 700);
-  }
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('open');
+}
 
-  window.openModal = openModal;
-  window.closeModal = closeModal;
-  window.rescan = rescan;
+function rescan() {
+  alert('Re-escaneando fuentes…');
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+renderTrends();
 </script>
+
 </body>
 </html>
