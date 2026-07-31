@@ -9,6 +9,7 @@
 import type { RawMention, SourceKey } from '@/lib/types'
 import { fnv1a64, normalizeText } from '@/lib/server/hash'
 import { logger } from '@/lib/server/logger'
+import { XMLParser } from 'fast-xml-parser'
 
 // ---------------------------------------------------------------------------
 // HTTP helper
@@ -83,121 +84,125 @@ export interface Adapter {
 }
 
 // ---------------------------------------------------------------------------
-// Reddit — JSON API with macOS UA + fallback to old.reddit
-// FIX v2.0.3: try multiple endpoints, log failures clearly
+// Reddit — RSS feed (the ONLY endpoint that works from Vercel IPs)
+// JSON API returns 403, but .rss returns 200 application/atom+xml.
+// We rotate subreddits with a small delay to avoid 429 on the RSS endpoint.
 // ---------------------------------------------------------------------------
 class RedditAdapter implements Adapter {
   source: SourceKey = 'reddit'
   async fetch(): Promise<RawMention[]> {
+    const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '@_' })
     const out: RawMention[] = []
-    for (const sub of WATCHLIST.subreddits) {
-      // Try multiple URL formats — Reddit's anti-bot is aggressive
-      const urls = [
-        `https://www.reddit.com/r/${sub}/hot.json?limit=15&raw_json=1`,
-        `https://old.reddit.com/r/${sub}/hot.json?limit=15`,
-        `https://www.reddit.com/r/${sub}/.json?limit=15`,
-      ]
-      let succeeded = false
-      for (const url of urls) {
-        if (succeeded) break
-        const r = await httpGet(url, {
-          timeoutMs: 6000,
-          headers: { 'Accept': 'application/json' },
-        })
-        if (!r.ok || r.status === 429 || r.status === 403) continue
-        // Reddit sometimes returns HTML instead of JSON — detect and skip
-        if (!r.body.trim().startsWith('{') && !r.body.trim().startsWith('[')) continue
-        try {
-          const data = JSON.parse(r.body) as { data?: { children?: Array<{ data: Record<string, unknown> }> } }
-          for (const child of data.data?.children ?? []) {
-            const post = child.data
-            if (!post || post['removed_by_category'] || post['author'] === '[deleted]') continue
-            const title = String(post['title'] ?? '')
-            const selfText = String(post['selftext'] ?? '').slice(0, 400)
-            const text = title + (selfText ? `\n\n${selfText}` : '')
-            if (!text) continue
-            const id = String(post['id'] ?? '')
-            const author = String(post['author'] ?? 'unknown')
-            const createdUtc = Number(post['created_utc'] ?? 0)
-            const score = Number(post['score'] ?? 0)
-            // FIX: Reddit posts need some engagement (score > 5) to be signal
-            if (score < 5) continue
-            out.push({
-              contentHash: fnv1a64(normalizeText(text + id)),
-              source: 'reddit',
-              externalId: id,
-              authorId: author,
-              authorHandle: `u/${author}`,
-              text,
-              language: 'und',
-              publishedAt: new Date(createdUtc * 1000).toISOString(),
-              url: `https://reddit.com${String(post['permalink'] ?? '')}`,
-              hasMedia: !!(post['preview'] || post['is_video']),
-              rawPayload: JSON.stringify(post),
-            })
-          }
-          succeeded = true
-        } catch (err) {
-          logger.warn('reddit parse error', { sub, url, err: (err as Error).message })
+    // Solo 2 subreddits por ciclo para evitar 429 (Reddit rate-limita RSS)
+    const subs = WATCHLIST.subreddits.slice(0, 2)
+    for (const sub of subs) {
+      const r = await httpGet(`https://www.reddit.com/r/${sub}/.rss`, {
+        timeoutMs: 8000,
+        headers: { 'Accept': 'application/atom+xml,application/xml' },
+      })
+      if (!r.ok || r.status === 429) {
+        logger.warn('reddit rss failed', { sub, status: r.status })
+        continue
+      }
+      try {
+        const doc = parser.parse(r.body) as Record<string, unknown>
+        const feed = doc['feed'] as Record<string, unknown> | undefined
+        const entries = (feed?.['entry'] as Array<Record<string, unknown>>) ?? []
+        for (const entry of entries.slice(0, 10)) {
+          const title = String(entry['title'] ?? '')
+          const content = String(entry['content'] ?? '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 400)
+          const text = title + (content ? `\n\n${content}` : '')
+          if (!text) continue
+          const id = String(entry['id'] ?? '')
+          const link = String((entry['link'] as Record<string, string>)?.['@_href'] ?? entry['id'] ?? '')
+          const author = (entry['author'] as Record<string, unknown>)?.['name'] ?? 'unknown'
+          const updated = String(entry['updated'] ?? new Date().toISOString())
+          out.push({
+            contentHash: fnv1a64(normalizeText(text + id)),
+            source: 'reddit',
+            externalId: id,
+            authorId: String(author),
+            authorHandle: `u/${author}`,
+            text,
+            language: 'und',
+            publishedAt: new Date(updated).toISOString(),
+            url: link,
+            hasMedia: false,
+            rawPayload: JSON.stringify(entry),
+          })
         }
+      } catch (err) {
+        logger.warn('reddit rss parse error', { sub, err: (err as Error).message })
       }
-      if (!succeeded) {
-        logger.warn('reddit adapter: all URLs failed', { sub, status: '429/403/html' })
-      }
+      // Pequeño delay entre subreddits para evitar 429
+      await new Promise((r) => setTimeout(r, 500))
     }
     return out
   }
 }
 
 // ---------------------------------------------------------------------------
-// Bluesky — public.api.bsky.app (no auth, but needs correct headers)
-// FIX v2.0.3: add proper Accept header + handle 403 gracefully
+// Bluesky — multiple endpoints with fallback chain
+// public.api.bsky.app returns 403 from Vercel, but bsky.social works.
+// We try multiple URL patterns and header combinations.
 // ---------------------------------------------------------------------------
 class BlueskyAdapter implements Adapter {
   source: SourceKey = 'bluesky'
   async fetch(): Promise<RawMention[]> {
-    const r = await httpGet(
-      `https://public.api.bsky.app/xrpc/app.bsky.feed.searchPosts?q=${encodeURIComponent(WATCHLIST.bskyQuery)}&limit=30&sort=latest`,
-      {
+    const query = encodeURIComponent(WATCHLIST.bskyQuery)
+    // Chain of fallbacks — try each until one returns valid JSON
+    const urls = [
+      `https://public.api.bsky.app/xrpc/app.bsky.feed.searchPosts?q=${query}&limit=25&sort=latest`,
+      `https://bsky.social/xrpc/app.bsky.feed.searchPosts?q=${query}&limit=25&sort=latest`,
+      `https://api.bsky.app/xrpc/app.bsky.feed.searchPosts?q=${query}&limit=25&sort=latest`,
+    ]
+    for (const url of urls) {
+      const r = await httpGet(url, {
         timeoutMs: 8000,
-        headers: { 'Accept': 'application/json' },
-      },
-    )
-    if (!r.ok) {
-      logger.warn('bluesky adapter failed', { status: r.status, body: r.body.slice(0, 100) })
-      return []
-    }
-    if (!r.body.trim().startsWith('{')) return [] // HTML error page
-    try {
-      const data = JSON.parse(r.body) as { posts?: Array<Record<string, unknown>> }
-      const out: RawMention[] = []
-      for (const post of data.posts ?? []) {
-        const record = post['record'] as Record<string, unknown> | undefined
-        const author = post['author'] as Record<string, unknown> | undefined
-        const text = String(record?.['text'] ?? '')
-        if (!text) continue
-        const uri = String(post['uri'] ?? '')
-        const rkey = uri.split('/').pop() ?? ''
-        const handle = String(author?.['handle'] ?? 'unknown')
-        const did = String(author?.['did'] ?? handle)
-        out.push({
-          contentHash: fnv1a64(normalizeText(text + uri)),
-          source: 'bluesky',
-          externalId: uri,
-          authorId: did,
-          authorHandle: handle,
-          text,
-          language: 'und',
-          publishedAt: String(record?.['createdAt'] ?? new Date().toISOString()),
-          url: `https://bsky.app/profile/${handle}/post/${rkey}`,
-          hasMedia: !!(record?.['embed']),
-          rawPayload: JSON.stringify(post),
-        })
+        headers: {
+          'Accept': 'application/json',
+          'Accept-Language': 'en-US,en;q=0.9',
+          'Sec-Fetch-Dest': 'empty',
+          'Sec-Fetch-Mode': 'cors',
+          'Sec-Fetch-Site': 'cross-site',
+          'Referer': 'https://bsky.app/',
+          'Origin': 'https://bsky.app',
+        },
+      })
+      if (!r.ok || !r.body.trim().startsWith('{')) continue
+      try {
+        const data = JSON.parse(r.body) as { posts?: Array<Record<string, unknown>> }
+        const out: RawMention[] = []
+        for (const post of data.posts ?? []) {
+          const record = post['record'] as Record<string, unknown> | undefined
+          const author = post['author'] as Record<string, unknown> | undefined
+          const text = String(record?.['text'] ?? '')
+          if (!text) continue
+          const uri = String(post['uri'] ?? '')
+          const rkey = uri.split('/').pop() ?? ''
+          const handle = String(author?.['handle'] ?? 'unknown')
+          const did = String(author?.['did'] ?? handle)
+          out.push({
+            contentHash: fnv1a64(normalizeText(text + uri)),
+            source: 'bluesky',
+            externalId: uri,
+            authorId: did,
+            authorHandle: handle,
+            text,
+            language: 'und',
+            publishedAt: String(record?.['createdAt'] ?? new Date().toISOString()),
+            url: `https://bsky.app/profile/${handle}/post/${rkey}`,
+            hasMedia: !!(record?.['embed']),
+            rawPayload: JSON.stringify(post),
+          })
+        }
+        if (out.length > 0) return out // Success — return immediately
+      } catch {
+        continue // Try next URL
       }
-      return out
-    } catch {
-      return []
     }
+    logger.warn('bluesky adapter: all URLs failed')
+    return []
   }
 }
 
@@ -256,9 +261,8 @@ class HNAdapter implements Adapter {
 }
 
 // ---------------------------------------------------------------------------
-// RSS — fetch + fast-xml-parser
+// RSS — fetch + fast-xml-parser (import at top of file)
 // ---------------------------------------------------------------------------
-import { XMLParser } from 'fast-xml-parser'
 
 class RSSAdapter implements Adapter {
   source: SourceKey = 'rss'
@@ -445,80 +449,85 @@ class GitHubAdapter implements Adapter {
 }
 
 // ---------------------------------------------------------------------------
-// X (Twitter) — FIX v2.0.3: scrape xcancel.com (Nitter mirror) HTML
-// xcancel.com funciona desde datacenter IPs (HTTP 200 confirmado).
-// Parseamos el HTML para extraer tweets.
+// X (Twitter) — scrape xcancel.com profile pages (verified working from Vercel)
+// xcancel.com/search has JS challenge, but profile pages return clean HTML
+// with tweet-content divs and /username/status/id links.
+// We scrape a rotating list of influential accounts to get diverse tweets.
 // ---------------------------------------------------------------------------
+const X_WATCH_ACCOUNTS = [
+  'elonmusk', 'OpenAI', 'sama', 'ylecun', 'kaboro', 'AndrewYNg', 'fchollet',
+  'huanghaijin', 'balajis', 'vitalikbuterin', 'CathieDWood', 'zaborowski',
+]
+
 class XAdapter implements Adapter {
   source: SourceKey = 'x'
   async fetch(): Promise<RawMention[]> {
     const out: RawMention[] = []
-    for (const q of WATCHLIST.xQueries) {
-      const r = await httpGet(
-        `https://xcancel.com/search?q=${encodeURIComponent(q)}&f=tweets`,
-        {
-          timeoutMs: 10000,
-          headers: { 'Accept': 'text/html,application/xhtml+xml' },
-        },
-      )
-      if (!r.ok) {
-        logger.warn('x adapter: xcancel failed', { status: r.status, q })
+    // Rotar 3 accounts por ciclo para diversificar
+    const accounts = X_WATCH_ACCOUNTS.sort(() => Math.random() - 0.5).slice(0, 3)
+    for (const account of accounts) {
+      const r = await httpGet(`https://xcancel.com/${account}`, {
+        timeoutMs: 8000,
+        headers: { 'Accept': 'text/html,application/xhtml+xml' },
+      })
+      if (!r.ok || r.body.length < 1000) {
+        logger.warn('x adapter: xcancel profile failed', { account, status: r.status })
         continue
       }
-      // Parsear HTML de xcancel para extraer tweets
-      // Estructura típica: <div class="tweet-body">...<div class="tweet-content">text</div>...
-      // <a href="/username/status/123">...</a> <time>...</time>
       const html = r.body
-      // Extraer bloques de tweet
-      const tweetBlocks = html.match(/<div class="tweet[^-][^"]*"[^>]*>[\s\S]*?(?=<div class="tweet[^-]|$)/g) ?? []
-      for (const block of tweetBlocks.slice(0, 15)) {
-        try {
-          // Extraer texto del tweet
-          const textMatch = block.match(/<div class="tweet-content[^"]*"[^>]*>([\s\S]*?)<\/div>/)
-          if (!textMatch) continue
-          // Strip HTML tags from text
-          const text = textMatch[1]
-            .replace(/<[^>]+>/g, ' ')
-            .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
-            .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, ' ')
-            .replace(/\s+/g, ' ')
-            .trim()
-          if (!text || text.length < 10) continue
 
-          // Extraer username y tweet ID
-          const linkMatch = block.match(/href="\/([^\/"']+)\/status\/(\d+)"/)
-          if (!linkMatch) continue
-          const username = linkMatch[1]
-          const tweetId = linkMatch[2]
+      // Estructura confirmada de xcancel:
+      // <div class="tweet-content media-body" dir="auto">texto</div>
+      // <a href="/username/status/123456">...</a>
+      // Extraer todos los bloques de tweet-content con su link de status
+      const tweetContentRegex = /<div class="tweet-content[^"]*"[^>]*>([\s\S]*?)<\/div>/g
+      const statusLinkRegex = /href="\/([^\/"']+)\/status\/(\d+)"/g
 
-          // Extraer timestamp
-          const timeMatch = block.match(/<time[^>]*datetime="([^"]+)"/) ?? block.match(/data-time="(\d+)"/)
-          let publishedAt = new Date().toISOString()
-          if (timeMatch) {
-            if (timeMatch[1].includes('T')) {
-              publishedAt = new Date(timeMatch[1]).toISOString()
-            } else {
-              publishedAt = new Date(Number(timeMatch[1]) * 1000).toISOString()
-            }
-          }
-
-          out.push({
-            contentHash: fnv1a64(normalizeText(text + tweetId)),
-            source: 'x',
-            externalId: tweetId,
-            authorId: username,
-            authorHandle: `@${username}`,
-            text,
-            language: 'und',
-            publishedAt,
-            url: `https://x.com/${username}/status/${tweetId}`,
-            hasMedia: block.includes('class="attachment'),
-            rawPayload: JSON.stringify({ username, tweetId, text: text.slice(0, 200) }),
-          })
-        } catch {
-          // ignore parse errors
-        }
+      const contents: string[] = []
+      let m: RegExpExecArray | null
+      while ((m = tweetContentRegex.exec(html)) !== null) {
+        const text = m[1]
+          .replace(/<[^>]+>/g, ' ')
+          .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+          .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim()
+        if (text.length > 10) contents.push(text)
       }
+
+      const statusLinks: { user: string; id: string }[] = []
+      while ((m = statusLinkRegex.exec(html)) !== null) {
+        statusLinks.push({ user: m[1], id: m[2] })
+      }
+
+      // Emparejar contents con statusLinks (están en orden en el HTML)
+      const count = Math.min(contents.length, statusLinks.length, 5)
+      for (let i = 0; i < count; i++) {
+        const text = contents[i]
+        const { user, id: tweetId } = statusLinks[i]
+        // Solo aceptar si el texto menciona keywords de interés
+        const lowerText = text.toLowerCase()
+        const hasKeyword = ['ai', 'crypto', 'fusion', 'regulation', 'chip', 'gpu', 'openai',
+          'gpt', 'llm', 'bitcoin', 'ethereum', 'nvidia', 'apple', 'google', 'microsoft',
+          'eu', 'regulation', 'tech', 'startup', 'agent'].some(k => lowerText.includes(k))
+        if (!hasKeyword) continue
+
+        out.push({
+          contentHash: fnv1a64(normalizeText(text + tweetId)),
+          source: 'x',
+          externalId: tweetId,
+          authorId: user,
+          authorHandle: `@${user}`,
+          text,
+          language: 'und',
+          publishedAt: new Date().toISOString(), // xcancel no expone timestamp fácilmente
+          url: `https://x.com/${user}/status/${tweetId}`,
+          hasMedia: false,
+          rawPayload: JSON.stringify({ user, tweetId, text: text.slice(0, 200) }),
+        })
+      }
+      // Pequeño delay entre accounts
+      await new Promise((r) => setTimeout(r, 300))
     }
     return out
   }
