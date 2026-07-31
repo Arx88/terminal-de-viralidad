@@ -13,11 +13,12 @@ import type { Adapter } from '@/lib/server/ingest/types'
 const BROWSER_UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
 
-// Cuentas tech/AI/crypto relevantes al detector de viralidad
+// Cuentas que devuelven HTML con tweets desde Vercel (no challenge JS).
+// xcancel.com sirve challenge JS a algunas cuentas pero no a otras —
+// estas están verificadas como funcionales.
 const X_WATCH_ACCOUNTS = [
-  'OpenAI', 'sama', 'ylecun', 'AndrewYNg', 'fchollet', 'karpathy',
-  'balajis', 'vitalikbuterin', 'CathieDWood', 'a16z',
-  'AIatMeta', 'GoogleAI', 'NvidiaAI', 'AnthropicAI', 'MistralAI', 'StabilityAI',
+  'elonmusk', 'OpenAI', 'sama', 'ylecun', 'AndrewYNg', 'karpathy',
+  'balajis', 'vitalikbuterin', 'CathieDWood',
 ]
 
 async function fetchXcancelProfile(account: string): Promise<RawMention[]> {
@@ -100,9 +101,10 @@ export class XAdapter implements Adapter {
   source: SourceKey = 'x'
 
   async fetch(): Promise<RawMention[]> {
-    // Usar SIEMPRE elonmusk como cuenta de prueba (sabemos que devuelve 83KB
-    // con tweets desde Vercel). Si funciona, rotar a otras cuentas.
-    const accounts = ['elonmusk', 'OpenAI', 'sama']
+    // Rotar 3 accounts aleatorias de la lista verificada
+    const accounts = [...X_WATCH_ACCOUNTS]
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 3)
     const results = await Promise.allSettled(accounts.map((a) => fetchXcancelProfile(a)))
     const out: RawMention[] = []
     for (const r of results) {
