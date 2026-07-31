@@ -3,800 +3,951 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FOGÓN — Detector personal de tendencias</title>
+<title>VIRAHUB — Cyberpunk Intelligence</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script>
 tailwind.config = {
   theme: {
     extend: {
       colors: {
-        bgbase:    '#070912',
-        bgsurface: '#121724',
-        bginset:   '#0A0D18',
-        bgelev:    '#161C2C',
-        textmain:  '#EEF1F6',
-        textsec:   '#A2A9B5',
-        textmute:  '#5E6675',
-        ember:     '#EE7C3F',
-        emberglow: '#F5A875',
-        lavender:  '#8E9BE8',
-        sage:      '#2DBE85',
-        ash:       '#7B8595',
-        flame:     '#FF6B35',
+        void:       '#050508',
+        surface:    '#0D1117',
+        elev:       '#161B22',
+        elev2:      '#1C2230',
+        violet:     '#8B5CF6',
+        magenta:    '#EC4899',
+        orange:     '#F97316',
+        emerald:    '#10B981',
+        cyan:       '#06B6D4',
+        slate2:     '#9CA3AF',
+        borderx:    '#1F2937',
       },
       fontFamily: {
-        sans:   ['Geist', 'Inter', 'system-ui', 'sans-serif'],
-        serif:  ['Instrument Serif', 'Georgia', 'serif'],
-        mono:   ['Geist Mono', 'JetBrains Mono', 'ui-monospace', 'monospace'],
+        sans: ['Plus Jakarta Sans', 'Inter', 'system-ui', 'sans-serif'],
+        mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
       }
     }
   }
 }
 </script>
 <style>
-:root {
-  --bg:        #070912;
-  --surface:   #121724;
-  --surface-2: #161C2C;
-  --inset:     #0A0D18;
-  --hairline:  rgba(255,255,255,0.06);
-  --hairline-2:rgba(255,255,255,0.09);
-  --hairline-strong: rgba(255,255,255,0.14);
-  --text:      #EEF1F6;
-  --text-sec:  #A2A9B5;
-  --text-mute: #5E6675;
-  /* Spring easings */
-  --ease-soft:    cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-snappy:  cubic-bezier(0.22, 1, 0.36, 1);
-  --ease-bounce:  cubic-bezier(0.34, 1.56, 0.64, 1);
-  --ease-power:   cubic-bezier(0.05, 0.7, 0.1, 1);
-  /* Status colors (vibrant but calibrated — slightly desaturated from Tailwind defaults) */
-  --c-ember:    #EE7C3F;
-  --c-ember-glow: #F5A875;
-  --c-lavender: #8E9BE8;
-  --c-sage:     #2DBE85;
-  --c-ash:      #7B8595;
-  /* Shadow layers */
-  --shadow-xs: inset 0 1px 0 0 rgba(255,255,255,0.04), 0 1px 2px 0 rgba(0,0,0,0.4);
-  --shadow-sm: inset 0 1px 0 0 rgba(255,255,255,0.05), 0 1px 2px 0 rgba(0,0,0,0.3), 0 2px 4px -1px rgba(0,0,0,0.35);
-  --shadow-md: inset 0 1px 0 0 rgba(255,255,255,0.06), 0 4px 12px -2px rgba(0,0,0,0.45), 0 2px 4px -2px rgba(0,0,0,0.3);
-  --shadow-lg: inset 0 1px 0 0 rgba(255,255,255,0.07), 0 16px 32px -8px rgba(0,0,0,0.55), 0 4px 8px -4px rgba(0,0,0,0.35);
-}
-* { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
-html { text-rendering: optimizeLegibility; font-feature-settings: "kern","liga","calt"; scroll-behavior: smooth; }
+  :root{
+    --void:#050508;
+    --surface:#0D1117;
+    --elev:#161B22;
+    --violet:#8B5CF6;
+    --magenta:#EC4899;
+    --orange:#F97316;
+    --emerald:#10B981;
+    --cyan:#06B6D4;
+    --slate2:#9CA3AF;
+    --borderx:#1F2937;
+  }
+  *{ -webkit-font-smoothing:antialiased; }
+  html,body{ background:var(--void); color:#fff; }
+  body{ font-family:'Plus Jakarta Sans',sans-serif; overflow-x:hidden; }
+  ::-webkit-scrollbar{ width:6px; height:6px; }
+  ::-webkit-scrollbar-track{ background:transparent; }
+  ::-webkit-scrollbar-thumb{ background:rgba(139,92,246,0.25); border-radius:3px; }
+  ::-webkit-scrollbar-thumb:hover{ background:rgba(139,92,246,0.5); }
 
-body {
-  background-color: var(--bg);
-  /* 2 gradients max (NOT 3 — that's AI slop). One cool top vignette + one warm ember glow bottom. */
-  background-image:
-    radial-gradient(ellipse 80% 55% at 50% -8%, rgba(110, 145, 230, 0.10), transparent 65%),
-    radial-gradient(ellipse 60% 40% at 12% 110%, rgba(255, 110, 60, 0.07), transparent 70%);
-  background-attachment: fixed;
-  min-height: 100vh;
-  font-feature-settings: 'ss01';
-  position: relative;
-}
-/* Fine dot grid overlay — adds texture, very Linear/Raycast */
-body::after {
-  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 1;
-  opacity: 0.4;
-  background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.022) 1px, transparent 0);
-  background-size: 32px 32px;
-}
-/* Film grain — only on body, subtle */
-body::before {
-  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 100;
-  opacity: 0.028; mix-blend-mode: overlay;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 1 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
-}
+  /* Gradient text */
+  .grad-text{
+    background:linear-gradient(135deg,#8B5CF6 0%,#EC4899 100%);
+    -webkit-background-clip:text; background-clip:text;
+    -webkit-text-fill-color:transparent; color:transparent;
+  }
+  .grad-text-cy{ background:linear-gradient(135deg,#06B6D4 0%,#8B5CF6 100%); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+  .grad-text-em{ background:linear-gradient(135deg,#10B981 0%,#06B6D4 100%); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
 
-/* Page content above overlays */
-header, main, footer, #detailPanel, #overlay, #toast { position: relative; z-index: 2; }
+  /* Glassmorphism */
+  .glass{
+    background:rgba(13,17,23,0.7);
+    backdrop-filter:blur(12px);
+    -webkit-backdrop-filter:blur(12px);
+    border:1px solid rgba(255,255,255,0.06);
+  }
+  .glass-strong{
+    background:rgba(5,5,8,0.75);
+    backdrop-filter:blur(16px);
+    -webkit-backdrop-filter:blur(16px);
+    border:1px solid rgba(139,92,246,0.12);
+  }
 
-/* Surfaces */
-.surface {
-  background: var(--surface);
-  box-shadow: inset 0 0 0 1px var(--hairline), inset 0 1px 0 0 rgba(255,255,255,0.04), 0 1px 2px 0 rgba(0,0,0,0.4);
-}
-.surface-2 {
-  background: var(--surface-2);
-  box-shadow: inset 0 0 0 1px var(--hairline-2), inset 0 1px 0 0 rgba(255,255,255,0.05);
-}
-.surface-inset {
-  background: var(--inset);
-  box-shadow: inset 0 0 0 1px var(--hairline);
-}
-.glass {
-  background: rgba(14, 18, 30, 0.78);
-  backdrop-filter: blur(18px) saturate(180%);
-  -webkit-backdrop-filter: blur(18px) saturate(180%);
-  box-shadow: inset 0 0 0 1px var(--hairline), inset 0 1px 0 0 rgba(255,255,255,0.06);
-}
+  /* Colored shadows */
+  .shadow-violet{ box-shadow:0 4px 24px -4px rgba(139,92,246,0.25), 0 0 0 1px rgba(139,92,246,0.08); }
+  .shadow-magenta{ box-shadow:0 4px 24px -4px rgba(236,72,153,0.2); }
+  .shadow-emerald{ box-shadow:0 4px 24px -4px rgba(16,185,129,0.18); }
+  .shadow-cyan{ box-shadow:0 4px 24px -4px rgba(6,182,212,0.18); }
+  .shadow-orange{ box-shadow:0 4px 24px -4px rgba(249,115,22,0.18); }
 
-/* ===== Trend card — gradient surface with depth, top accent rail ===== */
-.trend-card {
-  background: linear-gradient(180deg, #141A28 0%, #111621 100%);
-  border-radius: 10px;
-  position: relative;
-  overflow: hidden;
-  transition: box-shadow 280ms var(--ease-soft), background 280ms var(--ease-soft), border-color 280ms var(--ease-soft);
-  border: 1px solid rgba(255,255,255,0.06);
-  box-shadow:
-    0 1px 2px 0 rgba(0,0,0,0.35),
-    0 4px 16px -6px rgba(0,0,0,0.4);
-}
-/* Hero card treatment: subtle left border accent only (not aggressive glow) */
-.trend-card.is-hero {
-  background: linear-gradient(180deg, #141B2A 0%, #111621 100%);
-  box-shadow:
-    inset 2px 0 0 0 rgba(238,124,63,0.55),
-    0 1px 2px 0 rgba(0,0,0,0.35),
-    0 4px 16px -6px rgba(0,0,0,0.4);
-  border-color: rgba(238,124,63,0.15);
-}
-.trend-card.is-hero .top-rail { height: 3px; }
-.trend-card.is-hero .hero-badge { display: inline-flex; }
-.hero-badge { display: none; }
+  /* Glow */
+  .glow-violet{ box-shadow:0 0 20px rgba(139,92,246,0.4), 0 0 40px rgba(139,92,246,0.15); }
+  .glow-magenta{ box-shadow:0 0 20px rgba(236,72,153,0.35); }
 
-/* Muriendo card: desaturated, lower opacity (signals decay) */
-.trend-card[data-state="muriendo"] { opacity: 0.78; }
-.trend-card[data-state="muriendo"] .src-pill svg { filter: saturate(0.4); }
-.trend-card[data-state="muriendo"]:hover { opacity: 1; }
+  /* Radial vignette behind cards */
+  .vignette::before{
+    content:""; position:absolute; inset:-20%;
+    background:radial-gradient(ellipse at 30% 0%, rgba(139,92,246,0.18), transparent 55%),
+               radial-gradient(ellipse at 80% 100%, rgba(236,72,153,0.12), transparent 55%);
+    pointer-events:none; z-index:0;
+  }
 
-/* Top accent rail — 2px solid bar (no gradient = cleaner, more Linear-like) */
-.trend-card .top-rail {
-  position: absolute; top: 0; left: 0; right: 0; height: 2px;
-  background: var(--state-color, #EE7C3F);
-  opacity: 0.95;
-}
-/* LIVE badge — only for creciendo with high momentum */
-.trend-card.is-live .top-rail::after {
-  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
-  background: inherit; opacity: 0.5; filter: blur(4px);
-}
+  /* Cosmic hero bg */
+  .cosmic{
+    background:
+      radial-gradient(circle at 18% 20%, rgba(139,92,246,0.35), transparent 40%),
+      radial-gradient(circle at 82% 30%, rgba(236,72,153,0.28), transparent 42%),
+      radial-gradient(circle at 60% 90%, rgba(6,182,212,0.22), transparent 45%),
+      radial-gradient(circle at 45% 55%, rgba(16,185,129,0.10), transparent 50%),
+      #050508;
+  }
+  .stars{
+    position:absolute; inset:0; pointer-events:none;
+    background-image:
+      radial-gradient(1px 1px at 12% 18%, #fff, transparent),
+      radial-gradient(1px 1px at 28% 62%, rgba(255,255,255,0.7), transparent),
+      radial-gradient(1.5px 1.5px at 47% 22%, #fff, transparent),
+      radial-gradient(1px 1px at 63% 48%, rgba(255,255,255,0.6), transparent),
+      radial-gradient(1px 1px at 78% 14%, #fff, transparent),
+      radial-gradient(1.5px 1.5px at 88% 70%, rgba(255,255,255,0.8), transparent),
+      radial-gradient(1px 1px at 35% 84%, rgba(255,255,255,0.5), transparent),
+      radial-gradient(1px 1px at 70% 88%, #fff, transparent),
+      radial-gradient(1px 1px at 8% 50%, rgba(255,255,255,0.6), transparent),
+      radial-gradient(1px 1px at 95% 38%, rgba(255,255,255,0.5), transparent);
+    opacity:0.85;
+  }
 
-/* Card hover — border brightens + shadow grows (NO transform, NO layout shift) */
-.trend-card:hover {
-  border-color: rgba(255,255,255,0.12);
-  box-shadow:
-    0 1px 2px 0 rgba(0,0,0,0.4),
-    0 8px 28px -8px rgba(0,0,0,0.5);
-}
-.trend-card[data-state="creciendo"]:hover    { box-shadow: inset 0 0 0 1px rgba(255,122,61,0.30), inset 0 1px 0 0 rgba(255,255,255,0.06); }
-.trend-card[data-state="por nacer"]:hover    { box-shadow: inset 0 0 0 1px rgba(142,155,232,0.28), inset 0 1px 0 0 rgba(255,255,255,0.06); }
-.trend-card[data-state="nacida"]:hover       { box-shadow: inset 0 0 0 1px rgba(111,207,106,0.28), inset 0 1px 0 0 rgba(255,255,255,0.06); }
-.trend-card[data-state="muriendo"]:hover     { box-shadow: inset 0 0 0 1px var(--hairline-strong), inset 0 1px 0 0 rgba(255,255,255,0.05); }
+  /* Waveform */
+  .wf-bar{ width:3px; border-radius:2px; background:linear-gradient(180deg,#8B5CF6,#EC4899); transform-origin:bottom; animation:wf 1s ease-in-out infinite; }
+  @keyframes wf{ 0%,100%{ transform:scaleY(0.25); } 50%{ transform:scaleY(1); } }
 
-/* Left accent line that brightens on hover (premium "rail" detail) */
-.trend-card::before {
-  content: ''; position: absolute; left: 0; top: 14px; bottom: 14px; width: 2px;
-  background: var(--state-color, #FF7A3D);
-  opacity: 0; border-radius: 0 2px 2px 0;
-  transition: opacity 280ms var(--ease-soft);
-}
-.trend-card:hover::before { opacity: 0.55; }
+  /* Pulse ring */
+  .pulse-ring{ position:absolute; inset:0; border-radius:9999px; border:2px solid currentColor; animation:pulsering 2s ease-out infinite; }
+  @keyframes pulsering{ 0%{ transform:scale(0.6); opacity:0.9; } 100%{ transform:scale(2.4); opacity:0; } }
 
-/* Status dot with glow for active state */
-.status-dot { position: relative; width: 6px; height: 6px; border-radius: 50%; background: var(--state-color); }
-.status-dot[data-active="true"]::after {
-  content: ''; position: absolute; inset: -4px; border-radius: 50%;
-  background: var(--state-color); opacity: 0; transform: scale(0.8);
-  animation: dotBlip 2.8s var(--ease-soft) infinite;
-}
-@keyframes dotBlip {
-  0%, 70%, 100% { opacity: 0; transform: scale(0.8); }
-  72% { opacity: 0.45; transform: scale(1.6); }
-  85% { opacity: 0; transform: scale(2.2); }
-}
+  /* Active glow pulse for sidebar */
+  .active-glow{ box-shadow:0 0 16px rgba(139,92,246,0.55), inset 0 0 8px rgba(139,92,246,0.25); }
 
-/* Motor dot — same concept for header */
-.motor-dot { position: relative; }
-.motor-dot::after {
-  content: ''; position: absolute; inset: -3px; border-radius: 50%;
-  background: var(--c-sage); opacity: 0; transform: scale(1);
-  animation: motorBlip 4s var(--ease-soft) infinite;
-}
-@keyframes motorBlip {
-  0%, 70%, 100% { opacity: 0; transform: scale(1); }
-  72% { opacity: 0.5; transform: scale(1.6); }
-  85% { opacity: 0; transform: scale(2.2); }
-}
+  /* Flowing dash for ticker arrows */
+  .flow-dash{ stroke-dasharray:4 4; animation:flow 1s linear infinite; }
+  @keyframes flow{ to{ stroke-dashoffset:-8; } }
 
-/* Hover reveal — métricas ocultas aparecen */
-.reveal-on-hover {
-  max-height: 0; opacity: 0; overflow: hidden;
-  transition: max-height 0.4s var(--ease-soft), opacity 0.3s var(--ease-soft) 0.05s, margin-top 0.3s var(--ease-soft);
-  margin-top: 0;
-}
-.trend-card:hover .reveal-on-hover, .trend-card:focus-within .reveal-on-hover {
-  max-height: 40px; opacity: 1; margin-top: 12px;
-}
+  /* Blinking live dot */
+  .blink{ animation:blink 1.4s ease-in-out infinite; }
+  @keyframes blink{ 0%,100%{ opacity:1; } 50%{ opacity:0.35; } }
 
-/* Fade in on load */
-@keyframes cardEnter {
-  0%   { opacity: 0; transform: translateY(6px); }
-  100% { opacity: 1; transform: translateY(0); }
-}
-.fade-up { animation: cardEnter 0.55s var(--ease-soft) backwards; }
+  /* Soft float */
+  @keyframes floaty{ 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(-6px); } }
+  .floaty{ animation:floaty 6s ease-in-out infinite; }
 
-/* ===== Sparkline — clean, solid line, no AI-slop glow ===== */
-@keyframes drawSpark {
-  0%   { stroke-dashoffset: 240; opacity: 0; }
-  18%  { opacity: 1; }
-  100% { stroke-dashoffset: 0; opacity: 1; }
-}
-.spark-line {
-  stroke-dasharray: 240; stroke-dashoffset: 240;
-  animation: drawSpark 1.3s var(--ease-power) forwards;
-  animation-delay: 0.2s;
-}
-@keyframes dotLand {
-  0%   { transform: scale(0); opacity: 0; }
-  60%  { transform: scale(1.3); opacity: 1; }
-  100% { transform: scale(1); opacity: 1; }
-}
-.spark-dot { transform-origin: center; transform-box: fill-box; animation: dotLand 0.3s var(--ease-bounce) 1.35s backwards; }
+  /* Sparkline gradient stroke anim */
+  @keyframes drawline{ from{ stroke-dashoffset:300; } to{ stroke-dashoffset:0; } }
 
-/* Scrollbar */
-::-webkit-scrollbar { width: 9px; height: 9px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 5px; border: 2px solid transparent; background-clip: padding-box; }
-::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.18); background-clip: padding-box; }
-* { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.1) transparent; }
+  .tnum{ font-variant-numeric:tabular-nums; }
+  .tracking-label{ letter-spacing:0.05em; text-transform:uppercase; }
 
-::selection { background: rgba(255,107,53,0.28); color: #FFF; }
+  /* grid bg subtle */
+  .gridbg{
+    background-image:
+      linear-gradient(rgba(139,92,246,0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(139,92,246,0.05) 1px, transparent 1px);
+    background-size:32px 32px;
+  }
 
-/* Typography */
-.display { font-family: 'Instrument Serif', Georgia, serif; letter-spacing: -0.022em; font-weight: 400; }
-.mono-num { font-family: 'Geist Mono', 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; font-feature-settings: 'tnum'; font-weight: 500; }
-.caps { text-transform: uppercase; letter-spacing: 0.12em; font-size: 10px; font-weight: 600; }
-/* Card titles: Geist Semibold (Vercel/Linear-grade sans) */
-.card-title {
-  font-family: 'Geist', 'Inter', system-ui, sans-serif;
-  font-weight: 700;
-  letter-spacing: -0.028em;
-  font-feature-settings: 'ss01', 'cv11';
-}
+  .scanline{
+    position:absolute; inset:0; pointer-events:none; opacity:0.25;
+    background:repeating-linear-gradient(0deg, transparent 0, transparent 3px, rgba(139,92,246,0.04) 3px, rgba(139,92,246,0.04) 4px);
+  }
 
-/* Panel */
-.panel-slide { transition: transform 420ms var(--ease-power); }
-
-/* Focus ring */
-*:focus { outline: none; }
-*:focus-visible { box-shadow: 0 0 0 2px var(--bg), 0 0 0 3px rgba(255,122,61,0.65); border-radius: inherit; }
-
-/* Filter pills — more presence */
-.pill { transition: background 180ms, box-shadow 180ms, color 180ms; cursor: pointer; }
-.pill:hover { background: rgba(255,255,255,0.045); color: var(--text); }
-.pill[data-active="true"] { background: rgba(255,255,255,0.07); box-shadow: inset 0 0 0 1px var(--hairline-strong), inset 0 1px 0 0 rgba(255,255,255,0.04); color: var(--text); }
-.pill[data-active="true"] .pill-count { color: var(--text-sec); }
-
-/* Skeleton shimmer */
-.skeleton {
-  background: linear-gradient(90deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0.05) 50%, rgba(255,255,255,0.02) 100%);
-  background-size: 200% 100%; animation: shimmer 1.6s var(--ease-power) infinite; border-radius: 4px;
-}
-@keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
-
-/* Toast */
-.toast-enter { animation: toastIn 0.4s var(--ease-bounce) backwards; }
-@keyframes toastIn { 0% { opacity: 0; transform: translateY(20px) scale(0.95); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
-
-/* Mention card hover */
-.mention-card { transition: background 200ms var(--ease-soft), box-shadow 200ms var(--ease-soft); }
-.mention-card:hover { background: rgba(255,255,255,0.03); box-shadow: inset 0 0 0 1px var(--hairline-strong); }
-
-.mention-metric { transition: color 150ms; cursor: default; }
-.mention-metric:hover .metric-icon { color: inherit; opacity: 1; }
-
-/* Reduced motion */
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
-}
-
-/* Keyboard nav */
-body.keyboard-nav .trend-card:focus-visible { box-shadow: var(--shadow-md), inset 3px 0 0 0 var(--state-color, #FF7A3D); }
-
-/* Header logo */
-@keyframes logoBreath {
-  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 4px rgba(255,122,61,0.35)); }
-  50%      { transform: scale(1.04); filter: drop-shadow(0 0 7px rgba(255,122,61,0.55)); }
-}
-
-/* Header scroll elevation */
-header.scrolled {
-  box-shadow: 0 1px 0 0 rgba(255,122,61,0.18), 0 8px 24px -8px rgba(0,0,0,0.5);
-}
-
-/* Source pill — colored hover */
-.src-pill { transition: background 180ms, box-shadow 180ms; }
-.src-pill:hover { background: rgba(255,255,255,0.04); box-shadow: inset 0 0 0 1px var(--hairline-strong); }
-
-/* Panel stat tiles */
-.stat-tile {
-  background: linear-gradient(180deg, #161C2C 0%, #121724 100%);
-  box-shadow: inset 0 0 0 1px var(--hairline-2), inset 0 1px 0 0 rgba(255,255,255,0.05);
-  position: relative; overflow: hidden;
-}
-.stat-tile::before {
-  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px;
-  background: var(--tile-accent, var(--text-mute));
-  opacity: 0.85;
-}
+  /* Ambient particle field */
+  .particles{ position:fixed; inset:0; pointer-events:none; z-index:0; overflow:hidden; }
+  .p{ position:absolute; border-radius:9999px; opacity:0; animation:rise linear infinite; }
+  @keyframes rise{
+    0%{ transform:translateY(0) translateX(0); opacity:0; }
+    10%{ opacity:0.8; }
+    90%{ opacity:0.5; }
+    100%{ transform:translateY(-120vh) translateX(20px); opacity:0; }
+  }
+  /* subtle noise */
+  .noise{ position:fixed; inset:0; pointer-events:none; z-index:1; opacity:0.025; mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
 </style>
 </head>
-<body class="text-textmain font-sans">
+<body class="bg-void text-white">
 
-<a href="#main" class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[200] focus:px-3 focus:py-2 focus:rounded-md focus:surface focus:text-sm">Saltar al contenido</a>
+<div class="particles" id="particles"></div>
+<div class="noise"></div>
 
-<!-- HEADER -->
-<header class="sticky top-0 z-40 glass border-b border-white/[0.06]" id="siteHeader">
-  <!-- Top accent line — subtle ember -->
-  <div class="absolute top-0 left-0 right-0 h-px" style="background: linear-gradient(90deg, transparent 0%, rgba(255,122,61,0.45) 35%, rgba(142,155,232,0.35) 70%, transparent 100%);"></div>
-  <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-    <div class="flex items-center gap-3">
-      <div class="relative">
-        <!-- Refined geometric mark: ring + ember dot (replaces flame SVG which read as "emoji-like") -->
-        <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" style="animation: logoBreath 6s var(--ease-soft) infinite; transform-origin: 50% 50%;">
-          <defs>
-            <radialGradient id="logoFire" cx="50%" cy="50%" r="55%">
-              <stop offset="0%" stop-color="#FFD4A8"/>
-              <stop offset="55%" stop-color="#EE7C3F"/>
-              <stop offset="100%" stop-color="#7A2A0A"/>
-            </radialGradient>
-          </defs>
-          <circle cx="12" cy="12" r="10" fill="none" stroke="rgba(255,255,255,0.10)" stroke-width="1"/>
-          <circle cx="12" cy="12" r="5.5" fill="url(#logoFire)"/>
-          <circle cx="12" cy="12" r="2.2" fill="#FFE4C4" opacity="0.9"/>
-        </svg>
-      </div>
-      <div class="flex items-baseline gap-2.5">
-        <h1 class="display text-[26px] leading-none tracking-tight text-textmain">FOGÓN</h1>
-        <span class="text-[11px] text-textmute leading-none hidden sm:inline" style="letter-spacing:0.02em;">detector personal</span>
-      </div>
+<div class="flex min-h-screen w-full relative z-10">
+
+  <!-- ============ SIDEBAR ============ -->
+  <aside class="w-[72px] shrink-0 border-r border-borderx/60 bg-void flex flex-col items-center py-5 gap-2 relative z-20">
+    <!-- Logo mark -->
+    <div class="w-10 h-10 rounded-xl flex items-center justify-center glow-violet mb-3 relative overflow-hidden"
+         style="background:linear-gradient(135deg,#8B5CF6,#EC4899);">
+      <svg viewBox="0 0 24 24" class="w-6 h-6 text-white" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+        <circle cx="12" cy="12" r="3"/>
+      </svg>
     </div>
-    <div class="flex items-center gap-4">
-      <!-- Nemotron status as a pill with subtle pulse -->
-      <div class="hidden md:flex items-center gap-2 px-2.5 py-1 rounded-full text-[11px] text-textsec" style="background: rgba(45,190,133,0.06); box-shadow: inset 0 0 0 1px rgba(45,190,133,0.20);">
-        <div class="motor-dot w-1.5 h-1.5 rounded-full" style="background: var(--c-sage);"></div>
-        <span>Nemotron activo</span>
-        <span class="mono-num text-textmute ml-0.5">· 12m</span>
-      </div>
-      <!-- Re-escanear: ghost button (no surface bg, just icon + text) -->
-      <button class="px-2.5 py-1.5 rounded-md text-[12px] text-textsec hover:text-textmain transition flex items-center gap-1.5 hover:bg-white/[0.04]" onclick="showToast('Re-escaneando fuentes…')">
-        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="group-hover:rotate-180 transition-transform duration-500"><path d="M10 6a4 4 0 1 1-1.2-2.8M10 2v2.5H7.5"/></svg>
-        Re-escanear
+
+    <div class="w-8 h-px bg-borderx my-1"></div>
+
+    <!-- Nav icons -->
+    <button class="group relative w-11 h-11 rounded-xl flex items-center justify-center bg-gradient-to-br from-violet/25 to-magenta/15 active-glow border border-violet/40 text-white">
+      <span class="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r bg-violet glow-violet"></span>
+      <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l9-9 9 9M5 10v10h14V10"/></svg>
+    </button>
+    <button class="group w-11 h-11 rounded-xl flex items-center justify-center text-slate2 hover:text-white hover:bg-violet/10 transition">
+      <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18M7 14l4-4 4 4 5-5"/></svg>
+    </button>
+    <button class="group w-11 h-11 rounded-xl flex items-center justify-center text-slate2 hover:text-white hover:bg-violet/10 transition">
+      <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    </button>
+    <button class="group w-11 h-11 rounded-xl flex items-center justify-center text-slate2 hover:text-white hover:bg-violet/10 transition">
+      <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+    </button>
+    <button class="group w-11 h-11 rounded-xl flex items-center justify-center text-slate2 hover:text-white hover:bg-violet/10 transition">
+      <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10A4 4 0 0 1 12 10a4 4 0 0 1-4-4 4 4 0 0 1 4-4z"/><circle cx="6.5" cy="11.5" r="1.2" fill="currentColor"/><circle cx="9.5" cy="7.5" r="1.2" fill="currentColor"/><circle cx="14.5" cy="7.5" r="1.2" fill="currentColor"/><circle cx="17.5" cy="11.5" r="1.2" fill="currentColor"/></svg>
+    </button>
+    <button class="group w-11 h-11 rounded-xl flex items-center justify-center text-slate2 hover:text-white hover:bg-violet/10 transition">
+      <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 17l6-6 4 4 6-6"/><path d="M14 7h6v6"/></svg>
+    </button>
+
+    <div class="mt-auto flex flex-col gap-2 items-center">
+      <button class="w-11 h-11 rounded-xl flex items-center justify-center text-slate2 hover:text-white hover:bg-violet/10 transition">
+        <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       </button>
+      <div class="w-9 h-9 rounded-full ring-2 ring-violet/50 flex items-center justify-center text-xs font-bold text-white"
+           style="background:linear-gradient(135deg,#8B5CF6,#EC4899);">ZA</div>
     </div>
-  </div>
-  <div class="max-w-7xl mx-auto px-6 pb-3 flex items-center gap-1 overflow-x-auto">
-    <button class="pill px-2.5 py-1 rounded-md text-[12px] text-textmain whitespace-nowrap" data-active="true" onclick="filterPills(this)">Todas <span class="pill-count mono-num text-textmute ml-1">6</span></button>
-    <button class="pill px-2.5 py-1 rounded-md text-[12px] text-textsec hover:text-lavender whitespace-nowrap" onclick="filterPills(this)">Por nacer <span class="pill-count mono-num text-textmute ml-1">2</span></button>
-    <button class="pill px-2.5 py-1 rounded-md text-[12px] text-textsec hover:text-sage whitespace-nowrap" onclick="filterPills(this)">Nacida <span class="pill-count mono-num text-textmute ml-1">1</span></button>
-    <button class="pill px-2.5 py-1 rounded-md text-[12px] text-textsec hover:text-ember whitespace-nowrap" onclick="filterPills(this)">Creciendo <span class="pill-count mono-num text-textmute ml-1">2</span></button>
-    <button class="pill px-2.5 py-1 rounded-md text-[12px] text-textsec hover:text-textmain whitespace-nowrap" onclick="filterPills(this)">Muriendo <span class="pill-count mono-num text-textmute ml-1">1</span></button>
-    <div class="ml-auto flex items-center gap-2 text-[11px] text-textsec">
-      <button class="hover:text-textmain transition flex items-center gap-1">Relevancia <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><path d="M2 4l3 3 3-3"/></svg></button>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <main class="flex-1 min-w-0 relative">
+
+    <!-- TOP BAR -->
+    <header class="sticky top-0 z-30 glass-strong border-b border-borderx/60">
+      <div class="flex items-center gap-4 px-6 h-16">
+        <!-- Logo wordmark -->
+        <div class="flex items-center gap-2.5">
+          <div class="text-2xl font-extrabold tracking-tight">
+            <span class="text-white">VIRA</span><span class="grad-text">HUB</span>
+          </div>
+          <span class="text-[10px] font-mono text-slate2 border border-borderx rounded px-1.5 py-0.5">v2.4</span>
+        </div>
+
+        <!-- Waveform -->
+        <div class="hidden md:flex items-end gap-[3px] h-8 ml-2" id="waveform">
+          <!-- bars injected -->
+        </div>
+
+        <div class="hidden lg:flex items-center gap-2 ml-2 px-3 py-1.5 rounded-full bg-emerald/10 border border-emerald/30">
+          <span class="relative flex h-2 w-2">
+            <span class="absolute inline-flex h-full w-full rounded-full bg-emerald opacity-75 blink"></span>
+            <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald"></span>
+          </span>
+          <span class="text-xs font-semibold text-emerald tracking-label">LIVE · 7 fuentes</span>
+        </div>
+
+        <!-- Search -->
+        <div class="flex-1 max-w-md mx-auto hidden sm:block">
+          <div class="relative">
+            <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
+            <input class="w-full bg-elev/60 border border-borderx rounded-lg pl-9 pr-12 py-2 text-sm placeholder:text-slate2/60 focus:outline-none focus:border-violet/50 focus:ring-1 focus:ring-violet/30" placeholder="Buscar señales, narrativas, fuentes…">
+            <kbd class="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-mono text-slate2 border border-borderx rounded px-1.5 py-0.5">⌘K</kbd>
+          </div>
+        </div>
+
+        <!-- Social circular icons -->
+        <div class="flex items-center gap-2">
+          <button class="w-9 h-9 rounded-full border border-borderx flex items-center justify-center text-slate2 hover:text-cyan hover:border-cyan/50 transition" title="Bluesky">
+            <svg viewBox="0 0 24 24" class="w-4 h-4" fill="currentColor"><path d="M5.7 4.3c2.8 2.1 5.8 6.3 6.9 8.6 1.1-2.3 4.1-6.5 6.9-8.6 2-1.5 5.3-2.7 5.3 1.1 0 .8-.4 6.4-.7 7.3-.9 3.1-4 3.9-6.9 3.4 5 .9 6.3 3.7 3.5 6.6-5.2 5.4-7.5-1.4-8.1-3.1-.1-.3-.2-.5-.2-.3 0-.2-.1-.1-.2.3-.6 1.7-2.9 8.5-8.1 3.1-2.8-2.9-1.5-5.7 3.5-6.6-2.9.5-6-.3-6.9-3.4-.3-.9-.7-6.5-.7-7.3 0-3.8 3.3-2.6 5.3-1.1z"/></svg>
+          </button>
+          <button class="w-9 h-9 rounded-full border border-borderx flex items-center justify-center text-slate2 hover:text-orange hover:border-orange/50 transition" title="Reddit">
+            <svg viewBox="0 0 24 24" class="w-4 h-4" fill="currentColor"><circle cx="12" cy="12" r="10"/><circle cx="8.5" cy="13" r="1.5" fill="#050508"/><circle cx="15.5" cy="13" r="1.5" fill="#050508"/><path d="M8.5 15.5c1 1 3 1.5 3.5 1.5s2.5-.5 3.5-1.5" stroke="#050508" stroke-width="1.3" fill="none" stroke-linecap="round"/></svg>
+          </button>
+          <button class="w-9 h-9 rounded-full border border-borderx flex items-center justify-center text-slate2 hover:text-violet hover:border-violet/50 transition" title="HN">
+            <span class="text-[11px] font-extrabold">Y</span>
+          </button>
+          <button class="w-9 h-9 rounded-full border border-borderx flex items-center justify-center text-slate2 hover:text-emerald hover:border-emerald/50 transition" title="Mastodon">
+            <svg viewBox="0 0 24 24" class="w-4 h-4" fill="currentColor"><path d="M21.6 8.5c0-4-2.6-5.2-2.6-5.2C17.7 2.5 15 2 12.2 2h-.1C9.3 2 6.6 2.5 5.4 3.3c0 0-2.6 1.2-2.6 5.2 0 .9 0 2 .1 3.1.2 3.4.7 6.7 3.2 7.6 1.2.4 2.3.5 3.1.4 1.5-.2 2-.7 2-1.3v-.5s-1.5.4-2.9-.1c-.6-.2-.9-1.1-.9-1.1s1.6.3 2.7 0c1.7-.4 3.4-1.4 3.7-4.3.3-2.9-.2-4.7-.2-4.7s.4 2.3-.8 3.5c-.7.7-1.6.6-1.6.6s-.9-.1-1-.7c-.1-.5.2-.8.2-.8s.6.4 1.1 0c.5-.4.5-1.5 0-2.1-.5-.6-1.7-.5-2.3.2-.7.8-.5 2.3-.5 2.3s-.7-.1-1.2-.7c-.7-.8-.8-2.6-.8-2.6s.4-1.2 1.6-2.1c1.3-1 3.1-1 3.1-1s.9-1 2.6-1c1.8 0 3 .9 3 .9s1.7.4 2.4 1.6c.7 1.2.4 2.7.4 2.7z"/></svg>
+          </button>
+          <button class="w-9 h-9 rounded-full border border-borderx flex items-center justify-center text-slate2 hover:text-white hover:border-violet/50 transition" title="arXiv">
+            <span class="text-[10px] font-bold font-mono">arX</span>
+          </button>
+          <div class="w-px h-6 bg-borderx mx-1"></div>
+          <button class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white" style="background:linear-gradient(135deg,#8B5CF6,#EC4899); box-shadow:0 4px 16px -4px rgba(139,92,246,0.5);">
+            + Nueva cacería
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- CONTENT -->
+    <div class="px-6 py-6 space-y-5 relative">
+
+      <!-- ====== HERO ====== -->
+      <section class="relative rounded-2xl overflow-hidden cosmic shadow-violet border border-violet/15 h-[260px] vignette">
+        <div class="stars"></div>
+        <!-- planet glow -->
+        <div class="absolute -right-24 -bottom-32 w-[420px] h-[420px] rounded-full floaty"
+             style="background:radial-gradient(circle at 35% 35%, #1C2230 0%, #0D1117 40%, transparent 70%); box-shadow:inset -30px -30px 80px rgba(139,92,246,0.4), 0 0 120px rgba(236,72,153,0.25), 0 0 60px rgba(6,182,212,0.15);"></div>
+        <div class="absolute right-10 bottom-8 w-3 h-3 rounded-full bg-cyan glow-violet opacity-80"></div>
+        <div class="absolute right-24 top-12 w-2 h-2 rounded-full bg-magenta glow-magenta opacity-70"></div>
+        <div class="scanline"></div>
+
+        <div class="relative z-10 p-8 flex flex-col h-full justify-between">
+          <div class="flex items-center gap-2">
+            <span class="text-[11px] font-mono tracking-label text-violet">◢ MISSIÓN CONTROL</span>
+            <span class="text-[11px] font-mono text-slate2">/ 06 señales activas</span>
+          </div>
+
+          <div class="max-w-2xl">
+            <h1 class="text-[44px] leading-[1.05] font-extrabold tracking-tight">
+              Detectamos lo que está<br>por <span class="grad-text">explotar</span>.
+            </h1>
+            <p class="mt-3 text-slate2 text-sm max-w-md leading-relaxed">
+              Vigilancia 24/7 de Bluesky, Reddit, HN, Mastodon, arXiv, GitHub y RSS.
+              La próxima narrativa ya está fermentando en algún hilo. Nosotros la encontramos primero.
+            </p>
+          </div>
+
+          <div class="flex items-center gap-6">
+            <div>
+              <div class="text-[10px] tracking-label text-slate2 font-semibold">Señales / 24h</div>
+              <div class="text-2xl font-extrabold tnum grad-text">2.418</div>
+            </div>
+            <div class="w-px h-10 bg-borderx"></div>
+            <div>
+              <div class="text-[10px] tracking-label text-slate2 font-semibold">Detectadas hoy</div>
+              <div class="text-2xl font-extrabold tnum text-white">17</div>
+            </div>
+            <div class="w-px h-10 bg-borderx"></div>
+            <div>
+              <div class="text-[10px] tracking-label text-slate2 font-semibold">Confianza media</div>
+              <div class="text-2xl font-extrabold tnum grad-text-em">81%</div>
+            </div>
+            <div class="w-px h-10 bg-borderx hidden sm:block"></div>
+            <div class="hidden sm:block">
+              <div class="text-[10px] tracking-label text-slate2 font-semibold">Latencia p99</div>
+              <div class="text-2xl font-extrabold tnum text-cyan">2.4<span class="text-sm text-slate2">s</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ====== LIVE TICKER PIPELINE ====== -->
+      <section class="glass rounded-2xl border border-borderx/70 px-5 py-3.5 flex items-center gap-4 overflow-hidden">
+        <div class="flex items-center gap-2 shrink-0">
+          <span class="relative flex h-2.5 w-2.5">
+            <span class="absolute inline-flex h-full w-full rounded-full bg-orange opacity-75 blink"></span>
+            <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-orange"></span>
+          </span>
+          <span class="text-[11px] font-bold tracking-label text-orange">PIPELINE</span>
+        </div>
+        <div class="w-px h-6 bg-borderx shrink-0"></div>
+
+        <div class="flex items-center gap-3 overflow-x-auto no-scrollbar flex-1">
+          <!-- platform nodes -->
+          <div class="flex items-center gap-3 shrink-0">
+            <span class="text-[10px] font-mono text-slate2">07:42:11</span>
+          </div>
+
+          <!-- node template repeated -->
+          <div class="flex items-center gap-2 shrink-0">
+            <div class="w-7 h-7 rounded-full bg-cyan/15 border border-cyan/40 flex items-center justify-center text-cyan text-[10px] font-bold">BS</div>
+            <span class="text-xs text-slate2 hidden md:inline">Bluesky</span>
+            <span class="text-[10px] font-mono text-emerald">+128</span>
+          </div>
+          <svg class="w-6 h-4 shrink-0" viewBox="0 0 24 16"><path class="flow-dash" d="M2 8 H20" stroke="#8B5CF6" stroke-width="1.5" fill="none"/><path d="M16 4 L20 8 L16 12" stroke="#8B5CF6" stroke-width="1.5" fill="none"/></svg>
+
+          <div class="flex items-center gap-2 shrink-0">
+            <div class="w-7 h-7 rounded-full bg-orange/15 border border-orange/40 flex items-center justify-center text-orange text-[10px] font-bold">RD</div>
+            <span class="text-xs text-slate2 hidden md:inline">Reddit</span>
+            <span class="text-[10px] font-mono text-emerald">+340</span>
+          </div>
+          <svg class="w-6 h-4 shrink-0" viewBox="0 0 24 16"><path class="flow-dash" d="M2 8 H20" stroke="#EC4899" stroke-width="1.5" fill="none"/><path d="M16 4 L20 8 L16 12" stroke="#EC4899" stroke-width="1.5" fill="none"/></svg>
+
+          <div class="flex items-center gap-2 shrink-0">
+            <div class="w-7 h-7 rounded-full bg-violet/15 border border-violet/40 flex items-center justify-center text-violet text-[10px] font-bold">HN</div>
+            <span class="text-xs text-slate2 hidden md:inline">Hacker News</span>
+            <span class="text-[10px] font-mono text-emerald">+76</span>
+          </div>
+          <svg class="w-6 h-4 shrink-0" viewBox="0 0 24 16"><path class="flow-dash" d="M2 8 H20" stroke="#8B5CF6" stroke-width="1.5" fill="none"/><path d="M16 4 L20 8 L16 12" stroke="#8B5CF6" stroke-width="1.5" fill="none"/></svg>
+
+          <div class="flex items-center gap-2 shrink-0">
+            <div class="w-7 h-7 rounded-full bg-emerald/15 border border-emerald/40 flex items-center justify-center text-emerald text-[10px] font-bold">MS</div>
+            <span class="text-xs text-slate2 hidden md:inline">Mastodon</span>
+            <span class="text-[10px] font-mono text-slate2">+12</span>
+          </div>
+          <svg class="w-6 h-4 shrink-0" viewBox="0 0 24 16"><path class="flow-dash" d="M2 8 H20" stroke="#10B981" stroke-width="1.5" fill="none"/><path d="M16 4 L20 8 L16 12" stroke="#10B981" stroke-width="1.5" fill="none"/></svg>
+
+          <div class="flex items-center gap-2 shrink-0">
+            <div class="w-7 h-7 rounded-full bg-white/10 border border-white/30 flex items-center justify-center text-white text-[9px] font-mono font-bold">arX</div>
+            <span class="text-xs text-slate2 hidden md:inline">arXiv</span>
+            <span class="text-[10px] font-mono text-cyan">+3</span>
+          </div>
+          <svg class="w-6 h-4 shrink-0" viewBox="0 0 24 16"><path class="flow-dash" d="M2 8 H20" stroke="#06B6D4" stroke-width="1.5" fill="none"/><path d="M16 4 L20 8 L16 12" stroke="#06B6D4" stroke-width="1.5" fill="none"/></svg>
+
+          <div class="flex items-center gap-2 shrink-0">
+            <div class="w-7 h-7 rounded-full bg-magenta/15 border border-magenta/40 flex items-center justify-center text-magenta text-[10px] font-bold">GH</div>
+            <span class="text-xs text-slate2 hidden md:inline">GitHub</span>
+            <span class="text-[10px] font-mono text-emerald">+47</span>
+          </div>
+          <svg class="w-6 h-4 shrink-0" viewBox="0 0 24 16"><path class="flow-dash" d="M2 8 H20" stroke="#EC4899" stroke-width="1.5" fill="none"/><path d="M16 4 L20 8 L16 12" stroke="#EC4899" stroke-width="1.5" fill="none"/></svg>
+
+          <div class="flex items-center gap-2 shrink-0">
+            <div class="w-7 h-7 rounded-full bg-orange/15 border border-orange/40 flex items-center justify-center text-orange text-[10px] font-bold">RSS</div>
+            <span class="text-xs text-slate2 hidden md:inline">RSS</span>
+            <span class="text-[10px] font-mono text-orange">live</span>
+          </div>
+        </div>
+
+        <div class="shrink-0 text-[10px] font-mono text-slate2 hidden lg:block">thruput 412/min</div>
+      </section>
+
+      <!-- ====== BENTO GRID ====== -->
+      <section class="grid grid-cols-12 gap-4 auto-rows-[minmax(0,1fr)]">
+
+        <!-- Big trend chart card (col-span 8, row-span 2) -->
+        <div class="col-span-12 lg:col-span-8 row-span-2 glass rounded-2xl border border-borderx/70 p-5 relative overflow-hidden shadow-violet">
+          <div class="flex items-start justify-between mb-3">
+            <div>
+              <div class="flex items-center gap-2 mb-1">
+                <span class="text-[10px] tracking-label text-slate2 font-semibold">◢ VECTOR DE ACELERACIÓN</span>
+                <span class="text-[10px] font-mono text-violet">multi-source</span>
+              </div>
+              <h2 class="text-lg font-bold">Velocidad de narrativas — últimas 48h</h2>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <button class="text-[11px] font-semibold px-2.5 py-1 rounded-md bg-violet/20 text-violet border border-violet/40">48h</button>
+              <button class="text-[11px] font-semibold px-2.5 py-1 rounded-md text-slate2 hover:text-white border border-borderx">7d</button>
+              <button class="text-[11px] font-semibold px-2.5 py-1 rounded-md text-slate2 hover:text-white border border-borderx">30d</button>
+            </div>
+          </div>
+
+          <!-- legend -->
+          <div class="flex items-center gap-4 mb-2 text-[11px]">
+            <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-violet"></span><span class="text-slate2">Regulación IA UE</span></div>
+            <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-magenta"></span><span class="text-slate2">Cumbre climática</span></div>
+            <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-cyan"></span><span class="text-slate2">Actividad solar</span></div>
+            <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-slate2"></span><span class="text-slate2">Despidos tech</span></div>
+          </div>
+
+          <!-- chart svg -->
+          <div class="relative h-[230px] gridbg rounded-xl border border-borderx/50 bg-void/40 overflow-hidden">
+            <svg viewBox="0 0 600 220" preserveAspectRatio="none" class="w-full h-full">
+              <defs>
+                <linearGradient id="gv" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#8B5CF6" stop-opacity="0.35"/><stop offset="100%" stop-color="#8B5CF6" stop-opacity="0"/></linearGradient>
+                <linearGradient id="gm" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#EC4899" stop-opacity="0.25"/><stop offset="100%" stop-color="#EC4899" stop-opacity="0"/></linearGradient>
+              </defs>
+              <!-- grid -->
+              <g stroke="#1F2937" stroke-width="0.5" opacity="0.6">
+                <line x1="0" y1="44" x2="600" y2="44"/>
+                <line x1="0" y1="88" x2="600" y2="88"/>
+                <line x1="0" y1="132" x2="600" y2="132"/>
+                <line x1="0" y1="176" x2="600" y2="176"/>
+              </g>
+              <!-- NOW vertical line -->
+              <line x1="430" y1="0" x2="430" y2="220" stroke="#F97316" stroke-width="1" stroke-dasharray="4 4" opacity="0.7"/>
+              <rect x="426" y="6" width="42" height="16" rx="3" fill="#F97316" opacity="0.18"/>
+              <text x="447" y="17" text-anchor="middle" font-size="9" font-family="JetBrains Mono" fill="#F97316" font-weight="700">AHORA</text>
+
+              <!-- violet area + line (Regulación IA) -->
+              <path d="M0 180 L60 170 L120 160 L180 140 L240 130 L300 110 L360 85 L430 55 L500 40 L600 28 L600 220 L0 220 Z" fill="url(#gv)"/>
+              <path d="M0 180 L60 170 L120 160 L180 140 L240 130 L300 110 L360 85 L430 55 L500 40 L600 28" fill="none" stroke="#8B5CF6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+
+              <!-- magenta line (Cumbre climática) -->
+              <path d="M0 165 L60 162 L120 150 L180 158 L240 145 L300 120 L360 100 L430 95 L500 78 L600 60" fill="none" stroke="#EC4899" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>
+
+              <!-- cyan line (Actividad solar - weak signal, low) -->
+              <path d="M0 195 L60 192 L120 196 L180 188 L240 184 L300 180 L360 172 L430 168 L500 160 L600 150" fill="none" stroke="#06B6D4" stroke-width="1.8" stroke-dasharray="3 3" stroke-linecap="round"/>
+
+              <!-- grey line (Despidos - dying) -->
+              <path d="M0 70 L60 78 L120 95 L180 110 L240 128 L300 140 L360 155 L430 168 L500 178 L600 188" fill="none" stroke="#9CA3AF" stroke-width="1.8" stroke-linecap="round" opacity="0.7"/>
+
+              <!-- pulsing data points on violet at NOW -->
+              <circle cx="430" cy="55" r="4" fill="#8B5CF6"/>
+              <circle cx="430" cy="55" r="4" fill="none" stroke="#8B5CF6" stroke-width="2" opacity="0.6">
+                <animate attributeName="r" values="4;14;4" dur="2s" repeatCount="indefinite"/>
+                <animate attributeName="opacity" values="0.6;0;0.6" dur="2s" repeatCount="indefinite"/>
+              </circle>
+              <circle cx="430" cy="95" r="3.5" fill="#EC4899"/>
+              <circle cx="430" cy="168" r="3.5" fill="#06B6D4"/>
+            </svg>
+
+            <!-- y axis labels -->
+            <div class="absolute left-2 top-2 text-[9px] font-mono text-slate2/70">12k</div>
+            <div class="absolute left-2 top-[26%] text-[9px] font-mono text-slate2/70">9k</div>
+            <div class="absolute left-2 top-[50%] text-[9px] font-mono text-slate2/70">6k</div>
+            <div class="absolute left-2 top-[74%] text-[9px] font-mono text-slate2/70">3k</div>
+            <div class="absolute left-2 bottom-2 text-[9px] font-mono text-slate2/70">0</div>
+            <!-- x labels -->
+            <div class="absolute bottom-1 left-2 text-[9px] font-mono text-slate2/70">−48h</div>
+            <div class="absolute bottom-1 left-1/3 text-[9px] font-mono text-slate2/70">−24h</div>
+            <div class="absolute bottom-1 right-2 text-[9px] font-mono text-slate2/70">ahora</div>
+          </div>
+        </div>
+
+        <!-- DETAIL CARD (col-span 4, row-span 2) -->
+        <div class="col-span-12 lg:col-span-4 row-span-2 glass rounded-2xl border border-violet/25 p-5 relative overflow-hidden shadow-violet">
+          <div class="absolute -top-16 -right-16 w-48 h-48 rounded-full" style="background:radial-gradient(circle,rgba(139,92,246,0.25),transparent 70%);"></div>
+
+          <div class="flex items-center justify-between mb-3 relative">
+            <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-bold tracking-label text-emerald bg-emerald/15 border border-emerald/40">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald blink"></span> CRECIENDO
+            </span>
+            <span class="text-[10px] font-mono text-slate2">#01 · seleccionado</span>
+          </div>
+
+          <h3 class="text-xl font-bold leading-tight relative">Regulación de IA en la UE</h3>
+          <p class="text-[12px] text-slate2 mt-1 relative leading-relaxed">El AI Act entra en fase final. Hilos en Bluesky y Reddit multiplican menciones.</p>
+
+          <div class="mt-4 relative">
+            <div class="text-[10px] tracking-label text-slate2 font-semibold mb-1">Confianza del modelo</div>
+            <div class="flex items-end gap-2">
+              <span class="text-5xl font-extrabold tnum grad-text leading-none">94</span>
+              <span class="text-2xl font-bold text-slate2 leading-none mb-0.5">%</span>
+              <span class="ml-auto text-[11px] font-mono text-emerald self-end mb-1">▲ +12 pts</span>
+            </div>
+          </div>
+
+          <!-- sparkline with gradient fill -->
+          <div class="mt-3 relative h-16">
+            <svg viewBox="0 0 240 64" preserveAspectRatio="none" class="w-full h-full">
+              <defs>
+                <linearGradient id="spark1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#8B5CF6" stop-opacity="0.5"/><stop offset="100%" stop-color="#EC4899" stop-opacity="0"/></linearGradient>
+                <linearGradient id="spark1stroke" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#8B5CF6"/><stop offset="100%" stop-color="#EC4899"/></linearGradient>
+              </defs>
+              <path d="M0 52 L24 50 L48 46 L72 42 L96 38 L120 30 L144 24 L168 18 L192 12 L216 8 L240 4 L240 64 L0 64 Z" fill="url(#spark1)"/>
+              <path d="M0 52 L24 50 L48 46 L72 42 L96 38 L120 30 L144 24 L168 18 L192 12 L216 8 L240 4" fill="none" stroke="url(#spark1stroke)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="240" cy="4" r="3" fill="#EC4899"/>
+            </svg>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 mt-3 relative">
+            <div class="bg-void/50 rounded-lg border border-borderx/60 p-2.5">
+              <div class="text-[9px] tracking-label text-slate2">Volumen 24h</div>
+              <div class="text-lg font-bold tnum text-white">8.2k</div>
+            </div>
+            <div class="bg-void/50 rounded-lg border border-borderx/60 p-2.5">
+              <div class="text-[9px] tracking-label text-slate2">Crecimiento</div>
+              <div class="text-lg font-bold tnum text-emerald">+312%</div>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2 mt-3 relative">
+            <span class="text-[10px] tracking-label text-slate2 font-semibold">Fuentes:</span>
+            <span class="px-2 py-0.5 rounded-md text-[10px] font-bold text-cyan bg-cyan/10 border border-cyan/30">Bluesky</span>
+            <span class="px-2 py-0.5 rounded-md text-[10px] font-bold text-orange bg-orange/10 border border-orange/30">Reddit</span>
+          </div>
+
+          <button class="w-full mt-4 py-2.5 rounded-xl text-sm font-bold text-white relative glow-violet"
+                  style="background:linear-gradient(135deg,#8B5CF6,#EC4899);">
+            Ver análisis completo →
+          </button>
+        </div>
+
+        <!-- Bento trend cards row -->
+        <!-- Card: Actividad solar (por nacer) -->
+        <div class="col-span-12 sm:col-span-6 lg:col-span-3 glass rounded-2xl border border-cyan/20 p-4 relative overflow-hidden shadow-cyan">
+          <div class="absolute -top-10 -right-10 w-32 h-32 rounded-full" style="background:radial-gradient(circle,rgba(6,182,212,0.2),transparent 70%);"></div>
+          <div class="flex items-center justify-between mb-2 relative">
+            <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[9px] font-bold tracking-label text-cyan bg-cyan/10 border border-cyan/30">POR NACER</span>
+            <span class="text-[9px] font-mono text-slate2">#02</span>
+          </div>
+          <h4 class="font-bold text-[15px] leading-tight relative">Brote de actividad solar</h4>
+          <div class="text-2xl font-extrabold tnum grad-text-cy mt-2 relative">señal débil</div>
+          <div class="mt-2 h-10 relative">
+            <svg viewBox="0 0 200 40" preserveAspectRatio="none" class="w-full h-full">
+              <path d="M0 32 L25 30 L50 33 L75 28 L100 30 L125 24 L150 26 L175 20 L200 18" fill="none" stroke="#06B6D4" stroke-width="1.8" stroke-dasharray="3 2"/>
+              <circle cx="200" cy="18" r="2.5" fill="#06B6D4"/>
+            </svg>
+          </div>
+          <div class="flex items-center gap-1.5 mt-2 relative">
+            <span class="px-1.5 py-0.5 rounded text-[9px] font-bold text-white bg-white/10 border border-white/20 font-mono">arX</span>
+            <span class="px-1.5 py-0.5 rounded text-[9px] font-bold text-cyan bg-cyan/10 border border-cyan/30">BS</span>
+            <span class="ml-auto text-[9px] font-mono text-slate2">14 menciones</span>
+          </div>
+        </div>
+
+        <!-- Card: Despidos tech (muriendo) -->
+        <div class="col-span-12 sm:col-span-6 lg:col-span-3 glass rounded-2xl border border-borderx/70 p-4 relative overflow-hidden">
+          <div class="flex items-center justify-between mb-2">
+            <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[9px] font-bold tracking-label text-slate2 bg-slate2/10 border border-slate2/30">MURIENDO</span>
+            <span class="text-[9px] font-mono text-slate2">#03</span>
+          </div>
+          <h4 class="font-bold text-[15px] leading-tight">Despidos en tech</h4>
+          <div class="flex items-end gap-1.5 mt-2">
+            <span class="text-2xl font-extrabold tnum text-slate2">−40%</span>
+            <span class="text-[10px] font-mono text-slate2 mb-1">velocity</span>
+          </div>
+          <div class="mt-2 h-10">
+            <svg viewBox="0 0 200 40" preserveAspectRatio="none" class="w-full h-full">
+              <path d="M0 8 L25 12 L50 16 L75 20 L100 24 L125 28 L150 30 L175 33 L200 36" fill="none" stroke="#9CA3AF" stroke-width="1.8"/>
+              <circle cx="200" cy="36" r="2.5" fill="#9CA3AF"/>
+            </svg>
+          </div>
+          <div class="flex items-center gap-1.5 mt-2">
+            <span class="px-1.5 py-0.5 rounded text-[9px] font-bold text-violet bg-violet/10 border border-violet/30">HN</span>
+            <span class="px-1.5 py-0.5 rounded text-[9px] font-bold text-orange bg-orange/10 border border-orange/30">RD</span>
+            <span class="ml-auto text-[9px] font-mono text-slate2">3.1k menciones</span>
+          </div>
+        </div>
+
+        <!-- Card: Cripto recupera (nacida) -->
+        <div class="col-span-12 sm:col-span-6 lg:col-span-3 glass rounded-2xl border border-emerald/20 p-4 relative overflow-hidden shadow-emerald">
+          <div class="absolute -top-10 -right-10 w-32 h-32 rounded-full" style="background:radial-gradient(circle,rgba(16,185,129,0.18),transparent 70%);"></div>
+          <div class="flex items-center justify-between mb-2 relative">
+            <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[9px] font-bold tracking-label text-emerald bg-emerald/10 border border-emerald/30">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald"></span>NACIDA
+            </span>
+            <span class="text-[9px] font-mono text-slate2">#04</span>
+          </div>
+          <h4 class="font-bold text-[15px] leading-tight relative">Cripto recupera</h4>
+          <div class="text-2xl font-extrabold tnum grad-text-em mt-2 relative">recién detectada</div>
+          <div class="mt-2 h-10 relative">
+            <svg viewBox="0 0 200 40" preserveAspectRatio="none" class="w-full h-full">
+              <defs><linearGradient id="spk4" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#10B981" stop-opacity="0.4"/><stop offset="100%" stop-color="#10B981" stop-opacity="0"/></linearGradient></defs>
+              <path d="M0 36 L25 35 L50 34 L75 30 L100 28 L125 22 L150 18 L175 12 L200 6 L200 40 L0 40 Z" fill="url(#spk4)"/>
+              <path d="M0 36 L25 35 L50 34 L75 30 L100 28 L125 22 L150 18 L175 12 L200 6" fill="none" stroke="#10B981" stroke-width="1.8"/>
+              <circle cx="200" cy="6" r="2.5" fill="#10B981"/>
+            </svg>
+          </div>
+          <div class="flex items-center gap-1.5 mt-2 relative">
+            <span class="px-1.5 py-0.5 rounded text-[9px] font-bold text-orange bg-orange/10 border border-orange/30">RD</span>
+            <span class="ml-auto text-[9px] font-mono text-slate2">412 menciones</span>
+          </div>
+        </div>
+
+        <!-- Card: Cumbre climática (creciendo) -->
+        <div class="col-span-12 sm:col-span-6 lg:col-span-3 glass rounded-2xl border border-magenta/20 p-4 relative overflow-hidden shadow-magenta">
+          <div class="absolute -top-10 -right-10 w-32 h-32 rounded-full" style="background:radial-gradient(circle,rgba(236,72,153,0.2),transparent 70%);"></div>
+          <div class="flex items-center justify-between mb-2 relative">
+            <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[9px] font-bold tracking-label text-magenta bg-magenta/10 border border-magenta/30">
+              <span class="w-1.5 h-1.5 rounded-full bg-magenta blink"></span>CRECIENDO
+            </span>
+            <span class="text-[9px] font-mono text-slate2">#05</span>
+          </div>
+          <h4 class="font-bold text-[15px] leading-tight relative">Cumbre climática</h4>
+          <div class="flex items-end gap-1.5 mt-2 relative">
+            <span class="text-2xl font-extrabold tnum grad-text">+184%</span>
+            <span class="text-[10px] font-mono text-slate2 mb-1">/24h</span>
+          </div>
+          <div class="mt-2 h-10 relative">
+            <svg viewBox="0 0 200 40" preserveAspectRatio="none" class="w-full h-full">
+              <defs><linearGradient id="spk5" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#EC4899" stop-opacity="0.4"/><stop offset="100%" stop-color="#EC4899" stop-opacity="0"/></linearGradient></defs>
+              <path d="M0 34 L25 32 L50 30 L75 26 L100 24 L125 20 L150 16 L175 10 L200 4 L200 40 L0 40 Z" fill="url(#spk5)"/>
+              <path d="M0 34 L25 32 L50 30 L75 26 L100 24 L125 20 L150 16 L175 10 L200 4" fill="none" stroke="#EC4899" stroke-width="1.8"/>
+              <circle cx="200" cy="4" r="2.5" fill="#EC4899"/>
+            </svg>
+          </div>
+          <div class="flex items-center gap-1.5 mt-2 relative">
+            <span class="px-1.5 py-0.5 rounded text-[9px] font-bold text-emerald bg-emerald/10 border border-emerald/30">MS</span>
+            <span class="px-1.5 py-0.5 rounded text-[9px] font-bold text-orange bg-orange/10 border border-orange/30">RSS</span>
+            <span class="ml-auto text-[9px] font-mono text-slate2">1.7k menciones</span>
+          </div>
+        </div>
+
+        <!-- Card: Nueva API Bluesky (por nacer) — wider -->
+        <div class="col-span-12 sm:col-span-12 lg:col-span-6 glass rounded-2xl border border-violet/20 p-4 relative overflow-hidden shadow-violet">
+          <div class="absolute -top-12 -right-12 w-40 h-40 rounded-full" style="background:radial-gradient(circle,rgba(139,92,246,0.2),transparent 70%);"></div>
+          <div class="flex items-start justify-between relative">
+            <div>
+              <div class="flex items-center gap-2 mb-1.5">
+                <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[9px] font-bold tracking-label text-violet bg-violet/10 border border-violet/30">POR NACER</span>
+                <span class="text-[9px] font-mono text-slate2">#06</span>
+              </div>
+              <h4 class="font-bold text-base leading-tight">Nueva API de Bluesky</h4>
+              <p class="text-[11px] text-slate2 mt-0.5">Repositorio gana tracción en HN y GitHub</p>
+            </div>
+            <div class="flex items-end gap-1">
+              <span class="text-3xl font-extrabold tnum grad-text leading-none">47</span>
+              <span class="text-[11px] font-mono text-slate2 mb-1">★/24h</span>
+            </div>
+          </div>
+          <div class="mt-2 h-12 relative">
+            <svg viewBox="0 0 360 48" preserveAspectRatio="none" class="w-full h-full">
+              <defs><linearGradient id="spk6" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#8B5CF6" stop-opacity="0.4"/><stop offset="100%" stop-color="#8B5CF6" stop-opacity="0"/></linearGradient></defs>
+              <path d="M0 42 L36 40 L72 38 L108 36 L144 30 L180 26 L216 22 L252 16 L288 12 L324 8 L360 4 L360 48 L0 48 Z" fill="url(#spk6)"/>
+              <path d="M0 42 L36 40 L72 38 L108 36 L144 30 L180 26 L216 22 L252 16 L288 12 L324 8 L360 4" fill="none" stroke="#8B5CF6" stroke-width="2"/>
+              <circle cx="360" cy="4" r="3" fill="#8B5CF6"/>
+              <circle cx="360" cy="4" r="3" fill="none" stroke="#8B5CF6" stroke-width="1.5" opacity="0.6">
+                <animate attributeName="r" values="3;10;3" dur="2s" repeatCount="indefinite"/>
+                <animate attributeName="opacity" values="0.6;0;0.6" dur="2s" repeatCount="indefinite"/>
+              </circle>
+            </svg>
+          </div>
+          <div class="flex items-center gap-1.5 mt-2 relative">
+            <span class="px-1.5 py-0.5 rounded text-[9px] font-bold text-magenta bg-magenta/10 border border-magenta/30">GH</span>
+            <span class="px-1.5 py-0.5 rounded text-[9px] font-bold text-violet bg-violet/10 border border-violet/30">HN</span>
+            <span class="ml-auto text-[9px] font-mono text-slate2">confianza 67%</span>
+          </div>
+        </div>
+
+        <!-- Heatmap / status mini card -->
+        <div class="col-span-12 sm:col-span-6 lg:col-span-3 glass rounded-2xl border border-borderx/70 p-4 relative overflow-hidden">
+          <div class="text-[10px] tracking-label text-slate2 font-semibold mb-2">◢ MAPA DE CALOR · 7 días</div>
+          <div class="grid grid-cols-7 gap-1">
+            <!-- 7x4 heatmap cells -->
+            <div class="aspect-square rounded-sm" style="background:rgba(139,92,246,0.1)"></div>
+            <div class="aspect-square rounded-sm" style="background:rgba(139,92,246,0.3)"></div>
+            <div class="aspect-square rounded-sm" style="background:rgba(236,72,153,0.5)"></div>
+            <div class="aspect-square rounded-sm" style="background:rgba(139,92,246,0.2)"></div>
+            <div class="aspect-square rounded-sm" style="background:rgba(6,182,212,0.6)"></div>
+            <div class="aspect-square rounded-sm" style="background:rgba(236,72,153,0.8)"></div>
+            <div class="aspect-square rounded-sm" style="background:rgba(139,92,246,0.9);box-shadow:0 0 8px rgba(139,92,246,0.6)"></div>
+
+            <div class="aspect-square rounded-sm" style="background:rgba(139,92,246,0.15)"></div>
+            <div class="aspect-square rounded-sm" style="background:rgba(236,72,153,0.35)"></div>
+            <div class="aspect-square rounded-sm" style="background:rgba(16,185,129,0.4)"></div>
+            <div class="aspect-square rounded-sm" style="background:rgba(139,92,246,0.5)"></div>
+            <div class="aspect-square rounded-sm" style="background:rgba(236,72,153,0.7)"></div>
+            <div class="aspect-square rounded-sm" style="background:rgba(139,92,246,0.4)"></div>
+            <div class="aspect-square rounded-sm" style="background:rgba(236,72,153,0.6)"></div>
+
+            <div class="aspect-square rounded-sm" style="background:rgba(6,182,212,0.3)"></div>
+            <div class="aspect-square rounded-sm" style="background:rgba(139,92,246,0.4)"></div>
+            <div class="aspect-square rounded-sm" style="background:rgba(236,72,153,0.6)"></div>
+            <div class="aspect-square rounded-sm" style="background:rgba(16,185,129,0.3)"></div>
+            <div class="aspect-square rounded-sm" style="background:rgba(139,92,246,0.55)"></div>
+            <div class="aspect-square rounded-sm" style="background:rgba(236,72,153,0.85);box-shadow:0 0 8px rgba(236,72,153,0.5)"></div>
+            <div class="aspect-square rounded-sm" style="background:rgba(139,92,246,0.7)"></div>
+
+            <div class="aspect-square rounded-sm" style="background:rgba(139,92,246,0.2)"></div>
+            <div class="aspect-square rounded-sm" style="background:rgba(236,72,153,0.4)"></div>
+            <div class="aspect-square rounded-sm" style="background:rgba(16,185,129,0.5)"></div>
+            <div class="aspect-square rounded-sm" style="background:rgba(139,92,246,0.6)"></div>
+            <div class="aspect-square rounded-sm" style="background:rgba(236,72,153,0.5)"></div>
+            <div class="aspect-square rounded-sm" style="background:rgba(6,182,212,0.4)"></div>
+            <div class="aspect-square rounded-sm" style="background:rgba(16,185,129,0.7)"></div>
+          </div>
+          <div class="flex items-center justify-between mt-2 text-[9px] font-mono text-slate2">
+            <span>lun</span><span>dom</span>
+          </div>
+          <div class="mt-2 pt-2 border-t border-borderx/60 flex items-center justify-between">
+            <span class="text-[10px] text-slate2">Pico detectado</span>
+            <span class="text-[11px] font-bold text-magenta">jue 21:00</span>
+          </div>
+        </div>
+
+        <!-- Agents status mini card -->
+        <div class="col-span-12 sm:col-span-6 lg:col-span-3 glass rounded-2xl border border-borderx/70 p-4 relative overflow-hidden">
+          <div class="text-[10px] tracking-label text-slate2 font-semibold mb-2">◢ AGENTES ACTIVOS</div>
+          <div class="space-y-2">
+            <div class="flex items-center gap-2">
+              <span class="relative flex h-2 w-2"><span class="absolute inline-flex h-full w-full rounded-full bg-emerald opacity-75 blink"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-emerald"></span></span>
+              <span class="text-xs font-semibold">scout-01</span>
+              <span class="ml-auto text-[10px] font-mono text-slate2">scanning</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="relative flex h-2 w-2"><span class="absolute inline-flex h-full w-full rounded-full bg-violet opacity-75 blink"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-violet"></span></span>
+              <span class="text-xs font-semibold">cluster-03</span>
+              <span class="ml-auto text-[10px] font-mono text-slate2">clustering</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="relative flex h-2 w-2"><span class="relative inline-flex rounded-full h-2 w-2 bg-magenta"></span></span>
+              <span class="text-xs font-semibold">validator-02</span>
+              <span class="ml-auto text-[10px] font-mono text-slate2">idle</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="relative flex h-2 w-2"><span class="absolute inline-flex h-full w-full rounded-full bg-cyan opacity-75 blink"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-cyan"></span></span>
+              <span class="text-xs font-semibold">evaluator-01</span>
+              <span class="ml-auto text-[10px] font-mono text-slate2">scoring</span>
+            </div>
+          </div>
+          <div class="mt-3 pt-2 border-t border-borderx/60 grid grid-cols-2 gap-2">
+            <div><div class="text-[9px] tracking-label text-slate2">CPU</div><div class="text-sm font-bold tnum text-cyan">34%</div></div>
+            <div><div class="text-[9px] tracking-label text-slate2">Cola</div><div class="text-sm font-bold tnum text-violet">128</div></div>
+          </div>
+        </div>
+
+      </section>
     </div>
-  </div>
-</header>
+  </main>
 
-<!-- MAIN GRID -->
-<main id="main" class="max-w-7xl mx-auto px-6 py-10">
-  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" id="trendsGrid" style="gap: 20px;"></div>
-</main>
-
-<!-- FOOTER — VS Code status bar style: slim, monospaced, tiny -->
-<footer class="sticky bottom-0 mt-20" style="background: rgba(7,9,18,0.92); backdrop-filter: blur(12px); border-top: 1px solid rgba(255,255,255,0.06);">
-  <div class="max-w-7xl mx-auto px-6 py-2 flex items-center justify-between text-[10px] mono-num text-textmute" style="letter-spacing:0.02em;">
-    <div class="flex items-center gap-3">
-      <span class="flex items-center gap-1.5" style="color:#2DBE85;"><span class="w-1.5 h-1.5 rounded-full" style="background:#2DBE85; box-shadow: 0 0 4px #2DBE85;"></span>ONLINE</span>
-      <span class="text-textmute/40">|</span>
-      <span>FOGÓN experimental</span>
-      <span class="text-textmute/40">|</span>
-      <span style="opacity:0.7;">Nemotron-3-Ultra-550B · thinking:false</span>
+  <!-- ============ RIGHT PANEL ============ -->
+  <aside class="w-[360px] shrink-0 border-l border-borderx/60 bg-void/60 hidden xl:flex flex-col">
+    <div class="px-5 py-4 border-b border-borderx/60 flex items-center justify-between">
+      <h3 class="font-bold text-sm">Feed de menciones</h3>
+      <div class="flex items-center gap-1">
+        <button class="text-[10px] font-bold px-2 py-1 rounded-md bg-violet/20 text-violet border border-violet/40">Todas</button>
+        <button class="text-[10px] font-semibold px-2 py-1 rounded-md text-slate2 hover:text-white">Calientes</button>
+      </div>
     </div>
-    <div class="flex items-center gap-3" style="opacity:0.7;">
-      <span>Bluesky · Mastodon · HN · GDELT · RSS</span>
+
+    <div class="flex-1 overflow-y-auto px-3 py-3 space-y-2.5" id="feed">
+
+      <!-- mention 1 -->
+      <div class="glass rounded-xl border border-violet/25 p-3 relative shadow-violet">
+        <div class="flex items-center gap-2 mb-1.5">
+          <div class="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-cyan bg-cyan/15 border border-cyan/40">BS</div>
+          <div class="min-w-0">
+            <div class="text-[12px] font-semibold truncate">@techie_punk</div>
+            <div class="text-[10px] font-mono text-slate2">Bluesky · hace 2 min</div>
+          </div>
+          <span class="ml-auto px-1.5 py-0.5 rounded text-[9px] font-bold text-emerald bg-emerald/10 border border-emerald/30">CRECIENDO</span>
+        </div>
+        <p class="text-[12px] text-white/90 leading-snug">La UE acaba de aprobar el AI Act en su fase final y nadie habla de las implicaciones reales para OSS. Hilo en fuego. 🔥</p>
+        <div class="flex items-center gap-3 mt-2 text-[10px] font-mono text-slate2">
+          <span class="flex items-center gap-1">❤ 234</span>
+          <span class="flex items-center gap-1">↻ 45</span>
+          <span class="flex items-center gap-1">💬 89</span>
+          <span class="ml-auto text-violet">conf 94%</span>
+        </div>
+      </div>
+
+      <!-- mention 2 -->
+      <div class="glass rounded-xl border border-borderx/70 p-3">
+        <div class="flex items-center gap-2 mb-1.5">
+          <div class="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-orange bg-orange/15 border border-orange/40">RD</div>
+          <div class="min-w-0">
+            <div class="text-[12px] font-semibold truncate">r/technology</div>
+            <div class="text-[10px] font-mono text-slate2">Reddit · hace 8 min</div>
+          </div>
+          <span class="ml-auto px-1.5 py-0.5 rounded text-[9px] font-bold text-emerald bg-emerald/10 border border-emerald/30">CRECIENDO</span>
+        </div>
+        <p class="text-[12px] text-white/90 leading-snug">"EU AI Act passes final hurdle" — 4.2k upvotes en 3h, comentarios multiplicándose exponencialmente.</p>
+        <div class="flex items-center gap-3 mt-2 text-[10px] font-mono text-slate2">
+          <span>▲ 4.2k</span>
+          <span>💬 612</span>
+          <span class="ml-auto text-violet">conf 88%</span>
+        </div>
+      </div>
+
+      <!-- mention 3 -->
+      <div class="glass rounded-xl border border-cyan/20 p-3 shadow-cyan">
+        <div class="flex items-center gap-2 mb-1.5">
+          <div class="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-mono font-bold text-white bg-white/10 border border-white/30">arX</div>
+          <div class="min-w-0">
+            <div class="text-[12px] font-semibold truncate">@solar_research</div>
+            <div class="text-[10px] font-mono text-slate2">arXiv · hace 15 min</div>
+          </div>
+          <span class="ml-auto px-1.5 py-0.5 rounded text-[9px] font-bold text-cyan bg-cyan/10 border border-cyan/30">SEÑAL DÉBIL</span>
+        </div>
+        <p class="text-[12px] text-white/90 leading-snug">Nuevo paper muestra correlación entre actividad solar anómala y patrones de red. Mencionado en 3 hilos de Bluesky.</p>
+        <div class="flex items-center gap-3 mt-2 text-[10px] font-mono text-slate2">
+          <span>citado 3×</span>
+          <span class="ml-auto text-cyan">conf 41%</span>
+        </div>
+      </div>
+
+      <!-- mention 4 -->
+      <div class="glass rounded-xl border border-borderx/70 p-3">
+        <div class="flex items-center gap-2 mb-1.5">
+          <div class="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-violet bg-violet/15 border border-violet/40">HN</div>
+          <div class="min-w-0">
+            <div class="text-[12px] font-semibold truncate">news.ycombinator</div>
+            <div class="text-[10px] font-mono text-slate2">HN · hace 22 min</div>
+          </div>
+          <span class="ml-auto px-1.5 py-0.5 rounded text-[9px] font-bold text-slate2 bg-slate2/10 border border-slate2/30">MURIENDO</span>
+        </div>
+        <p class="text-[12px] text-white/90 leading-snug">"Ask HN: Who is hiring?" thread perdiendo velocidad. −40% comentarios vs semana pasada.</p>
+        <div class="flex items-center gap-3 mt-2 text-[10px] font-mono text-slate2">
+          <span>▲ 892</span>
+          <span>💬 203</span>
+          <span class="ml-auto text-slate2">conf 22%</span>
+        </div>
+      </div>
+
+      <!-- mention 5 -->
+      <div class="glass rounded-xl border border-emerald/20 p-3 shadow-emerald">
+        <div class="flex items-center gap-2 mb-1.5">
+          <div class="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-emerald bg-emerald/15 border border-emerald/40">MS</div>
+          <div class="min-w-0">
+            <div class="text-[12px] font-semibold truncate">@climate_now@mastodon</div>
+            <div class="text-[10px] font-mono text-slate2">Mastodon · hace 31 min</div>
+          </div>
+          <span class="ml-auto px-1.5 py-0.5 rounded text-[9px] font-bold text-magenta bg-magenta/10 border border-magenta/30">CRECIENDO</span>
+        </div>
+        <p class="text-[12px] text-white/90 leading-snug">Cumbre climática COP30: filtración de borrador genera oleada de menciones en fediverso. +184% en 24h.</p>
+        <div class="flex items-center gap-3 mt-2 text-[10px] font-mono text-slate2">
+          <span>❤ 512</span>
+          <span>↻ 98</span>
+          <span class="ml-auto text-violet">conf 79%</span>
+        </div>
+      </div>
+
+      <!-- mention 6 -->
+      <div class="glass rounded-xl border border-magenta/20 p-3 shadow-magenta">
+        <div class="flex items-center gap-2 mb-1.5">
+          <div class="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-magenta bg-magenta/15 border border-magenta/40">GH</div>
+          <div class="min-w-0">
+            <div class="text-[12px] font-semibold truncate">bluesky-social/atproto</div>
+            <div class="text-[10px] font-mono text-slate2">GitHub · hace 44 min</div>
+          </div>
+          <span class="ml-auto px-1.5 py-0.5 rounded text-[9px] font-bold text-violet bg-violet/10 border border-violet/30">POR NACER</span>
+        </div>
+        <p class="text-[12px] text-white/90 leading-snug">Nuevo release de la API de Bluesky gana 47★ en 24h. Trending en HN paralelo.</p>
+        <div class="flex items-center gap-3 mt-2 text-[10px] font-mono text-slate2">
+          <span>★ 47</span>
+          <span>⑂ 12</span>
+          <span class="ml-auto text-violet">conf 67%</span>
+        </div>
+      </div>
+
     </div>
-  </div>
-</footer>
 
-<!-- DETAIL PANEL -->
-<div id="overlay" class="fixed inset-0 bg-black/75 z-50 opacity-0 pointer-events-none transition-opacity duration-300" onclick="closePanel()"></div>
-<aside id="detailPanel" class="panel-slide fixed right-0 top-0 bottom-0 w-full max-w-md z-50 glass border-l border-white/[0.08] translate-x-full overflow-y-auto">
-  <div class="p-6" id="panelContent"></div>
-</aside>
-
-<!-- TOAST -->
-<div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] opacity-0 pointer-events-none transition-all duration-300">
-  <div class="surface rounded-[10px] px-4 py-2.5 flex items-center gap-2 text-[13px] text-textmain" style="box-shadow: var(--shadow-lg);">
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#6FCF6A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7l3.5 3.5L12 4"/></svg>
-    <span id="toastText"></span>
-  </div>
+    <!-- footer status -->
+    <div class="px-4 py-3 border-t border-borderx/60 glass">
+      <div class="flex items-center justify-between text-[10px] font-mono">
+        <div class="flex items-center gap-1.5">
+          <span class="relative flex h-1.5 w-1.5"><span class="absolute inline-flex h-full w-full rounded-full bg-emerald opacity-75 blink"></span><span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald"></span></span>
+          <span class="text-slate2">stream conectado</span>
+        </div>
+        <span class="text-slate2">412 ev/min</span>
+      </div>
+    </div>
+  </aside>
 </div>
 
 <script>
-const trends = [
-  {
-    id: 1, title: "Regulación de IA en la UE", state: "creciendo",
-    metric: "+312% / 24h",
-    briefing: "Borrador filtrado de la Comisión Europea genera debate en Bluesky y r/spain. 14 posts en 2h, sin cobertura en medios tradicionales aún.",
-    sources: ["Bluesky", "Reddit"], time: "hace 2h",
-    sparkData: [2, 3, 2, 5, 8, 12, 18, 25, 38, 52, 68, 82],
-    velocity: "82 menc/h", confidence: "82%", firstSeen: "hace 2h 14min",
-    leadTime: "1h 36min antes que El Confidencial",
-    sourcesDetail: [{name:"Bluesky", count:9}, {name:"Reddit", count:5}],
-    mentions: [
-      {author:"@ia_policy_es", name:"IA Policy España", source:"Bluesky", text:"El borrador filtrado sobre IA general del artículo 7 es preocupante. Define 'modelo de uso general' de forma demasiado amplia y podría afectar a devs independientes que fine-tunean modelos open source.", time:"hace 2h", date:"30 jul, 14:32", likes:1243, reposts:284, replies:97, views:"18,4K", verified:true, avatar:"#38BDF8"},
-      {author:"@dev_es", name:"Dev España", source:"Bluesky", text:"Hilo sobre implicaciones del artículo 7 para devs independientes. Si se aprueba tal cual, cualquier dev que use un modelo de >10^9 params tendría que registrar el uso. Absurdo.", time:"hace 1h", date:"30 jul, 15:18", likes:456, reposts:112, replies:43, views:"7,2K", verified:false, avatar:"#9CA5DC"},
-      {author:"u/tech_observer", name:"Tech Observer", source:"Reddit", text:"¿Alguien leyó el borrador de la UE sobre IA? Lo subí a r/spain pero pasó desaparecido. Ahora está explotando en Bluesky.", time:"hace 45min", date:"30 jul, 15:47", score:847, comments:213, upvoteRatio:94, crossposts:4, avatar:"#FB923C"},
-    ]
-  },
-  {
-    id: 2, title: "Brote de actividad solar", state: "por nacer",
-    metric: "señal débil",
-    briefing: "Preprint de arXiv sobre tormenta solar mencionado por 3 cuentas técnicas. Señal débil pero de calidad alta en el originador.",
-    sources: ["arXiv", "Bluesky"], time: "hace 45min",
-    sparkData: [0, 0, 1, 0, 1, 2, 1, 2, 3, 2, 3, 4],
-    velocity: "4 menc/h", confidence: "65%", firstSeen: "hace 45min",
-    sourcesDetail: [{name:"arXiv", count:1}, {name:"Bluesky", count:3}],
-    mentions: [
-      {author:"@solar_physics", name:"Solar Physics Daily", source:"Bluesky", text:"Nuevo preprint sobre ciclo solar 25 — los datos son significativos. Tormenta clase X9.3 detectada, la mayor del año. Si se confirma, las auroras van a ser visibles mucho más al sur de lo habitual.", time:"hace 45min", date:"30 jul, 15:45", likes:89, reposts:34, replies:12, views:"2,1K", verified:true, avatar:"#38BDF8"},
-      {author:"@astro_es", name:"Astro España", source:"Bluesky", text:"Si esto se confirma, las auroras van a ser visibles mucho más al sur. Estar atentos al KP index esta noche.", time:"hace 30min", date:"30 jul, 16:00", likes:67, reposts:28, replies:8, views:"1,8K", verified:false, avatar:"#9CA5DC"},
-    ]
-  },
-  {
-    id: 3, title: "Despidos en tech", state: "muriendo",
-    metric: "−40% velocity",
-    briefing: "Tema de despidos tech pierde tracción después de 3 días. Velocity decreciendo 40% vs ayer. Ya no genera conversación nueva.",
-    sources: ["HN", "Reddit"], time: "hace 3 días",
-    sparkData: [45, 52, 48, 40, 35, 28, 22, 18, 15, 12, 10, 8],
-    velocity: "8 menc/h", confidence: "85%", firstSeen: "hace 3 días",
-    sourcesDetail: [{name:"HN", count:12}, {name:"Reddit", count:8}],
-    mentions: [
-      {author:"throwaway_dev", name:"anonymous", source:"HN", text:"Another round of layoffs at big tech. This time hitting senior engineers. The pattern is clear: AI is replacing mid-level work.", time:"hace 1 día", date:"29 jul, 11:22", points:342, comments:128, rank:4, timeOnFront:"8h en portada", avatar:"#F87171"},
-    ]
-  },
-  {
-    id: 4, title: "Cripto recupera", state: "nacida",
-    metric: "recién detectada",
-    briefing: "Subreddit r/CryptoCurrency muestra aumento de actividad positiva tras semana de baja. Sentimiento cambiando de negativo a neutral.",
-    sources: ["Reddit"], time: "hace 1h",
-    sparkData: [5, 4, 3, 4, 6, 8, 10, 14, 18, 22, 28, 35],
-    velocity: "35 menc/h", confidence: "70%", firstSeen: "hace 1h",
-    sourcesDetail: [{name:"Reddit", count:14}],
-    mentions: [
-      {author:"u/crypto_watch", name:"Crypto Watch", source:"Reddit", text:"BTC sube 5% en 1h — primero en 2 semanas. ¿Cambio de tendencia o bounce muerto? Volume está 40% por encima de la media de 7d.", time:"hace 50min", date:"30 jul, 15:40", score:1247, comments:389, upvoteRatio:91, crossposts:2, avatar:"#FB923C"},
-      {author:"u/satoshi_es", name:"Satoshi ES", source:"Reddit", text:"¿Cambió el sentimiento o es pump? Mirando los wallets grandes, hay acumulación en las últimas 4h. Pero con este market todo puede ser fake.", time:"hace 30min", date:"30 jul, 16:00", score:456, comments:98, upvoteRatio:87, crossposts:0, avatar:"#FB923C"},
-    ]
-  },
-  {
-    id: 5, title: "Cumbre climática", state: "creciendo",
-    metric: "+184% / 24h",
-    briefing: "Decisión de la ONU sobre fondos climáticos empieza a viralizar en Mastodon y medios ES. Cobertura cruzada emergiendo.",
-    sources: ["Mastodon", "RSS"], time: "hace 5h",
-    sparkData: [3, 4, 3, 5, 7, 6, 9, 14, 20, 28, 35, 42],
-    velocity: "42 menc/h", confidence: "78%", firstSeen: "hace 5h",
-    leadTime: "2h antes que El Mundo",
-    sourcesDetail: [{name:"Mastodon", count:18}, {name:"RSS", count:8}],
-    mentions: [
-      {author:"@climate_es@masto.es", name:"Climate España", source:"Mastodon", text:"La ONU aprobó fondos climáticos — esto es enorme. $300B anual para países en desarrollo. La conversación empezó en Mastodon 2h antes de que El Mundo lo publique.", time:"hace 5h", date:"30 jul, 11:30", likes:234, reposts:89, replies:34, views:"5,6K", verified:false, avatar:"#9CA5DC"},
-      {author:"El Confidencial", name:"El Confidencial", source:"RSS", text:"La ONU reached agreement on climate funds after 36h of negotiations", time:"hace 4h", date:"30 jul, 12:45", likes:0, reposts:0, replies:0, views:"", verified:true, avatar:"#A89A85"},
-    ]
-  },
-  {
-    id: 6, title: "Nueva API de Bluesky", state: "por nacer",
-    metric: "47 ★ / 24h",
-    briefing: "GitHub trending: nuevo SDK para Bluesky firehose. 47 stars en 1 día. Mencionado en HN por 2 usuarios técnicos.",
-    sources: ["GitHub", "HN"], time: "hace 30min",
-    sparkData: [0, 0, 5, 8, 12, 18, 22, 28, 35, 40, 44, 47],
-    velocity: "47 ★/24h", confidence: "68%", firstSeen: "hace 30min",
-    sourcesDetail: [{name:"GitHub", count:1}, {name:"HN", count:2}],
-    mentions: [
-      {author:"@bluesky-dev", name:"Bluesky Dev", source:"GitHub", text:"New firehose SDK — 3x faster than official, handles backpressure automatically. Open source, MIT license.", time:"hace 30min", date:"30 jul, 16:00", stars:47, forks:3, language:"TypeScript", avatar:"#A8AFCD"},
-      {author:"tptacek", name:"tptacek", source:"HN", text:"This is actually well designed. The backpressure handling alone makes it worth using over the official client.", time:"hace 15min", date:"30 jul, 16:15", points:89, comments:23, rank:12, timeOnFront:"subiendo", avatar:"#F87171"},
-    ]
-  }
-];
+  // Waveform bars
+  (function(){
+    const wf = document.getElementById('waveform');
+    if(!wf) return;
+    const n = 22;
+    for(let i=0;i<n;i++){
+      const b = document.createElement('div');
+      b.className = 'wf-bar';
+      b.style.height = (10 + Math.random()*22) + 'px';
+      b.style.animationDelay = (Math.random()*1).toFixed(2) + 's';
+      b.style.animationDuration = (0.6 + Math.random()*0.8).toFixed(2) + 's';
+      wf.appendChild(b);
+    }
+  })();
 
-const stateConfig = {
-  'creciendo': { label: 'Creciendo', color: '#EE7C3F', color2: '#F5A875', barClass: 'bar-ember', pulse: true  },
-  'por nacer': { label: 'Por nacer', color: '#8E9BE8', color2: '#A8B2EE', barClass: 'bar-lavender', pulse: false },
-  'nacida':    { label: 'Nacida',    color: '#2DBE85', color2: '#5DD4A4', barClass: 'bar-sage',     pulse: false },
-  'muriendo':  { label: 'Muriendo',  color: '#7B8595', color2: '#9AA3B0', barClass: 'bar-ash',      pulse: false },
-};
+  // No-scrollbar util
+  const style = document.createElement('style');
+  style.textContent = '.no-scrollbar::-webkit-scrollbar{display:none}.no-scrollbar{scrollbar-width:none}';
+  document.head.appendChild(style);
 
-const sourceConfig = {
-  'Bluesky':  { color: '#38BDF8', icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 10.8c-1.6-3.1-5.9-8.9-9.9-8.9C.5 1.9 0 4.4 0 6.3c0 1.6.8 7.9 1.3 9.1.6 1.4 2.4 2.2 3.7 1.4 2-1.2 3.9-4.3 5.1-6.1 1.6 2.7 3.1 5.4 5.1 6.1 1.3.6 3.1-.2 3.7-1.4.5-1.2 1.3-7.5 1.3-9.1 0-1.9-.5-4.4-2.1-4.4-4 0-8.3 5.8-9.9 8.9z"/></svg>` },
-  'Reddit':    { color: '#FB923C', icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.6 0 12 0zm5.01 4.74c.69 0 1.25.56 1.25 1.25s-.56 1.25-1.25 1.25-1.25-.56-1.25-1.25.56-1.25 1.25-1.25zM12 19.5c-3.86 0-7-2.69-7-6 0-.31.03-.62.08-.92-.55-.31-.92-.89-.92-1.56 0-.99.81-1.8 1.8-1.8.48 0 .92.19 1.24.49 1.05-.7 2.48-1.15 4.06-1.21l.87-4.1c.04-.18.21-.3.39-.26l2.87.61c.2-.42.62-.71 1.12-.71.69 0 1.25.56 1.25 1.25s-.56 1.25-1.25 1.25-1.21-.5-1.25-1.13l-2.57-.55-.78 3.67c1.55.07 2.95.52 3.98 1.21.32-.3.76-.49 1.24-.49.99 0 1.8.81 1.8 1.8 0 .67-.37 1.25-.92 1.56.05.3.08.61.08.92 0 3.31-3.14 6-7 6zm-3.5-4.5c-.69 0-1.25.56-1.25 1.25S7.81 17.5 8.5 17.5s1.25-.56 1.25-1.25-.56-1.25-1.25-1.25zm7 0c-.69 0-1.25.56-1.25 1.25s.56 1.25 1.25 1.25 1.25-.56 1.25-1.25-.56-1.25-1.25-1.25z"/></svg>` },
-  'arXiv':     { color: '#B31B1B', icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M8 8l8 8M16 8l-8 8"/></svg>` },
-  'HN':        { color: '#F87171', icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3 1h18v22H3z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M7 7l3 6-3 4M17 7l-3 6 3 4" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>` },
-  'Mastodon':  { color: '#9CA5DC', icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M23.27 5.33c-.36-2.67-2.7-4.77-5.47-5.18C17.33.07 15.55 0 12.04 0H12c-3.51 0-4.26.07-5.7.15C3.55.56 1.21 2.66.85 5.33.69 6.62.68 8.02.69 9.27c.02 2.03.05 3.38.09 4.75.15 5.32 1.07 7.69 2.4 8.93 1.7 1.58 4.5 1.74 6.49 1.84 1.7.08 7.04.12 8.83-.04 1.79-.16 3.5-.55 4.84-1.84 1.33-1.24 2.25-3.61 2.4-8.93.04-1.37.07-2.72.09-4.75.01-1.25 0-2.65-.16-3.94z"/></svg>` },
-  'RSS':       { color: '#F59E0B', icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M4 4v3.5C13.17 7.5 16.5 10.83 16.5 20H20C20 8.5 15.5 4 4 4zm0 6v3.5c3.59 0 6.5 2.91 6.5 6.5H14c0-5.52-4.48-10-10-10zm2 8a2 2 0 11-4 0 2 2 0 014 0z"/></svg>` },
-  'GitHub':    { color: '#A8AFCD', icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.44 9.8 8.21 11.39.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.75.08-.73.08-.73 1.21.09 1.84 1.24 1.84 1.24 1.07 1.84 2.81 1.31 3.5 1 .11-.78.42-1.31.76-1.61-2.67-.3-5.47-1.34-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.12-.3-.54-1.52.12-3.18 0 0 1.01-.32 3.3 1.23.96-.27 1.98-.4 3-.41 1.02.01 2.04.14 3 .41 2.29-1.55 3.3-1.23 3.3-1.23.66 1.66.24 2.88.12 3.18.77.84 1.24 1.91 1.24 3.22 0 4.61-2.81 5.63-5.49 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.22.7.83.58C20.57 21.8 24 17.3 24 12c0-6.63-5.37-12-12-12z"/></svg>` },
-};
-
-// Interaction icons (Lucide-style, stroke 1.6, currentColor)
-const intIcons = {
-  like:    `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`,
-  repost:  `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>`,
-  reply:   `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>`,
-  views:   `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`,
-  score:   `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>`,
-  comment: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`,
-  star:    `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`,
-  fork:    `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" y1="9" x2="6" y2="21"/></svg>`,
-};
-
-function renderSparkline(data, color, opts = {}) {
-  const max = Math.max(...data, 1);
-  const w = 100, h = opts.height || 38;
-  const stepX = w / (data.length - 1);
-  const points = data.map((v, i) => `${i * stepX},${h - (v / max) * (h - 6) - 3}`).join(' ');
-  const areaPoints = `0,${h} ${points} ${w},${h}`;
-  const gradId = `grad-${Math.random().toString(36).slice(2,8)}`;
-  const lastX = (data.length-1)*stepX;
-  const lastY = h - (data[data.length-1]/max)*(h-6) - 3;
-  const strokeWidth = opts.stroke || 1.85;
-  const baselineY = h - 0.5;
-  return `
-    <svg width="100%" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" class="overflow-visible" style="display:block;">
-      <defs>
-        <linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="${color}" stop-opacity="0.10"/>
-          <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
-        </linearGradient>
-      </defs>
-      <!-- Subtle baseline grid -->
-      <line x1="0" y1="${baselineY}" x2="${w}" y2="${baselineY}" stroke="rgba(255,255,255,0.04)" stroke-width="0.5" stroke-dasharray="2 2"/>
-      <!-- Area fill (gradient from color to transparent — Linear/Arc signature) -->
-      <polygon points="${areaPoints}" fill="url(#${gradId})"/>
-      <!-- Solid line -->
-      <polyline points="${points}" fill="none" stroke="${color}" stroke-width="${strokeWidth}" stroke-linecap="round" stroke-linejoin="round" class="spark-line" vector-effect="non-scaling-stroke"/>
-      <!-- Single end dot -->
-      <circle cx="${lastX}" cy="${lastY}" r="1.75" fill="${color}" class="spark-dot"/>
-    </svg>
-  `;
-}
-
-function renderMention(m, stateColor) {
-  const sc = sourceConfig[m.source] || { color: stateColor, icon: '' };
-  const initials = (m.name || m.author || '?').replace(/^[@u/]+/, '').slice(0, 2).toUpperCase();
-
-  let metrics = '';
-  if (m.likes !== undefined) {
-    metrics = `
-      <div class="flex items-center gap-3.5 mt-2.5 text-textmute">
-        <span class="mention-metric flex items-center gap-1 text-[11px] hover:text-textsec" title="${m.likes.toLocaleString()} me gusta"><span class="metric-icon opacity-60">${intIcons.like}</span><span class="mono-num">${m.likes > 999 ? (m.likes/1000).toFixed(1)+'K' : m.likes}</span></span>
-        ${m.reposts !== undefined ? `<span class="mention-metric flex items-center gap-1 text-[11px] hover:text-textsec" title="${m.reposts} reposts"><span class="metric-icon opacity-60">${intIcons.repost}</span><span class="mono-num">${m.reposts}</span></span>` : ''}
-        ${m.replies !== undefined ? `<span class="mention-metric flex items-center gap-1 text-[11px] hover:text-textsec" title="${m.replies} respuestas"><span class="metric-icon opacity-60">${intIcons.reply}</span><span class="mono-num">${m.replies}</span></span>` : ''}
-        ${m.views ? `<span class="mention-metric flex items-center gap-1 text-[11px] hover:text-textsec" title="${m.views} vistas"><span class="metric-icon opacity-60">${intIcons.views}</span><span class="mono-num">${m.views}</span></span>` : ''}
-      </div>`;
-  } else if (m.score !== undefined) {
-    metrics = `
-      <div class="flex items-center gap-3.5 mt-2.5 text-textmute">
-        <span class="mention-metric flex items-center gap-1 text-[11px] hover:text-textsec" title="Score ${m.score}"><span class="metric-icon opacity-60" style="color:#FB923C;">${intIcons.score}</span><span class="mono-num">${m.score}</span></span>
-        <span class="mention-metric flex items-center gap-1 text-[11px] hover:text-textsec" title="${m.comments} comentarios"><span class="metric-icon opacity-60">${intIcons.comment}</span><span class="mono-num">${m.comments}</span></span>
-        ${m.upvoteRatio ? `<span class="mention-metric flex items-center gap-1 text-[11px] hover:text-textsec" title="Upvote ratio ${m.upvoteRatio}%"><div class="w-8 h-1 rounded-full bg-white/10 overflow-hidden"><div class="h-full rounded-full" style="width:${m.upvoteRatio}%; background:#FB923C;"></div></div><span class="mono-num">${m.upvoteRatio}%</span></span>` : ''}
-        ${m.crossposts ? `<span class="mention-metric flex items-center gap-1 text-[11px] hover:text-textsec" title="${m.crossposts} crossposts"><span class="metric-icon opacity-60">${intIcons.repost}</span><span class="mono-num">${m.crossposts}</span></span>` : ''}
-      </div>`;
-  } else if (m.points !== undefined) {
-    metrics = `
-      <div class="flex items-center gap-3.5 mt-2.5 text-textmute">
-        <span class="mention-metric flex items-center gap-1 text-[11px] hover:text-textsec" title="${m.points} points"><span class="metric-icon opacity-60" style="color:#F87171;">${intIcons.score}</span><span class="mono-num">${m.points}</span></span>
-        <span class="mention-metric flex items-center gap-1 text-[11px] hover:text-textsec" title="${m.comments} comentarios"><span class="metric-icon opacity-60">${intIcons.comment}</span><span class="mono-num">${m.comments}</span></span>
-        ${m.rank ? `<span class="mention-metric flex items-center gap-1 text-[11px] hover:text-textsec" title="Rank #${m.rank} en front page"><span class="metric-icon opacity-60">${intIcons.star}</span><span class="mono-num">#${m.rank}</span></span>` : ''}
-        ${m.timeOnFront ? `<span class="text-[10px] text-textmute ml-auto">${m.timeOnFront}</span>` : ''}
-      </div>`;
-  } else if (m.stars !== undefined) {
-    metrics = `
-      <div class="flex items-center gap-3.5 mt-2.5 text-textmute">
-        <span class="mention-metric flex items-center gap-1 text-[11px] hover:text-textsec" title="${m.stars} stars"><span class="metric-icon opacity-60" style="color:#A8AFCD;">${intIcons.star}</span><span class="mono-num">${m.stars} ★</span></span>
-        ${m.forks !== undefined ? `<span class="mention-metric flex items-center gap-1 text-[11px] hover:text-textsec" title="${m.forks} forks"><span class="metric-icon opacity-60">${intIcons.fork}</span><span class="mono-num">${m.forks}</span></span>` : ''}
-        ${m.language ? `<span class="text-[10px] text-textmute ml-auto">${m.language}</span>` : ''}
-      </div>`;
-  }
-
-  return `
-    <div class="mention-card p-3.5 surface-inset rounded-[8px]">
-      <div class="flex items-start gap-3">
-        <!-- Avatar -->
-        <div class="w-7 h-7 rounded-full shrink-0 flex items-center justify-center text-[10px] font-semibold text-white" style="background: linear-gradient(135deg, ${m.avatar || sc.color}, ${sc.color}80);">
-          ${initials}
-        </div>
-        <div class="flex-1 min-w-0">
-          <!-- Author + source + date -->
-          <div class="flex items-center gap-1.5 mb-1 flex-wrap">
-            <span class="text-[12px] font-medium text-textmain">${m.name || m.author}</span>
-            ${m.verified ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="${sc.color}" class="shrink-0"><path d="M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.71-3.998-3.818-3.998-.47 0-.92.084-1.336.25C14.818 2.415 13.51 1.5 12 1.5s-2.816.917-3.437 2.25c-.415-.165-.866-.25-1.336-.25-2.11 0-3.818 1.79-3.818 4 0 .494.083.964.237 1.4-1.272.65-2.147 2.018-2.147 3.6 0 1.495.782 2.798 1.942 3.486-.02.17-.032.34-.032.514 0 2.21 1.708 4 3.818 4 .47 0 .92-.086 1.335-.25.62 1.334 1.926 2.25 3.437 2.25 1.512 0 2.818-.916 3.437-2.25.415.164.866.25 1.336.25 2.11 0 3.818-1.79 3.818-4 0-.174-.012-.344-.033-.514 1.16-.688 1.943-1.99 1.943-3.486z"/><path d="M9.5 16.5l-3-3 1.5-1.5 1.5 1.5 4.5-4.5 1.5 1.5z" fill="#0A0D18"/></svg>` : ''}
-            <span class="text-[11px] text-textmute">${m.author}</span>
-            <span class="flex items-center gap-0.5 ml-auto text-[10px] text-textmute">
-              <span style="color:${sc.color}; opacity:0.7;">${sc.icon}</span>
-              <span class="mono-num">${m.time}</span>
-            </span>
-          </div>
-          <!-- Content -->
-          <p class="text-[13px] text-textsec leading-relaxed mb-1">${m.text}</p>
-          <!-- Date exact -->
-          <p class="mono-num text-[10px] text-textmute/70">${m.date}</p>
-          ${metrics}
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-function renderCard(t, index) {
-  const cfg = stateConfig[t.state];
-  const isHero = index === 0 && t.state === 'creciendo';
-  return `
-    <article class="trend-card ${cfg.pulse ? 'is-live' : ''} ${isHero ? 'is-hero' : ''} rounded-[10px] overflow-hidden cursor-pointer fade-up"
-             data-state="${t.state}"
-             style="animation-delay: ${Math.min(index, 6) * 0.06}s; --state-color: ${cfg.color}; --state-color-2: ${cfg.color2};"
-             onclick="openPanel(${t.id})"
-             tabindex="0"
-             onkeydown="if(event.key==='Enter')openPanel(${t.id})">
-      <div class="top-rail"></div>
-      <div class="p-6">
-        <div class="flex items-center justify-between mb-4">
-          <div class="flex items-center gap-2">
-            <span class="status-dot" data-active="${cfg.pulse}"></span>
-            <span class="caps" style="color:${cfg.color}">${cfg.label}</span>
-            <span class="hero-badge items-center gap-1 ml-1 px-1.5 py-0.5 rounded text-[9px] font-semibold mono-num" style="background:rgba(238,124,63,0.15); color:${cfg.color}; box-shadow: inset 0 0 0 1px rgba(238,124,63,0.30); letter-spacing:0.06em;">● LIVE</span>
-          </div>
-          <span class="mono-num text-[11px]" style="color:${cfg.color}; opacity:0.9;">${t.metric}</span>
-        </div>
-        <h3 class="card-title text-[24px] leading-[1.15] mb-1.5 text-textmain">${t.title}</h3>
-        <p class="text-[13px] text-textsec leading-[1.55] mb-5" style="opacity:0.75;">${t.briefing}</p>
-        <div class="mb-1 -mx-1 spark-wrap">${renderSparkline(t.sparkData, cfg.color, { height: 44, stroke: 1.85 })}</div>
-        <!-- Hover reveal: velocity + confidence -->
-        <div class="reveal-on-hover flex items-center gap-3 text-[10px] text-textmute mono-num">
-          <span>vel: ${t.velocity}</span><span class="opacity-40">·</span><span>conf: ${t.confidence}</span>
-        </div>
-        <div class="flex items-center justify-between pt-4 mt-4 border-t border-white/[0.05]">
-          <div class="flex items-center gap-1.5" style="opacity:0.55;">
-            ${t.sources.map(s => {
-              const sc = sourceConfig[s] || {color:cfg.color, icon:''};
-              return `<span class="src-pill flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] text-textsec" style="background:rgba(255,255,255,0.02); box-shadow: inset 0 0 0 1px var(--hairline);"><span style="color:${sc.color}; opacity:0.8;">${sc.icon}</span>${s}</span>`;
-            }).join('')}
-          </div>
-          <span class="mono-num text-[10px] text-textmute" style="opacity:0.5;">${t.time}</span>
-        </div>
-      </div>
-    </article>
-  `;
-}
-
-function openPanel(id) {
-  const t = trends.find(x => x.id === id);
-  if (!t) return;
-  const cfg = stateConfig[t.state];
-  document.getElementById('panelContent').innerHTML = `
-    <div class="flex items-center justify-between mb-7">
-      <div class="flex items-center gap-2.5">
-        <span class="status-dot" data-active="${cfg.pulse}" style="background:${cfg.color};"></span>
-        <span class="caps" style="color:${cfg.color}">${cfg.label}</span>
-      </div>
-      <button onclick="closePanel()" class="text-textmute hover:text-textmain transition p-1 -mr-1" aria-label="Cerrar">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
-      </button>
-    </div>
-    <h2 class="display text-[30px] leading-[1.08] mb-2 text-textmain">${t.title}</h2>
-    <p class="caps text-textmute mb-5">primera detección · <span class="mono-num normal-case tracking-normal text-textsec ml-1">${t.firstSeen}</span></p>
-
-    ${t.leadTime ? `
-    <div class="mb-5 p-3.5 rounded-[10px] flex items-center gap-3" style="background: linear-gradient(135deg, rgba(111,207,106,0.10), rgba(111,207,106,0.04)); box-shadow: inset 0 0 0 1px rgba(111,207,106,0.22);">
-      <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style="background: rgba(111,207,106,0.15); box-shadow: inset 0 0 0 1px rgba(111,207,106,0.30);">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6FCF6A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-      </div>
-      <div>
-        <p class="text-[12px] text-textsec">Detectaste esto <strong class="text-sage">${t.leadTime}</strong></p>
-        <p class="text-[10px] text-textmute mt-0.5">comparado con cobertura en medios tradicionales</p>
-      </div>
-    </div>` : ''}
-
-    <div class="mb-5 p-4 surface-inset rounded-[10px]">
-      <p class="caps text-textmute mb-2">Briefing de Nemotron</p>
-      <p class="text-[13px] text-textsec leading-relaxed">${t.briefing}</p>
-      <p class="mono-num text-[10px] text-textmute mt-3 pt-3 border-t border-white/[0.05]">Nemotron-3-Ultra-550B · 4.2s · 312 tokens</p>
-    </div>
-    <div class="grid grid-cols-2 gap-2.5 mb-5">
-      <div class="stat-tile p-3.5 rounded-[10px]" style="--tile-accent:${cfg.color}">
-        <p class="caps text-textmute mb-1.5">Velocity</p>
-        <p class="mono-num text-[19px] font-semibold" style="color:${cfg.color}">${t.velocity}</p>
-      </div>
-      <div class="stat-tile p-3.5 rounded-[10px]" style="--tile-accent:${cfg.color2}">
-        <p class="caps text-textmute mb-1.5">Confianza</p>
-        <p class="mono-num text-[19px] font-semibold text-textmain">${t.confidence}</p>
-      </div>
-    </div>
-    <div class="mb-5 p-4 surface-inset rounded-[10px]">
-      <div class="flex items-center justify-between mb-3">
-        <p class="caps text-textmute">Evolución 24h</p>
-        <span class="mono-num text-[10px] text-textmute">12 puntos · 2h interval</span>
-      </div>
-      ${renderSparkline(t.sparkData, cfg.color, { height: 56, stroke: 2, pulse: cfg.pulse })}
-    </div>
-    <div class="mb-5">
-      <p class="caps text-textmute mb-3">Fuentes verificables</p>
-      <div class="space-y-1.5">
-        ${t.sourcesDetail.map(s => {
-          const sc = sourceConfig[s.name] || {color:cfg.color, icon:''};
-          return `<div class="flex items-center gap-3 p-2.5 surface-inset rounded-[8px] src-pill">
-            <span style="color:${sc.color}; opacity:0.85;">${sc.icon}</span>
-            <span class="text-[13px] text-textsec flex-1">${s.name}</span>
-            <span class="mono-num text-[11px] text-textmute">${s.count} menciones</span>
-          </div>`;
-        }).join('')}
-      </div>
-    </div>
-    <div class="mb-6">
-      <div class="flex items-center justify-between mb-3">
-        <p class="caps text-textmute">Menciones recientes</p>
-        <span class="mono-num text-[10px] text-textmute">${t.mentions.length} capturadas</span>
-      </div>
-      <div class="space-y-2">
-        ${t.mentions.map(m => renderMention(m, cfg.color)).join('')}
-      </div>
-    </div>
-    <div class="flex gap-2 sticky bottom-0 -mx-6 px-6 py-3 mt-2 glass border-t border-white/[0.06]" style="background:rgba(10,13,24,0.92);">
-      <button class="flex-1 py-2.5 rounded-[8px] text-[13px] font-semibold transition hover:brightness-110" style="background:${cfg.color}; color:#0A0D18; box-shadow: 0 4px 12px -2px ${cfg.color}50, inset 0 1px 0 0 rgba(255,255,255,0.25);" onclick="showToast('Tendencia atizada — la seguirás')">Atizar (seguir)</button>
-      <button class="px-4 py-2.5 rounded-[8px] text-[13px] surface-inset text-textsec hover:text-textmain transition" onclick="showToast('Guardada como brasa')">Guardar</button>
-    </div>
-  `;
-  document.getElementById('overlay').classList.remove('opacity-0', 'pointer-events-none');
-  document.getElementById('overlay').classList.add('opacity-100');
-  document.getElementById('detailPanel').classList.remove('translate-x-full');
-}
-
-function closePanel() {
-  document.getElementById('overlay').classList.add('opacity-0', 'pointer-events-none');
-  document.getElementById('overlay').classList.remove('opacity-100');
-  document.getElementById('detailPanel').classList.add('translate-x-full');
-}
-
-function filterPills(el) {
-  document.querySelectorAll('.pill').forEach(p => p.dataset.active = 'false');
-  el.dataset.active = 'true';
-}
-
-function showToast(msg) {
-  const toast = document.getElementById('toast');
-  document.getElementById('toastText').textContent = msg;
-  toast.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-2');
-  toast.classList.add('opacity-100', 'toast-enter');
-  clearTimeout(window._toastTimer);
-  window._toastTimer = setTimeout(() => {
-    toast.classList.add('opacity-0', 'pointer-events-none');
-    toast.classList.remove('opacity-100', 'toast-enter');
-  }, 2200);
-}
-
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePanel(); });
-document.addEventListener('keydown', (e) => { if (e.key === 'Tab') document.body.classList.add('keyboard-nav'); });
-document.addEventListener('mousedown', () => document.body.classList.remove('keyboard-nav'));
-
-// Scroll header elevation
-const header = document.getElementById('siteHeader');
-let ticking = false;
-window.addEventListener('scroll', () => {
-  if (!ticking) {
-    requestAnimationFrame(() => {
-      if (window.scrollY > 8) header.classList.add('scrolled');
-      else header.classList.remove('scrolled');
-      ticking = false;
-    });
-    ticking = true;
-  }
-}, { passive: true });
-
-// Render
-document.getElementById('trendsGrid').innerHTML = trends.map(renderCard).join('');
+  // Ambient particles
+  (function(){
+    const c = document.getElementById('particles');
+    if(!c) return;
+    const colors = ['#8B5CF6','#EC4899','#06B6D4','#10B981'];
+    for(let i=0;i<26;i++){
+      const p = document.createElement('div');
+      p.className = 'p';
+      const size = 1 + Math.random()*2.5;
+      p.style.width = size+'px';
+      p.style.height = size+'px';
+      p.style.left = (Math.random()*100)+'%';
+      p.style.bottom = '-10px';
+      p.style.background = colors[Math.floor(Math.random()*colors.length)];
+      p.style.boxShadow = '0 0 6px '+p.style.background;
+      p.style.animationDuration = (12 + Math.random()*18)+'s';
+      p.style.animationDelay = (Math.random()*20)+'s';
+      c.appendChild(p);
+    }
+  })();
 </script>
-
 </body>
 </html>
