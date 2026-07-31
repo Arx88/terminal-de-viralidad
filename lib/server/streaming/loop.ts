@@ -84,10 +84,19 @@ export function updateEngineStatesFromIngest(mentions: RawMention[], durationMs:
     st.latencyMs = durationMs
     st.health = ingested > 0 ? 'online' : (st.enabled ? 'degraded' : 'offline')
   }
+  // Also update loop-level stats so /about reflects one-shot ingests
+  lastIngestAt = startTs
+  lastIngestDurationMs = durationMs
+  // Count truly NEW mentions (deduplicated) by re-running ingest
+  // — but we already ran ingestMentions in the caller, so just count the
+  // unique content hashes we saw this round.
+  const uniqueHashes = new Set<string>()
+  for (const m of mentions) uniqueHashes.add(m.contentHash)
+  totalIngested += uniqueHashes.size
+  tickCount++
 }
 
 async function tick(): Promise<void> {
-  tickCount++
   const startTs = Date.now()
   const activeSources = ENABLED_SOURCES.filter((s) => engineStates.get(s)?.enabled)
   if (activeSources.length === 0) {
