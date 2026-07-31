@@ -450,16 +450,9 @@ class GitHubAdapter implements Adapter {
 }
 
 // ---------------------------------------------------------------------------
-// X (Twitter) — stub vacío
-// X no aporta valor al detector de viralidad temprana. Las 6 fuentes
-// activas (Reddit, Bluesky, HN, RSS, GDELT, GitHub) son suficientes.
+// X (Twitter) — xcancel.com scraper (separate file for clarity)
 // ---------------------------------------------------------------------------
-class XAdapter implements Adapter {
-  source: SourceKey = 'x'
-  async fetch(): Promise<RawMention[]> {
-    return []
-  }
-}
+import { XAdapter } from '@/lib/server/ingest/x-adapter'
 
 // ---------------------------------------------------------------------------
 // Registry
