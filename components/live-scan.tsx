@@ -18,7 +18,10 @@ export function LiveScan() {
   }, [live])
 
   return (
-    <section className="relative overflow-hidden rounded-2xl border border-border bg-card">
+    <section
+      aria-label="Pipeline de captura y procesamiento en vivo"
+      className="relative overflow-hidden rounded-2xl border border-border bg-card"
+    >
       {/* top header band */}
       <header className="relative flex flex-wrap items-center justify-between gap-3 border-b border-border px-6 py-4">
         <div className="flex items-center gap-3">
@@ -79,7 +82,19 @@ export function LiveScan() {
           }}
         />
 
-        <ul className="relative flex items-stretch gap-2 overflow-x-auto pb-1 scrollbar-thin sm:gap-1 lg:gap-0 lg:overflow-visible">
+        {/* Direction legend — makes the input → output flow explicit. */}
+        <div className="mb-3 flex items-center justify-between text-[9.5px] font-semibold tracking-[0.2em] text-muted-foreground/70 uppercase">
+          <span>Entrada · {ENGINES.length} motores</span>
+          <span className="hidden sm:inline">
+            Procesamiento · deduplicación + scoring
+          </span>
+          <span>Salida · Radar</span>
+        </div>
+
+        <ul
+          className="relative flex items-stretch gap-2 overflow-x-auto pb-1 scrollbar-thin sm:gap-1 lg:gap-0 lg:overflow-visible"
+          aria-label={`Flujo del pipeline: ${ENGINES.length} motores de entrada convergen en el nodo Radar de salida`}
+        >
           {ENGINES.map(({ id, name, verbs }, i) => {
             const verb = live ? verbs[(phase + i) % verbs.length] : 'En pausa'
             const progress = live ? 18 + ((step * 17 + i * 29) % 80) : 4

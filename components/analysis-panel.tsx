@@ -28,11 +28,28 @@ const TONE: Record<Trend['tone'], string> = {
 }
 
 function DirIcon({ dir }: { dir: Trend['dir'] }) {
-  if (dir === 'up')
-    return <ArrowUpRight className="size-3.5 text-[var(--mint)]" strokeWidth={2.2} />
-  if (dir === 'down')
-    return <ArrowDownRight className="size-3.5 text-muted-foreground" strokeWidth={2.2} />
-  return <Equal className="size-3.5 text-muted-foreground" strokeWidth={2.2} />
+  const label =
+    dir === 'up'
+      ? 'Tendencia al alza: acelerándose'
+      : dir === 'down'
+        ? 'Tendencia a la baja: perdiendo tracción'
+        : 'Tendencia estable: sin variación significativa'
+  const Icon =
+    dir === 'up' ? ArrowUpRight : dir === 'down' ? ArrowDownRight : Equal
+  const color =
+    dir === 'up'
+      ? 'text-[var(--mint)]'
+      : 'text-muted-foreground'
+  return (
+    <span title={label} className="flex items-center">
+      <Icon
+        className={cn('size-3.5', color)}
+        strokeWidth={2.2}
+        aria-hidden="true"
+      />
+      <span className="sr-only">{label}</span>
+    </span>
+  )
 }
 
 function Sparkline({ trend, step }: { trend: Trend; step: number }) {
@@ -139,9 +156,16 @@ export function AnalysisPanel() {
         <button
           type="button"
           onClick={() => setScreen('explorar')}
-          className="cursor-pointer text-[12px] text-[oklch(0.72_0.16_300)] transition-opacity hover:underline hover:opacity-80"
+          aria-label="Ver todas las tendencias en la pantalla Explorar"
+          title="Ir a Explorar — ver todas las tendencias"
+          className="group/all flex cursor-pointer items-center gap-1 text-[12px] text-[oklch(0.72_0.16_300)] transition-opacity hover:underline hover:opacity-80"
         >
           Ver todo
+          <ArrowRight
+            className="size-3 transition-transform duration-200 group-hover/all:translate-x-0.5"
+            strokeWidth={2.2}
+            aria-hidden="true"
+          />
         </button>
       </div>
 
@@ -187,9 +211,24 @@ export function AnalysisPanel() {
                 </span>
                 <span className="flex shrink-0 items-center gap-2">
                   {alerts.includes(t.id) && (
-                    <BellRing className="size-3 text-[oklch(0.72_0.16_300)]" strokeWidth={2} />
+                    <span
+                      title={`Alerta activa: recibirás notificaciones cuando ${t.title} cambie de ritmo`}
+                      className="flex items-center text-[oklch(0.72_0.16_300)]"
+                    >
+                      <BellRing
+                        className="size-3"
+                        strokeWidth={2}
+                        aria-hidden="true"
+                      />
+                      <span className="sr-only">
+                        Alerta activa para {t.title}
+                      </span>
+                    </span>
                   )}
-                  <span className="text-[12px] text-muted-foreground tabular-nums">
+                  <span
+                    className="text-[12px] text-muted-foreground tabular-nums"
+                    title={`Última actualización: ${t.time}`}
+                  >
                     {t.time}
                   </span>
                   <DirIcon dir={t.dir} />
@@ -239,13 +278,17 @@ export function AnalysisPanel() {
                 TONE[selected.tone],
               )}
               style={{ background: 'oklch(1 0 0 / 7%)' }}
-              title="Nivel de actividad de la tendencia"
+              role="img"
+              aria-label={`Nivel de actividad: ${selected.heat}`}
+              title={`Nivel de actividad de la tendencia: ${selected.heat}`}
             >
               {selected.heat}
             </span>
             <span
               className="text-[12px] text-muted-foreground"
-              title="Puntuación de confianza del modelo (0–100)"
+              role="img"
+              aria-label={`Confianza del modelo: ${selected.confidence} de 100`}
+              title="Puntuación de confianza del modelo (0–100). Más alto = más fiable."
             >
               <CountUp
                 value={selected.confidence}
@@ -258,7 +301,9 @@ export function AnalysisPanel() {
           <div className="mt-4 flex items-end justify-between">
             <p
               className="flex items-baseline gap-1.5"
-              title="Menciones detectadas por hora en tiempo real"
+              role="img"
+              aria-label={`${selected.mentions} menciones por hora detectadas en tiempo real`}
+              title="Menciones detectadas por hora en tiempo real. Suma de posts, comentarios y artículos."
             >
               <CountUp
                 value={selected.mentions}
@@ -268,7 +313,9 @@ export function AnalysisPanel() {
             </p>
             <p
               className="text-right"
-              title="Variación porcentual vs mismo horario de ayer"
+              role="img"
+              aria-label={`Variación: ${selected.delta > 0 ? '+' : ''}${selected.delta} por ciento versus mismo horario de ayer`}
+              title="Variación porcentual vs mismo horario de ayer. Positivo = crecimiento."
             >
               <CountUp
                 value={selected.delta}
