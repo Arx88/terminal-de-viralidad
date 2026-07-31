@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>VIRAHUB · Regulación de IA en la UE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<style>
+  :root{
+    --bg:#07070b; --panel:#0a0a10; --card:#0e0e15; --card-2:#12121b;
+    --line:#1a1a24; --line-2:#262633;
+    --txt:#ededf2; --mut:#83838f; --mut2:#5b5b67;
+    --vio:#8b5cf6; --vio-2:#a78bfa; --vio-d:#6d28d9;
+    --org:#f97316; --org-2:#fb923c;
+    --grn:#34d399;
+    --r:14px;
+    --sb:264px; --rail:366px;
+    --font-d:'Space Grotesk',sans-serif;
+    --font-b:'Inter',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:var(--bg);color:var(--txt);font-family:var(--font-b);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  ::selection{background:rgba(139,92,246,.35)}
+  a{color:inherit;text-decoration:none}
+  i[data-lucide]{width:18px;height:18px;stroke-width:2}
+  button:focus-visible,a:focus-visible,[tabindex]:focus-visible,.search:focus-visible{outline:2px solid var(--vio-2);outline-offset:2px;border-radius:8px}
+
+  .app{display:grid;grid-template-columns:var(--sb) 1fr;min-height:100vh}
+  .workspace{position:relative;min-width:0}
+  .workspace::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+    background:radial-gradient(620px 380px at 78% -4%, rgba(139,92,246,.10), transparent 60%),
+               radial-gradient(520px 320px at 38% 8%, rgba(249,115,22,.06), transparent 60%)}
+  .body{display:grid;grid-template-columns:1fr var(--rail);gap:26px;padding:24px 30px 60px;position:relative;z-index:1;align-items:start}
+  .main{min-width:0;display:flex;flex-direction:column;gap:22px}
+  .rail{display:flex;flex-direction:column;gap:18px;position:sticky;top:96px}
+
+  /* sidebar */
+  .sidebar{position:sticky;top:0;height:100vh;align-self:start;background:linear-gradient(180deg,#0b0b12,#08080d);border-right:1px solid var(--line);display:flex;flex-direction:column;padding:22px 16px 16px;z-index:5}
+  .brand{display:flex;align-items:center;gap:11px;padding:4px 8px 22px}
+  .brand .mark{width:30px;height:30px;display:grid;place-items:center}
+  .brand .mark svg{width:26px;height:26px}
+  .brand b{font-family:var(--font-d);font-weight:700;font-size:20px;letter-spacing:.06em}
+  .nav{display:flex;flex-direction:column;gap:3px;margin-top:4px}
+  .nav a{display:flex;align-items:center;gap:13px;padding:10px 12px;border-radius:10px;color:var(--mut);font-weight:500;font-size:14px;position:relative;transition:.18s ease}
+  .nav a i{width:19px;height:19px}
+  .nav a:hover{color:var(--txt);background:#121219;transform:translateX(2px)}
+  .nav a.active{color:#fff;background:linear-gradient(90deg,rgba(139,92,246,.16),rgba(139,92,246,.04))}
+  .nav a.active::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:3px;border-radius:3px;background:var(--vio)}
+  .nav a.active i{color:var(--vio-2)}
+  .sb-spacer{flex:1}
+  .pro-card{border:1px solid rgba(139,92,246,.4);border-radius:14px;padding:15px 14px;background:linear-gradient(160deg,rgba(139,92,246,.12),rgba(139,92,246,.02));box-shadow:0 0 0 1px rgba(139,92,246,.06) inset, 0 12px 30px -18px rgba(139,92,246,.6)}
+  .pro-card .h{display:flex;align-items:center;gap:7px;color:var(--vio-2);font-weight:700;font-size:12px;letter-spacing:.08em}
+  .pro-card .h i{width:15px;height:15px}
+  .pro-card p{color:var(--vio-2);opacity:.78;font-size:12.5px;margin:9px 0 13px;line-height:1.45}
+  .pro-card button{width:100%;border:1px solid rgba(139,92,246,.5);background:rgba(139,92,246,.08);color:var(--vio-2);font-weight:600;font-size:13px;padding:9px;border-radius:9px;cursor:pointer;font-family:var(--font-b);transition:.18s}
+  .pro-card button:hover{background:rgba(139,92,246,.2);color:#fff}
+  .sb-user{display:flex;align-items:center;gap:11px;padding:14px 8px 2px;margin-top:14px;border-top:1px solid var(--line)}
+  .sb-user img{width:34px;height:34px;border-radius:50%;object-fit:cover;border:1px solid var(--line-2)}
+  .sb-user .nm{font-weight:600;font-size:13.5px}
+  .sb-user .tag{display:inline-block;margin-top:2px;font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--vio-2);background:rgba(139,92,246,.14);padding:1px 7px;border-radius:5px}
+  .sb-user .swap{margin-left:auto;color:var(--mut2);cursor:pointer;transition:.18s}
+  .sb-user .swap:hover{color:var(--txt)}
+
+  /* topbar */
+  .topbar{position:sticky;top:0;z-index:6;display:flex;align-items:center;gap:18px;padding:16px 30px;background:rgba(7,7,11,.78);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+  .back{display:flex;align-items:center;gap:8px;color:var(--mut);font-weight:500;white-space:nowrap;transition:.18s}
+  .back:hover{color:var(--txt)}
+  .back i{width:17px;height:17px}
+  .search{flex:1;max-width:760px;margin:0 auto;display:flex;align-items:center;gap:10px;background:#101017;border:1px solid var(--line);border-radius:11px;padding:10px 14px;color:var(--mut);transition:.18s;cursor:pointer}
+  .search:hover{border-color:var(--line-2);background:#13131b}
+  .search i{width:17px;height:17px}
+  .search-ph{flex:1;color:var(--mut2);font-size:14px}
+  .kbd{font-size:11px;color:var(--mut2);border:1px solid var(--line-2);border-radius:6px;padding:2px 7px;font-family:var(--font-d)}
+  .tb-right{display:flex;align-items:center;gap:18px;margin-left:auto}
+  .engines{display:flex;align-items:center;gap:8px;color:var(--mut);font-size:13px;white-space:nowrap}
+  .engines b{color:var(--txt);font-weight:600}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--grn);box-shadow:0 0 8px var(--grn)}
+  .dot.pulse{animation:pulse 1.8s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+  .bell{position:relative;color:var(--mut);cursor:pointer;transition:.18s}
+  .bell:hover{color:var(--txt)}
+  .bell .badge{position:absolute;top:-6px;right:-7px;background:var(--vio);color:#fff;font-size:10px;font-weight:700;width:16px;height:16px;border-radius:50%;display:grid;place-items:center;border:2px solid var(--bg)}
+  .tb-ava{width:34px;height:34px;border-radius:50%;object-fit:cover;border:1px solid var(--line-2);cursor:pointer}
+
+  /* buttons */
+  .actions{display:flex;align-items:center;gap:10px}
+  .btn{display:inline-flex;align-items:center;gap:8px;font-family:var(--font-b);font-weight:600;font-size:13px;padding:9px 14px;border-radius:10px;cursor:pointer;border:1px solid var(--line-2);background:#101017;color:var(--txt);transition:.18s}
+  .btn i{width:16px;height:16px}
+  .btn:hover{border-color:#34343f;background:#16161f}
+  .btn.vio{background:linear-gradient(180deg,rgba(139,92,246,.22),rgba(139,92,246,.12));border-color:rgba(139,92,246,.5);color:var(--vio-2)}
+  .btn.vio:hover{background:rgba(139,92,246,.3);color:#fff}
+  .btn.vio.on{background:var(--vio);border-color:var(--vio);color:#fff}
+  .btn.icon{padding:9px 11px}
+  .btn.on{border-color:rgba(249,115,22,.5);color:var(--org-2)}
+
+  /* theme header */
+  .theme-head{display:grid;grid-template-columns:1fr auto;gap:30px;align-items:start}
+  .pill-grow{display:inline-flex;align-items:center;gap:7px;font-size:11.5px;font-weight:700;letter-spacing:.06em;color:var(--org-2);background:rgba(249,115,22,.12);border:1px solid rgba(249,115,22,.25);padding:5px 11px;border-radius:8px}
+  .pill-grow i{width:14px;height:14px}
+  .theme-head h1{font-family:var(--font-d);font-weight:700;font-size:40px;line-height:1.05;letter-spacing:-.02em;margin:16px 0 12px}
+  .theme-head .lead{color:var(--mut);font-size:15px;max-width:560px}
+  .theme-head .lead.dim{color:var(--mut2);font-size:13.5px;margin-top:6px}
+  .meta{display:flex;flex-wrap:wrap;gap:18px;margin-top:18px;color:var(--mut);font-size:13px}
+  .meta span{display:inline-flex;align-items:center;gap:7px}
+  .meta i{width:15px;height:15px}
+  .meta .hot{color:var(--org-2)} .meta .pol{color:var(--vio-2)} .meta .eu{color:#60a5fa}
+  .stats{display:flex;flex-direction:column;gap:6px;min-width:300px}
+  .stats .row{display:flex;align-items:baseline;gap:30px}
+  .stats .big{font-family:var(--font-d);font-weight:700;font-size:34px;line-height:1}
+  #mhNum{display:inline-block}
+  .stats .big small{display:block;font-family:var(--font-b);font-weight:500;font-size:12px;color:var(--mut);margin-top:5px}
+  .stats .up{font-family:var(--font-d);font-weight:700;font-size:26px;color:var(--org);text-align:right}
+  .stats .up small{display:block;font-family:var(--font-b);font-weight:500;font-size:12px;color:var(--mut);margin-top:5px}
+  .spark{margin-top:6px;height:78px;width:100%}
+  .flash{animation:numflash .6s ease}
+  @keyframes numflash{0%{color:var(--org-2);transform:scale(1.14)}100%{color:inherit;transform:scale(1)}}
+
+  /* tabs */
+  .tabs{display:flex;gap:26px;border-bottom:1px solid var(--line);margin-top:4px}
+  .tabs button{background:none;border:none;cursor:pointer;font-family:var(--font-b);font-size:14.5px;font-weight:500;color:var(--mut);padding:0 0 13px;position:relative;transition:.18s;display:flex;align-items:center;gap:8px}
+  .tabs button:hover{color:var(--txt)}
+  .tabs button.active{color:var(--vio-2)}
+  .tabs button.active::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--vio);border-radius:2px}
+  .tabs .count{font-size:11px;font-weight:600;color:var(--mut);background:#1a1a24;padding:1px 8px;border-radius:20px}
+
+  /* panels */
+  .panel{display:none}
+  .panel.active{display:flex;flex-direction:column;gap:22px;animation:panelIn .35s ease}
+  @keyframes panelIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+  /* cards */
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:20px}
+  .card-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:12px;flex-wrap:wrap}
+  .card-h h3{font-size:15.5px;font-weight:600;display:flex;align-items:center;gap:8px}
+  .card-h h3 i{width:15px;height:15px;color:var(--mut)}
+  .link{display:inline-flex;align-items:center;gap:6px;color:var(--vio-2);font-size:13px;font-weight:500;cursor:pointer;transition:.18s}
+  .link:hover{color:#fff;gap:9px}
+  .link i{width:15px;height:15px}
+
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .why p{color:var(--mut);font-size:13.5px;line-height:1.6}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+  .chip{font-size:12px;color:var(--mut);background:#15151d;border:1px solid var(--line);padding:5px 12px;border-radius:8px;transition:.18s;cursor:default}
+  .chip:hover{color:var(--txt);border-color:var(--line-2)}
+  .chip b{color:var(--txt);font-weight:600;margin-left:5px}
+
+  /* signal */
+  .signal{display:grid;grid-template-columns:1fr 132px;gap:14px;align-items:center}
+  .sig-row{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--line);font-size:13px}
+  .sig-row:last-child{border-bottom:none}
+  .sig-row .lbl{color:var(--mut)}
+  .sig-row .val{font-weight:600;display:flex;align-items:center;gap:7px}
+  .sig-row .val i{width:15px;height:15px}
+  .sig-row .acc{color:var(--grn)}
+  .bar{height:6px;border-radius:6px;background:#1c1c27;overflow:hidden;width:120px}
+  .bar i{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,var(--vio-d),var(--vio-2));box-shadow:0 0 10px rgba(139,92,246,.6);transition:width 1.1s cubic-bezier(.2,.8,.2,1)}
+  .bar.org i{background:linear-gradient(90deg,#b45309,var(--org-2));box-shadow:0 0 10px rgba(249,115,22,.5)}
+  .bar.grn i{background:linear-gradient(90deg,#047857,var(--grn));box-shadow:0 0 10px rgba(52,211,153,.5)}
+  .anim-fill{animation:growx 1.1s cubic-bezier(.2,.8,.2,1) both}
+  @keyframes growx{from{width:0}}
+  .sig-top{display:flex;align-items:center;justify-content:space-between;padding-bottom:11px;border-bottom:1px solid var(--line)}
+  .radar{width:132px;height:132px}
+
+  /* conversations grid */
+  .conv-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .conv{background:var(--card-2);border:1px solid var(--line);border-radius:12px;padding:15px;transition:.2s;cursor:pointer}
+  .conv:hover{border-color:rgba(139,92,246,.4);transform:translateY(-2px);box-shadow:0 14px 30px -20px rgba(139,92,246,.7)}
+  .conv.open{border-color:rgba(139,92,246,.5)}
+  .conv .top{display:flex;align-items:center;gap:10px}
+  .conv .who b{font-size:13.5px;font-weight:600;display:block;line-height:1.2}
+  .conv .who span{font-size:12px;color:var(--mut2)}
+  .conv .when{margin-left:auto;text-align:right;font-size:11.5px;color:var(--mut2);line-height:1.5}
+  .conv .when i{width:11px;height:11px;vertical-align:-1px;margin-right:2px}
+  .conv .txt{font-size:13px;color:#cfcfd8;margin:13px 0 12px;line-height:1.5}
+  .conv-tagrow{display:flex;align-items:center;gap:8px}
+  .conv .tagline{display:inline-block;font-size:11px;color:var(--mut);background:#17171f;border:1px solid var(--line);padding:3px 9px;border-radius:6px}
+  .conv .chev{width:15px;height:15px;color:var(--mut2);margin-left:auto;transition:transform .3s}
+  .conv.open .chev{transform:rotate(180deg);color:var(--vio-2)}
+  .conv .stats2{display:flex;gap:18px;margin-top:14px;color:var(--mut);font-size:12.5px}
+  .conv .stats2 span{display:inline-flex;align-items:center;gap:6px}
+  .conv .stats2 i{width:14px;height:14px}
+  .conv .stats2 .v{color:var(--org-2)}
+  .conv-extra{max-height:0;overflow:hidden;opacity:0;transition:max-height .32s ease,opacity .3s ease,margin .3s}
+  .conv.open .conv-extra{max-height:180px;opacity:1;margin-top:14px}
+  .ce-row{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--mut)}
+  .ce-meta{display:flex;gap:16px;margin-top:10px;font-size:12px;color:var(--mut)}
+  .ce-meta span{display:inline-flex;align-items:center;gap:6px}
+  .ce-meta i{width:13px;height:13px}
+  .ce-link{display:inline-flex;align-items:center;gap:6px;margin-top:12px;color:var(--vio-2);font-size:12.5px;font-weight:600;cursor:pointer}
+  .ce-link i{width:13px;height:13px}
+  .ce-link:hover{color:#fff}
+
+  /* sentiment bar */
+  .sent{display:flex;height:10px;border-radius:6px;overflow:hidden;background:#15151d;flex:1}
+  .sent.mini{height:8px}
+  .sent i{flex:none;display:block;height:100%}
+  .sent .pos{background:var(--grn)} .sent .neu{background:#3b3b46} .sent .neg{background:var(--org)}
+  .legend{display:flex;gap:14px;margin-top:10px;font-size:12px;color:var(--mut);flex-wrap:wrap}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .legend .d{width:9px;height:9px;border-radius:3px}
+
+  /* evolution chart */
+  .ranges{display:flex;gap:4px;background:#101017;border:1px solid var(--line);border-radius:9px;padding:3px}
+  .ranges button{background:none;border:none;color:var(--mut);font-family:var(--font-d);font-weight:600;font-size:12px;padding:5px 11px;border-radius:7px;cursor:pointer;transition:.18s}
+  .ranges button.active{background:rgba(139,92,246,.18);color:var(--vio-2)}
+  .ranges button:hover:not(.active){color:var(--txt)}
+  .chart-wrap{position:relative;margin-top:8px}
+  .chart{width:100%;height:230px;display:block}
+  .y-axis{position:absolute;left:0;top:0;height:200px;display:flex;flex-direction:column;justify-content:space-between;color:var(--mut2);font-size:11px}
+  .x-axis{display:flex;justify-content:space-between;color:var(--mut2);font-size:11px;padding:8px 0 0 30px}
+  .chart-inner{position:relative;margin-left:30px;cursor:crosshair}
+  .peak-line{position:absolute;top:0;width:1px;background:linear-gradient(180deg,var(--vio),transparent);pointer-events:none;transition:left .08s linear}
+  .peak-dot{position:absolute;width:11px;height:11px;border-radius:50%;background:var(--vio-2);box-shadow:0 0 0 4px rgba(139,92,246,.25),0 0 14px var(--vio);transform:translate(-50%,-50%);transition:left .08s linear,top .08s linear}
+  .tooltip{position:absolute;transform:translate(-50%,-118%);background:#16161f;border:1px solid var(--line-2);border-radius:9px;padding:8px 12px;white-space:nowrap;box-shadow:0 12px 30px -12px #000;z-index:2;transition:left .08s linear,top .08s linear;pointer-events:none}
+  .tooltip b{font-family:var(--font-d);font-size:13px}
+  .tooltip span{display:block;color:var(--mut);font-size:11.5px;margin-top:1px}
+
+  /* rail sources */
+  .src-row{display:flex;align-items:center;gap:12px;padding:11px 8px;border-radius:10px;position:relative;transition:.18s;cursor:pointer}
+  .src-row:hover{background:#121219}
+  .src-row:first-child::before{content:"";position:absolute;left:-2px;top:8px;bottom:8px;width:3px;border-radius:3px;background:var(--org)}
+  .src-row.followed{background:rgba(52,211,153,.07)}
+  .src-row .nm{font-weight:600;font-size:13.5px}
+  .src-row .mn{font-size:12px;color:var(--mut2)}
+  .src-row .pct{margin-left:auto;color:var(--org-2);font-weight:600;font-size:12.5px;display:flex;align-items:center;gap:3px}
+  .src-row .pct i{width:13px;height:13px}
+  .fchk{display:none;color:var(--grn);align-items:center}
+  .fchk i{width:15px;height:15px}
+  .src-row.followed .fchk{display:flex}
+
+  .brand-ic{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;flex:none}
+  .brand-ic.round{border-radius:50%}
+  .brand-ic svg{width:20px;height:20px}
+  .brand-ic b{font-family:var(--font-d);font-weight:700;font-size:13px;color:#fff}
+  .b-reddit{background:#FF4500}.b-bluesky{background:#1185FE}.b-hn{background:#FF6600}.b-rss{background:#F97316}.b-gdelt{background:#7c3aed}
+  .b-x{background:#000;border:1px solid #2a2a33}.b-gh{background:#16161d;border:1px solid var(--line-2)}
+  .brand-ic.sm{width:30px;height:30px}
+  .brand-ic.sm svg{width:16px;height:16px}
+  .brand-ic.sm b{font-size:11px}
+
+  /* ai activity */
+  .act-row{display:flex;align-items:center;gap:12px;padding:10px 4px}
+  .act-ic{width:30px;height:30px;border-radius:8px;background:#14141c;border:1px solid var(--line);display:grid;place-items:center;color:var(--mut);flex:none}
+  .act-ic i{width:15px;height:15px}
+  .act-row .t{font-size:13px;color:#cfcfd8;flex:1;min-width:0}
+  .act-row .ts{font-size:11.5px;color:var(--mut2);font-variant-numeric:tabular-nums;flex:none}
+  .live{display:flex;align-items:center;gap:7px;color:var(--grn);font-size:12px;font-weight:500}
+  .flash-in{animation:rowin .55s ease}
+  @keyframes rowin{from{background:rgba(139,92,246,.2);opacity:0;transform:translateY(-6px)}to{background:transparent;opacity:1;transform:none}}
+
+  /* ai summary */
+  .ai-card{border:1px solid rgba(139,92,246,.45);border-radius:16px;padding:18px;position:relative;overflow:hidden;background:linear-gradient(160deg,rgba(139,92,246,.12),rgba(139,92,246,.02));box-shadow:0 0 0 1px rgba(139,92,246,.08) inset,0 18px 50px -28px rgba(139,92,246,.8)}
+  .ai-card::after{content:"";position:absolute;inset:0;background:radial-gradient(220px 120px at 80% 0%,rgba(139,92,246,.18),transparent 70%);pointer-events:none}
+  .ai-card .h{display:flex;align-items:center;justify-content:space-between;position:relative}
+  .ai-card .h h3{font-family:var(--font-d);font-size:16px;font-weight:600}
+  .ai-card .gen{display:flex;align-items:center;gap:10px;color:var(--mut2);font-size:11.5px}
+  .ai-card .gen i{width:14px;height:14px;cursor:pointer;transition:.18s}
+  .ai-card .gen i:hover{color:var(--txt)}
+  .ai-card p{color:#c9c9d4;font-size:13px;line-height:1.6;margin:14px 0 16px;position:relative}
+  .ai-card .acts{display:flex;gap:10px;position:relative}
+  .ai-card .acts .btn{flex:1;justify-content:center}
+  .ai-card .acts .btn.vio{flex:1.2}
+
+  /* análisis panel */
+  .meter-row{margin-bottom:14px}
+  .meter-row:last-child{margin-bottom:0}
+  .meter-row .ml{display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:6px;color:var(--mut)}
+  .meter-row .ml b{color:var(--txt)}
+  .meter-row .bar{width:100%}
+  .find{list-style:none;display:flex;flex-direction:column;gap:14px}
+  .find li{display:flex;gap:12px;font-size:13.5px;color:#cfcfd8;line-height:1.55}
+  .find .fic{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;flex:none;background:#14141c;border:1px solid var(--line)}
+  .find .fic i{width:16px;height:16px}
+  .find .fic.g i{color:var(--grn)} .find .fic.o i{color:var(--org-2)} .find .fic.v i{color:var(--vio-2)} .find .fic.m i{color:var(--mut)}
+  .model-foot{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:18px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--mut2)}
+  .model-foot .mchip{background:#15151d;border:1px solid var(--line);border-radius:6px;padding:2px 9px;color:var(--mut);font-family:var(--font-d);font-size:11px}
+
+  /* fuentes panel */
+  .fwrap{overflow-x:auto}
+  .fhead,.frow{display:grid;grid-template-columns:34px minmax(140px,1fr) 110px 64px 58px 100px;align-items:center;gap:12px;padding:12px 8px}
+  .fhead{font-size:11px;letter-spacing:.08em;color:var(--mut2);font-weight:600;text-transform:uppercase;border-bottom:1px solid var(--line);padding-bottom:10px}
+  .frow{border-bottom:1px solid var(--line);transition:.18s}
+  .frow:last-child{border-bottom:none}
+  .frow:hover{background:#121219}
+  .f-id .nm{font-weight:600;font-size:13.5px}
+  .f-id .mn{font-size:11.5px;color:var(--mut2)}
+  .frow .bar{width:100%}
+  .frow .pct{color:var(--org-2);font-weight:600;font-size:12.5px;display:flex;align-items:center;gap:3px;justify-content:flex-end}
+  .frow .pct i{width:13px;height:13px}
+  .mspark{width:64px;height:22px;display:block}
+  .fbtn{display:inline-flex;align-items:center;justify-content:center;gap:6px;font-family:var(--font-b);font-weight:600;font-size:12px;padding:7px 10px;border-radius:8px;cursor:pointer;border:1px solid var(--line-2);background:#101017;color:var(--mut);transition:.18s;white-space:nowrap}
+  .fbtn i{width:14px;height:14px}
+  .fbtn:hover{color:var(--txt);border-color:#34343f}
+  .fbtn.on{background:rgba(52,211,153,.12);border-color:rgba(52,211,153,.4);color:var(--grn)}
+
+  /* conversaciones panel */
+  .fchips{display:flex;gap:8px;flex-wrap:wrap}
+  .fchip{font-size:12.5px;font-weight:500;color:var(--mut);background:#15151d;border:1px solid var(--line);padding:6px 13px;border-radius:20px;cursor:pointer;transition:.18s}
+  .fchip:hover{color:var(--txt)}
+  .fchip.active{color:var(--vio-2);border-color:rgba(139,92,246,.5);background:rgba(139,92,246,.12)}
+  .clist{display:flex;flex-direction:column;gap:10px}
+  .crow{display:flex;gap:13px;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--card-2);transition:.18s}
+  .crow:hover{border-color:rgba(139,92,246,.35);transform:translateX(2px)}
+  .c-mid{min-width:0;flex:1}
+  .c-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .c-top b{font-size:13.5px}
+  .c-handle{font-size:12px;color:var(--mut2)}
+  .c-when{margin-left:auto;font-size:11.5px;color:var(--mut2)}
+  .crow p{font-size:13px;color:#cfcfd8;margin:8px 0 10px;line-height:1.5}
+  .c-foot{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--mut);flex-wrap:wrap}
+  .c-foot i{width:13px;height:13px}
+  .c-foot .v{color:var(--org-2);display:inline-flex;align-items:center;gap:4px}
+  .sdot{width:8px;height:8px;border-radius:50%}
+  .sdot.pos{background:var(--grn)} .sdot.neu{background:#3b3b46} .sdot.neg{background:var(--org)}
+
+  /* historial panel */
+  .timeline{position:relative;padding-left:24px}
+  .timeline::before{content:"";position:absolute;left:6px;top:6px;bottom:6px;width:2px;background:linear-gradient(180deg,var(--vio),var(--org),transparent)}
+  .tl-item{position:relative;padding:0 0 22px}
+  .tl-item:last-child{padding-bottom:0}
+  .tl-item::before{content:"";position:absolute;left:-22px;top:3px;width:12px;height:12px;border-radius:50%;background:var(--vio);box-shadow:0 0 0 4px rgba(139,92,246,.18)}
+  .tl-item.o::before{background:var(--org);box-shadow:0 0 0 4px rgba(249,115,22,.18)}
+  .tl-item .tt{font-family:var(--font-d);font-size:12px;color:var(--mut2);font-variant-numeric:tabular-nums}
+  .tl-item .tx{font-size:13.5px;color:#d6d6de;margin-top:3px}
+  .tl-item .tg{display:inline-block;margin-top:6px;font-size:11px;color:var(--mut);background:#15151d;border:1px solid var(--line);padding:2px 9px;border-radius:6px}
+
+  /* command palette */
+  .pal-overlay{position:fixed;inset:0;z-index:60;display:none;align-items:flex-start;justify-content:center;padding-top:12vh;background:rgba(4,4,8,.62);backdrop-filter:blur(6px)}
+  .pal-overlay.open{display:flex;animation:fade .15s ease}
+  .pal{width:min(620px,92vw);background:#0c0c13;border:1px solid var(--line-2);border-radius:16px;box-shadow:0 30px 80px -20px #000;overflow:hidden;animation:pop .18s cubic-bezier(.2,.9,.3,1.2)}
+  .pal-search{display:flex;align-items:center;gap:12px;padding:16px 18px;border-bottom:1px solid var(--line)}
+  .pal-search i{color:var(--mut);width:19px;height:19px}
+  .pal-search input{flex:1;background:none;border:none;outline:none;color:var(--txt);font-size:15px;font-family:var(--font-b)}
+  .pal-search input::placeholder{color:var(--mut2)}
+  .pal-list{max-height:50vh;overflow:auto;padding:8px}
+  .pal-list::-webkit-scrollbar{width:8px}.pal-list::-webkit-scrollbar-thumb{background:#22222c;border-radius:8px}
+  .pal-group{padding:10px 12px 6px;font-size:11px;letter-spacing:.1em;color:var(--mut2);font-weight:600}
+  .pal-item{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:none;border:none;color:var(--txt);padding:10px 12px;border-radius:10px;cursor:pointer;font-size:14px;font-family:var(--font-b)}
+  .pal-item i{width:17px;height:17px;color:var(--mut)}
+  .pal-item .gi{margin-left:auto;font-size:11px;color:var(--mut2)}
+  .pal-item.sel,.pal-item:hover{background:rgba(139,92,246,.16)}
+  .pal-item.sel i,.pal-item:hover i{color:var(--vio-2)}
+  .pal-empty{padding:26px;text-align:center;color:var(--mut2);font-size:13px}
+  .pal-foot{display:flex;gap:16px;padding:10px 16px;border-top:1px solid var(--line);color:var(--mut2);font-size:11.5px;flex-wrap:wrap}
+  .pal-foot span{display:flex;align-items:center;gap:6px}
+  .pal-foot .k{border:1px solid var(--line-2);border-radius:5px;padding:1px 6px;font-family:var(--font-d)}
+  @keyframes pop{from{transform:translateY(-8px) scale(.98);opacity:0}to{transform:none;opacity:1}}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+
+  /* toasts */
+  #toasts{position:fixed;left:calc(var(--sb) + 30px);bottom:26px;z-index:55;display:flex;flex-direction:column;gap:10px;pointer-events:none}
+  .toast{display:flex;align-items:center;gap:11px;background:#101018;border:1px solid var(--line-2);border-left:3px solid var(--vio);border-radius:12px;padding:12px 16px;min-width:240px;max-width:340px;box-shadow:0 18px 40px -16px #000;animation:tin .25s cubic-bezier(.2,.9,.3,1.1);font-size:13.5px}
+  .toast.out{animation:tout .25s ease forwards}
+  .toast i{width:18px;height:18px;flex:none}
+  .toast.success{border-left-color:var(--grn)} .toast.success i{color:var(--grn)}
+  .toast.info{border-left-color:var(--vio)} .toast.info i{color:var(--vio-2)}
+  .toast.warn{border-left-color:var(--org)} .toast.warn i{color:var(--org-2)}
+  @keyframes tin{from{transform:translateX(-12px);opacity:0}to{transform:none;opacity:1}}
+  @keyframes tout{to{transform:translateX(-12px);opacity:0}}
+
+  .reveal{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+  .reveal.in{opacity:1;transform:none}
+
+  @media(max-width:1280px){.body{grid-template-columns:1fr}.rail{position:static}.theme-head{grid-template-columns:1fr}.stats{min-width:0}}
+  @media(max-width:900px){
+    .app{grid-template-columns:1fr}.sidebar{display:none}
+    .conv-grid{grid-template-columns:1fr}.grid-2{grid-template-columns:1fr}
+    #toasts{left:20px;right:20px}
+    .topbar{flex-wrap:wrap}.search{order:3;max-width:none;flex-basis:100%}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="mark"><svg viewBox="0 0 32 32" fill="none"><path d="M16 3 L29 27 H3 Z" fill="url(#vg)"/><path d="M16 11 L22 24 H10 Z" fill="#0b0b12"/><defs><linearGradient id="vg" x1="3" y1="3" x2="29" y2="27"><stop stop-color="#a78bfa"/><stop offset="1" stop-color="#7c3aed"/></linearGradient></defs></svg></span>
+      <b>VIRAHUB</b>
+    </div>
+    <nav class="nav">
+      <a href="#"><i data-lucide="home"></i> Inicio</a>
+      <a href="#" class="active"><i data-lucide="compass"></i> Explorar</a>
+      <a href="#"><i data-lucide="radar"></i> Radar</a>
+      <a href="#"><i data-lucide="bell"></i> Alertas</a>
+      <a href="#"><i data-lucide="bookmark"></i> Guardados</a>
+      <a href="#"><i data-lucide="layers"></i> Motores</a>
+      <a href="#"><i data-lucide="file-text"></i> Informes</a>
+      <a href="#"><i data-lucide="git-compare"></i> Comparar</a>
+      <a href="#"><i data-lucide="settings"></i> Ajustes</a>
+    </nav>
+    <div class="sb-spacer"></div>
+    <div class="pro-card">
+      <div class="h"><i data-lucide="zap"></i> PLAN PRO</div>
+      <p>Acceso total a análisis sin límites y motores avanzados.</p>
+      <button>Ver mi plan</button>
+    </div>
+    <div class="sb-user">
+      <img src="https://i.pravatar.cc/80?img=12" alt="Santiago M." />
+      <div><div class="nm">Santiago M.</div><span class="tag">PRO</span></div>
+      <i data-lucide="arrow-left-right" class="swap"></i>
+    </div>
+  </aside>
+
+  <!-- WORKSPACE -->
+  <div class="workspace">
+    <header class="topbar">
+      <a href="#" class="back"><i data-lucide="arrow-left"></i> Volver a tendencias</a>
+      <div class="search" id="searchOpen" role="button" tabindex="0" aria-label="Buscar en Virahub">
+        <i data-lucide="search"></i><span class="search-ph">Buscar en Virahub...</span><span class="kbd">⌘ K</span>
+      </div>
+      <div class="tb-right">
+        <div class="engines"><span class="dot pulse"></span> Motores activos <b>6/6</b></div>
+        <div class="bell"><i data-lucide="bell"></i><span class="badge">3</span></div>
+        <img class="tb-ava" src="https://i.pravatar.cc/80?img=12" alt="perfil" />
+      </div>
+    </header>
+
+    <div class="body">
+      <main class="main">
+
+        <!-- theme header -->
+        <section class="theme-head reveal">
+          <div>
+            <span class="pill-grow"><i data-lucide="flame"></i> CRECIENDO FUERTE <i data-lucide="arrow-up-right"></i></span>
+            <h1>Regulación de IA en la UE</h1>
+            <p class="lead">Borrador filtrado de la Comisión Europea genera debate en Bluesky y r/spain.</p>
+            <p class="lead dim">14 posts en 2h, sin cobertura en medios tradicionales aún.</p>
+            <div class="meta">
+              <span class="hot"><i data-lucide="flame"></i> Muy caliente</span>
+              <span class="pol"><i data-lucide="gem"></i> Tendencia política</span>
+              <span class="eu"><i data-lucide="globe"></i> Unión Europea</span>
+              <span><i data-lucide="clock"></i> <span id="detectAgo">Detectado hace 2h 14m</span></span>
+            </div>
+          </div>
+          <div class="stats">
+            <div class="row">
+              <div class="big"><span id="mhNum">82</span><small>menciones/hora</small></div>
+              <div class="up">+312%<small>vs ayer</small></div>
+            </div>
+            <svg class="spark" id="spark" viewBox="0 0 320 80" preserveAspectRatio="none"></svg>
+          </div>
+        </section>
+
+        <div class="actions reveal" style="justify-content:flex-end;margin-top:-6px">
+          <button class="btn vio" id="followBtn"><i data-lucide="star"></i> Seguir tema</button>
+          <button class="btn" id="alertBtn"><i data-lucide="bell"></i> Crear alerta</button>
+          <button class="btn icon"><i data-lucide="more-horizontal"></i></button>
+        </div>
+
+        <div class="tabs reveal" id="tabs">
+          <button class="active" data-tab="0">Resumen</button>
+          <button data-tab="1">Análisis IA</button>
+          <button data-tab="2">Conversaciones</button>
+          <button data-tab="3">Fuentes <span class="count">56</span></button>
+          <button data-tab="4">Historial</button>
+        </div>
+
+        <div class="panels">
+
+          <!-- PANEL 0: RESUMEN -->
+          <section class="panel active" id="panel-0">
+            <div class="grid-2">
+              <div class="card why">
+                <div class="card-h"><h3>¿Por qué es tendencia?</h3></div>
+                <p>Un borrador filtrado sobre regulación de IA de la Comisión Europea está generando debate intenso en comunidades tech y políticas. Se espera anuncio oficial en los próximos días.</p>
+                <div class="chips"><span class="chip">IA</span><span class="chip">Regulación</span><span class="chip">Política</span><span class="chip">UE</span></div>
+              </div>
+              <div class="card">
+                <div class="card-h"><h3>Señal de Virahub <i data-lucide="info"></i></h3></div>
+                <div class="signal">
+                  <div>
+                    <div class="sig-top sig-row" style="border-top:none"><span class="lbl">Fuerza de la señal</span><span class="val">89/100</span></div>
+                    <div style="padding:4px 0 12px"><div class="bar" style="width:100%"><i id="sigBar" style="width:0"></i></div></div>
+                    <div class="sig-row"><span class="lbl">Velocidad</span><span class="val acc"><i data-lucide="trending-up"></i> Acelerando</span></div>
+                    <div class="sig-row"><span class="lbl">Confiabilidad</span><span class="val acc"><span class="dot"></span> Alta</span></div>
+                  </div>
+                  <svg class="radar" viewBox="0 0 132 132">
+                    <g stroke="#2a2440" fill="none">
+                      <circle cx="66" cy="66" r="18"/><circle cx="66" cy="66" r="34"/><circle cx="66" cy="66" r="50"/><circle cx="66" cy="66" r="64"/>
+                      <line x1="66" y1="2" x2="66" y2="130"/><line x1="2" y1="66" x2="130" y2="66"/><line x1="20" y1="20" x2="112" y2="112"/><line x1="112" y1="20" x2="20" y2="112"/>
+                    </g>
+                    <circle cx="66" cy="66" r="14" fill="none" stroke="#8b5cf6" stroke-width="1.5" opacity=".5">
+                      <animate attributeName="r" values="8;30;8" dur="2.6s" repeatCount="indefinite"/>
+                      <animate attributeName="opacity" values=".6;0;.6" dur="2.6s" repeatCount="indefinite"/>
+                    </circle>
+                    <g opacity=".55"><line x1="66" y1="66" x2="66" y2="8" stroke="#a78bfa" stroke-width="1.5"/><circle cx="66" cy="8" r="2.5" fill="#c4b5fd"/>
+                      <animateTransform attributeName="transform" type="rotate" from="0 66 66" to="360 66 66" dur="3.6s" repeatCount="indefinite"/></g>
+                    <circle cx="66" cy="66" r="7" fill="#a78bfa"/><circle cx="66" cy="66" r="7" fill="none" stroke="#a78bfa" stroke-width="3" opacity=".4"/>
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-h"><h3>Conversaciones destacadas</h3><span class="link">Ver todas <i data-lucide="arrow-right"></i></span></div>
+              <div class="conv-grid" id="convGrid">
+                <div class="conv">
+                  <div class="top">
+                    <span class="brand-ic round sm b-reddit"><svg viewBox="0 0 24 24"><circle cx="12" cy="14" r="6.2" fill="#fff"/><circle cx="9.6" cy="13.4" r="1" fill="#FF4500"/><circle cx="14.4" cy="13.4" r="1" fill="#FF4500"/><path d="M9.6 16.2q2.4 1.6 4.8 0" stroke="#FF4500" stroke-width="1" fill="none" stroke-linecap="round"/><line x1="16" y1="8" x2="18" y2="5.5" stroke="#fff" stroke-width="1.4" stroke-linecap="round"/><circle cx="18.4" cy="5" r="1.4" fill="#fff"/></svg></span>
+                    <div class="who"><b>r/Artificial</b><span>u/ia_policy_es</span></div>
+                    <div class="when">hace 54m<br><i data-lucide="clock"></i>1m</div>
+                  </div>
+                  <p class="txt">Borrador filtrado sobre IA general del artículo 7 es preocupante…</p>
+                  <div class="conv-tagrow"><span class="tagline">Debate</span><i data-lucide="chevron-down" class="chev"></i></div>
+                  <div class="stats2"><span class="v"><i data-lucide="arrow-up"></i> 342</span><span><i data-lucide="message-square"></i> 128</span></div>
+                  <div class="conv-extra">
+                    <div class="ce-row"><span>Sentimiento</span><div class="sent mini"><i class="pos anim-fill" style="width:48%"></i><i class="neu anim-fill" style="width:30%"></i><i class="neg anim-fill" style="width:22%"></i></div></div>
+                    <div class="ce-meta"><span><i data-lucide="users"></i> 4.2k alcanzados</span><span><i data-lucide="share-2"></i> 38 compartidos</span></div>
+                    <a class="ce-link">Abrir hilo original <i data-lucide="external-link"></i></a>
+                  </div>
+                </div>
+                <div class="conv">
+                  <div class="top">
+                    <span class="brand-ic sm b-bluesky"><svg viewBox="0 0 24 24" fill="#fff"><path d="M12 10.5C10.3 7.6 7.6 5.4 5.4 5.4 4 5.4 3.4 6.4 3.4 8c0 2.7 1 4.4 3.8 5.3-1.8.1-2.8 1-2.8 2 0 1.8 2.7 2.7 4.6 1.8 1-.5 1.9-1.8 3-3.6 1.1 1.8 2 3.1 3 3.6 1.9.9 4.6 0 4.6-1.8 0-1-1-1.9-2.8-2 2.8-.9 3.8-2.6 3.8-5.3 0-1.6-.6-2.6-2-2.6-2.2 0-4.9 2.2-6.6 5.1z"/></svg></span>
+                    <div class="who"><b>Bluesky</b><span>@dev_es</span></div>
+                    <div class="when">hace 1h<br><i data-lucide="clock"></i>1h</div>
+                  </div>
+                  <p class="txt">Hilo sobre implicaciones del artículo 7 para devs independientes 🧵</p>
+                  <div class="conv-tagrow"><span class="tagline">Análisis</span><i data-lucide="chevron-down" class="chev"></i></div>
+                  <div class="stats2"><span class="v"><i data-lucide="arrow-up"></i> 215</span><span><i data-lucide="message-square"></i> 46</span></div>
+                  <div class="conv-extra">
+                    <div class="ce-row"><span>Sentimiento</span><div class="sent mini"><i class="pos anim-fill" style="width:62%"></i><i class="neu anim-fill" style="width:24%"></i><i class="neg anim-fill" style="width:14%"></i></div></div>
+                    <div class="ce-meta"><span><i data-lucide="users"></i> 2.8k alcanzados</span><span><i data-lucide="share-2"></i> 21 compartidos</span></div>
+                    <a class="ce-link">Abrir hilo original <i data-lucide="external-link"></i></a>
+                  </div>
+                </div>
+                <div class="conv">
+                  <div class="top">
+                    <span class="brand-ic sm b-hn"><b>HN</b></span>
+                    <div class="who"><b>Hacker News</b><span>@tech_observer</span></div>
+                    <div class="when">hace 1h<br><i data-lucide="clock"></i>1h</div>
+                  </div>
+                  <p class="txt">EU AI Act draft leak sparks discussion on 'responsible innovation'</p>
+                  <div class="conv-tagrow"><span class="tagline">Noticia</span><i data-lucide="chevron-down" class="chev"></i></div>
+                  <div class="stats2"><span class="v"><i data-lucide="arrow-up"></i> 178</span><span><i data-lucide="message-square"></i> 32</span></div>
+                  <div class="conv-extra">
+                    <div class="ce-row"><span>Sentimiento</span><div class="sent mini"><i class="pos anim-fill" style="width:40%"></i><i class="neu anim-fill" style="width:44%"></i><i class="neg anim-fill" style="width:16%"></i></div></div>
+                    <div class="ce-meta"><span><i data-lucide="users"></i> 9.1k alcanzados</span><span><i data-lucide="share-2"></i> 54 compartidos</span></div>
+                    <a class="ce-link">Abrir hilo original <i data-lucide="external-link"></i></a>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-h"><h3>Evolución de la tendencia</h3>
+                <div class="ranges" id="ranges"><button>1H</button><button class="active">6H</button><button>24H</button><button>7D</button></div>
+              </div>
+              <div class="chart-wrap">
+                <div class="y-axis"><span>100</span><span>50</span><span>0</span></div>
+                <div class="chart-inner" id="chartInner">
+                  <svg class="chart" id="area" viewBox="0 0 1000 200" preserveAspectRatio="none"></svg>
+                  <div class="peak-line" id="peakLine"></div>
+                  <div class="peak-dot" id="peakDot"></div>
+                  <div class="tooltip" id="tip"><b>12:32</b><span>Pico de actividad detectado</span></div>
+                </div>
+                <div class="x-axis" id="xAxisMain"></div>
+              </div>
+            </div>
+          </section>
+
+          <!-- PANEL 1: ANÁLISIS IA -->
+          <section class="panel" id="panel-1">
+            <div class="grid-2">
+              <div class="card">
+                <div class="card-h"><h3><i data-lucide="smile"></i> Sentimiento dominante</h3></div>
+                <div class="sent"><i class="pos anim-fill" style="width:58%"></i><i class="neu anim-fill" style="width:27%"></i><i class="neg anim-fill" style="width:15%"></i></div>
+                <div class="legend">
+                  <span><i class="d" style="background:var(--grn)"></i> Positivo 58%</span>
+                  <span><i class="d" style="background:#3b3b46"></i> Neutro 27%</span>
+                  <span><i class="d" style="background:var(--org)"></i> Negativo 15%</span>
+                </div>
+                <div class="card-h" style="margin:20px 0 0"><h3 style="font-size:13px">Entidades clave</h3></div>
+                <div class="chips" style="margin-top:10px">
+                  <span class="chip">Comisión Europea<b>41</b></span><span class="chip">Artículo 7<b>28</b></span>
+                  <span class="chip">Startups EU<b>19</b></span><span class="chip">Transparencia<b>15</b></span>
+                </div>
+              </div>
+              <div class="card">
+                <div class="card-h"><h3><i data-lucide="gauge"></i> Evaluación de impacto</h3></div>
+                <div class="meter-row"><div class="ml"><span>Oportunidad</span><b>72</b></div><div class="bar grn"><i class="anim-fill" style="width:72%"></i></div></div>
+                <div class="meter-row"><div class="ml"><span>Riesgo regulatorio</span><b>48</b></div><div class="bar org"><i class="anim-fill" style="width:48%"></i></div></div>
+                <div class="meter-row"><div class="ml"><span>Confianza del modelo</span><b>89</b></div><div class="bar"><i class="anim-fill" style="width:89%"></i></div></div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-h"><h3><i data-lucide="sparkles"></i> Hallazgos del modelo</h3><span class="link">Regenerar <i data-lucide="refresh-cw"></i></span></div>
+              <ul class="find">
+                <li><span class="fic g"><i data-lucide="trending-up"></i></span><span><b style="color:var(--grn)">Oportunidad.</b> Posicionamiento temprano en cumplimiento (AI Act) para consultoras y tooling de auditoría algorítmica.</span></li>
+                <li><span class="fic o"><i data-lucide="shield-alert"></i></span><span><b style="color:var(--org-2)">Riesgo.</b> La incertidumbre regulatoria puede frenar inversión seed en startups europeas durante los próximos 30 días.</span></li>
+                <li><span class="fic v"><i data-lucide="users"></i></span><span><b style="color:var(--vio-2)">Audiencia.</b> Desarrolladores independientes y founders de la UE dominan la conversación; poco ruido de medios tradicionales.</span></li>
+                <li><span class="fic m"><i data-lucide="clock"></i></span><span><b style="color:var(--txt)">Ventana.</b> Anuncio oficial esperado en 48–72h; pico de atención inminente. Recomendado monitoreo de alta frecuencia.</span></li>
+              </ul>
+              <div class="model-foot">
+                <span class="mchip">Nemotron</span><span class="mchip">GPT-4o</span><span class="mchip">Claude</span>
+                <span style="margin-left:auto">Ensamble de 3 modelos · actualizado hace 1 min</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- PANEL 2: CONVERSACIONES -->
+          <section class="panel" id="panel-2">
+            <div class="card">
+              <div class="card-h">
+                <h3>Todas las conversaciones</h3>
+                <div class="fchips" id="convFilters">
+                  <span class="fchip active" data-f="all">Todas</span>
+                  <span class="fchip" data-f="reddit">Reddit</span>
+                  <span class="fchip" data-f="bluesky">Bluesky</span>
+                  <span class="fchip" data-f="hn">Hacker News</span>
+                </div>
+              </div>
+              <div class="clist" id="convList">
+                <div class="crow" data-src="reddit">
+                  <span class="brand-ic round sm b-reddit"><svg viewBox="0 0 24 24"><circle cx="12" cy="14" r="6.2" fill="#fff"/><circle cx="9.6" cy="13.4" r="1" fill="#FF4500"/><circle cx="14.4" cy="13.4" r="1" fill="#FF4500"/><path d="M9.6 16.2q2.4 1.6 4.8 0" stroke="#FF4500" stroke-width="1" fill="none" stroke-linecap="round"/></svg></span>
+                  <div class="c-mid"><div class="c-top"><b>r/Artificial</b><span class="c-handle">u/ia_policy_es</span><span class="c-when">hace 54m</span></div>
+                    <p>Borrador filtrado sobre IA general del artículo 7 es preocupante. ¿Alguien más ve riesgo de sobrerregulación?</p>
+                    <div class="c-foot"><span class="sdot neg"></span> Negativo · <span class="v"><i data-lucide="arrow-up"></i>342</span> · <i data-lucide="message-square"></i> 128</div></div>
+                </div>
+                <div class="crow" data-src="bluesky">
+                  <span class="brand-ic sm b-bluesky"><svg viewBox="0 0 24 24" fill="#fff"><path d="M12 10.5C10.3 7.6 7.6 5.4 5.4 5.4 4 5.4 3.4 6.4 3.4 8c0 2.7 1 4.4 3.8 5.3-1.8.1-2.8 1-2.8 2 0 1.8 2.7 2.7 4.6 1.8 1-.5 1.9-1.8 3-3.6 1.1 1.8 2 3.1 3 3.6 1.9.9 4.6 0 4.6-1.8 0-1-1-1.9-2.8-2 2.8-.9 3.8-2.6 3.8-5.3 0-1.6-.6-2.6-2-2.6-2.2 0-4.9 2.2-6.6 5.1z"/></svg></span>
+                  <div class="c-mid"><div class="c-top"><b>Bluesky</b><span class="c-handle">@dev_es</span><span class="c-when">hace 1h</span></div>
+                    <p>Hilo sobre implicaciones del artículo 7 para devs independientes 🧵 — resumen de lo que cambia mañana.</p>
+                    <div class="c-foot"><span class="sdot pos"></span> Positivo · <span class="v"><i data-lucide="arrow-up"></i>215</span> · <i data-lucide="message-square"></i> 46</div></div>
+                </div>
+                <div class="crow" data-src="hn">
+                  <span class="brand-ic sm b-hn"><b>HN</b></span>
+                  <div class="c-mid"><div class="c-top"><b>Hacker News</b><span class="c-handle">@tech_observer</span><span class="c-when">hace 1h</span></div>
+                    <p>EU AI Act draft leak sparks discussion on 'responsible innovation' and compliance costs for small teams.</p>
+                    <div class="c-foot"><span class="sdot neu"></span> Neutro · <span class="v"><i data-lucide="arrow-up"></i>178</span> · <i data-lucide="message-square"></i> 32</div></div>
+                </div>
+                <div class="crow" data-src="reddit">
+                  <span class="brand-ic round sm b-reddit"><svg viewBox="0 0 24 24"><circle cx="12" cy="14" r="6.2" fill="#fff"/><circle cx="9.6" cy="13.4" r="1" fill="#FF4500"/><circle cx="14.4" cy="13.4" r="1" fill="#FF4500"/><path d="M9.6 16.2q2.4 1.6 4.8 0" stroke="#FF4500" stroke-width="1" fill="none" stroke-linecap="round"/></svg></span>
+                  <div class="c-mid"><div class="c-top"><b>r/spain</b><span class="c-handle">u/madrid_dev</span><span class="c-when">hace 1h 20m</span></div>
+                    <p>¿Cómo afecta esto a las startups españolas que entrenan modelos propios? Pido experiencias reales.</p>
+                    <div class="c-foot"><span class="sdot neu"></span> Neutro · <span class="v"><i data-lucide="arrow-up"></i>96</span> · <i data-lucide="message-square"></i> 41</div></div>
+                </div>
+                <div class="crow" data-src="bluesky">
+                  <span class="brand-ic sm b-bluesky"><svg viewBox="0 0 24 24" fill="#fff"><path d="M12 10.5C10.3 7.6 7.6 5.4 5.4 5.4 4 5.4 3.4 6.4 3.4 8c0 2.7 1 4.4 3.8 5.3-1.8.1-2.8 1-2.8 2 0 1.8 2.7 2.7 4.6 1.8 1-.5 1.9-1.8 3-3.6 1.1 1.8 2 3.1 3 3.6 1.9.9 4.6 0 4.6-1.8 0-1-1-1.9-2.8-2 2.8-.9 3.8-2.6 3.8-5.3 0-1.6-.6-2.6-2-2.6-2.2 0-4.9 2.2-6.6 5.1z"/></svg></span>
+                  <div class="c-mid"><div class="c-top"><b>Bluesky</b><span class="c-handle">@policy_watch</span><span class="c-when">hace 2h</span></div>
+                    <p>Comparativa rápida: el borrador vs. el texto final de 2024. Los cambios en transparencia son sustanciales.</p>
+                    <div class="c-foot"><span class="sdot pos"></span> Positivo · <span class="v"><i data-lucide="arrow-up"></i>134</span> · <i data-lucide="message-square"></i> 19</div></div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- PANEL 3: FUENTES -->
+          <section class="panel" id="panel-3">
+            <div class="card" style="padding:14px 16px">
+              <div class="card-h" style="padding:6px 6px 12px"><h3>Todas las fuentes</h3><span class="link">7 conectadas <span class="dot pulse" style="margin-left:2px"></span></span></div>
+              <div class="fwrap">
+                <div class="fhead"><span></span><span>Fuente</span><span>Alcance</span><span>Tendencia</span><span style="text-align:right">Δ</span><span></span></div>
+                <div id="fuentesList"></div>
+              </div>
+            </div>
+          </section>
+
+          <!-- PANEL 4: HISTORIAL -->
+          <section class="panel" id="panel-4">
+            <div class="card">
+              <div class="card-h"><h3>Historial de detección</h3><span class="link">Exportar <i data-lucide="download"></i></span></div>
+              <div class="timeline">
+                <div class="tl-item"><div class="tt">10:18</div><div class="tx">Señal débil detectada en r/spain (3 menciones, sentimiento neutro).</div><span class="tg">Señal débil</span></div>
+                <div class="tl-item"><div class="tt">10:46</div><div class="tx">Cruza umbral de vigilancia: aparece en 2 subreddits más y 1 cuenta de Bluesky.</div><span class="tg">En vigilancia</span></div>
+                <div class="tl-item"><div class="tt">11:30</div><div class="tx">El sentimiento vira a positivo; se detecta hilo viral de @dev_es.</div><span class="tg">Sentimiento +</span></div>
+                <div class="tl-item o"><div class="tt">12:02</div><div class="tx">Cruza umbral de tendencia emergente. Se activan alertas de monitoreo de alta frecuencia.</div><span class="tg">Tendencia emergente</span></div>
+                <div class="tl-item o"><div class="tt">12:32</div><div class="tx">Pico de actividad: 82 menciones/hora (+312% vs. ayer). Entra en portada de Hacker News.</div><span class="tg">Pico detectado</span></div>
+              </div>
+            </div>
+          </section>
+
+        </div>
+      </main>
+
+      <!-- RAIL -->
+      <aside class="rail">
+        <div class="card reveal" style="padding:16px 14px">
+          <div class="card-h" style="padding:0 6px"><h3>Fuentes principales</h3><span class="link">Ver todas <i data-lucide="arrow-right"></i></span></div>
+          <div id="railSources"></div>
+        </div>
+
+        <div class="card reveal" style="padding:16px 14px">
+          <div class="card-h" style="padding:0 6px"><h3>Actividad de la IA</h3><span class="live"><span class="dot pulse"></span> En tiempo real</span></div>
+          <div id="aiFeed"></div>
+        </div>
+
+        <div class="ai-card reveal">
+          <div class="h"><h3>Resumen IA</h3><span class="gen">Generado hace 1 min <i data-lucide="x"></i></span></div>
+          <p>La discusión se centra en posibles restricciones a modelos de IA de propósito general y transparencia algorítmica. Posible impacto en startups europeas.</p>
+          <div class="acts">
+            <button class="btn" id="copyBtn"><i data-lucide="copy"></i> Copiar resumen</button>
+            <button class="btn vio">Profundizar análisis <i data-lucide="arrow-right"></i></button>
+          </div>
+        </div>
+      </aside>
+
+    </div>
+  </div>
+</div>
+
+<!-- COMMAND PALETTE -->
+<div class="pal-overlay" id="palOverlay">
+  <div class="pal" role="dialog" aria-modal="true" aria-label="Paleta de comandos">
+    <div class="pal-search">
+      <i data-lucide="search"></i>
+      <input type="text" id="palInput" placeholder="Busca temas, fuentes o acciones…" autocomplete="off" spellcheck="false" />
+      <span class="kbd">ESC</span>
+    </div>
+    <div class="pal-list scroll" id="palList"></div>
+    <div class="pal-foot">
+      <span><i class="k">↑</i><i class="k">↓</i> navegar</span>
+      <span><i class="k">↵</i> seleccionar</span>
+      <span><i class="k">esc</i> cerrar</span>
+    </div>
+  </div>
+</div>
+
+<div id="toasts"></div>
+
+<script>
+  lucide.createIcons();
+
+  /* ---------- helpers ---------- */
+  function rng(seed){return function(){seed=(seed*9301+49297)%233280;return seed/233280;};}
+  function pad(n){return String(n).padStart(2,'0');}
+  function ri(a,b){return a+Math.floor(Math.random()*(b-a+1));}
+  function pick(a){return a[Math.floor(Math.random()*a.length)];}
+  function hhmmss(d){return pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());}
+  function fmtTime(d,span){ if(span>1440){return ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'][d.getDay()]+' '+pad(d.getHours())+':'+pad(d.getMinutes());} return pad(d.getHours())+':'+pad(d.getMinutes()); }
+
+  const ICONS={
+    reddit:'<svg viewBox="0 0 24 24"><circle cx="12" cy="14" r="6.2" fill="#fff"/><circle cx="9.6" cy="13.4" r="1" fill="#FF4500"/><circle cx="14.4" cy="13.4" r="1" fill="#FF4500"/><path d="M9.6 16.2q2.4 1.6 4.8 0" stroke="#FF4500" stroke-width="1" fill="none" stroke-linecap="round"/><line x1="16" y1="8" x2="18" y2="5.5" stroke="#fff" stroke-width="1.4" stroke-linecap="round"/><circle cx="18.4" cy="5" r="1.4" fill="#fff"/></svg>',
+    bluesky:'<svg viewBox="0 0 24 24" fill="#fff"><path d="M12 10.5C10.3 7.6 7.6 5.4 5.4 5.4 4 5.4 3.4 6.4 3.4 8c0 2.7 1 4.4 3.8 5.3-1.8.1-2.8 1-2.8 2 0 1.8 2.7 2.7 4.6 1.8 1-.5 1.9-1.8 3-3.6 1.1 1.8 2 3.1 3 3.6 1.9.9 4.6 0 4.6-1.8 0-1-1-1.9-2.8-2 2.8-.9 3.8-2.6 3.8-5.3 0-1.6-.6-2.6-2-2.6-2.2 0-4.9 2.2-6.6 5.1z"/></svg>',
+    hn:'<b>HN</b>',
+    rss:'<svg viewBox="0 0 24 24" fill="#fff"><circle cx="6.2" cy="17.8" r="2.2"/><path d="M4 4.5v3c7 0 12.5 5.5 12.5 12.5h3C19.5 11.3 12.7 4.5 4 4.5z"/><path d="M4 10.2v3a6.8 6.8 0 0 1 6.8 6.8h3A9.8 9.8 0 0 0 4 10.2z"/></svg>',
+    gdelt:'<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>',
+    x:'<svg viewBox="0 0 24 24" fill="#fff"><path d="M17.5 3h3l-7 8 8.2 10h-6.4l-5-6.1L8 21H5l7.5-8.6L4.6 3H11l4.5 5.6L17.5 3zm-1.1 16h1.7L8 4.8H6.2L16.4 19z"/></svg>',
+    github:'<svg viewBox="0 0 24 24" fill="#fff"><path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.45-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.9 1.53 2.36 1.09 2.94.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.65 0 0 .84-.27 2.75 1.02a9.5 9.5 0 0 1 5 0c1.91-1.29 2.75-1.02 2.75-1.02.55 1.38.2 2.4.1 2.65.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.69-4.57 4.94.36.31.68.92.68 1.85v2.74c0 .27.18.58.69.48A10 10 0 0 0 12 2z"/></svg>'
+  };
+  const SOURCES=[
+    {key:'reddit',name:'Reddit r/Artificial',mentions:36,pct:312,round:true,cls:'b-reddit',reach:92,seed:11},
+    {key:'bluesky',name:'Bluesky',mentions:28,pct:284,round:true,cls:'b-bluesky',reach:78,seed:22},
+    {key:'hn',name:'Hacker News',mentions:12,pct:156,round:false,cls:'b-hn',reach:64,seed:33},
+    {key:'rss',name:'RSS Feeds',mentions:6,pct:98,round:false,cls:'b-rss',reach:41,seed:44},
+    {key:'gdelt',name:'GDELT',mentions:4,pct:72,round:false,cls:'b-gdelt',reach:33,seed:55},
+    {key:'x',name:'X / Twitter',mentions:21,pct:140,round:true,cls:'b-x',reach:85,seed:66},
+    {key:'github',name:'GitHub',mentions:9,pct:88,round:true,cls:'b-gh',reach:57,seed:77}
+  ];
+
+  function miniSpark(seed,color){
+    const w=64,h=22,n=14,r=rng(seed);let p=[];
+    for(let i=0;i<n;i++){const x=i/(n-1)*w;const y=h-((0.25+0.55*r()+0.18*Math.sin(i*0.9))*(h-4))-2;p.push(x.toFixed(1)+','+y.toFixed(1));}
+    return `<svg class="mspark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><polyline points="${p.join(' ')}" fill="none" stroke="${color}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  }
+
+  /* ---------- render rail sources ---------- */
+  document.getElementById('railSources').innerHTML = SOURCES.slice(0,5).map(s=>`
+    <div class="src-row" data-key="${s.key}" data-name="${s.name}" role="button" tabindex="0">
+      <span class="brand-ic ${s.round?'round':''} ${s.cls}">${ICONS[s.key]}</span>
+      <div><div class="nm">${s.name}</div><div class="mn">${s.mentions} menciones</div></div>
+      <span class="fchk"><i data-lucide="check"></i></span>
+      <div class="pct"><i data-lucide="arrow-up"></i>${s.pct}%</div>
+    </div>`).join('');
+
+  /* ---------- render fuentes panel ---------- */
+  document.getElementById('fuentesList').innerHTML = SOURCES.map(s=>`
+    <div class="frow">
+      <span class="brand-ic ${s.round?'round':''} ${s.cls} sm">${ICONS[s.key]}</span>
+      <div class="f-id"><div class="nm">${s.name}</div><div class="mn">${s.mentions} menciones · alcance ${s.reach}k</div></div>
+      <div class="bar"><i style="width:${s.reach}%"></i></div>
+      <span>${miniSpark(s.seed,'#fb923c')}</span>
+      <div class="pct"><i data-lucide="arrow-up"></i>${s.pct}%</div>
+      <button class="fbtn" data-name="${s.name}"><i data-lucide="plus"></i> Seguir</button>
+    </div>`).join('');
+
+  /* ---------- orange sparkline ---------- */
+  (function(){
+    const W=320,H=80,n=42,r=rng(7);let pts=[];
+    for(let i=0;i<n;i++){const x=i/(n-1);const trend=62-46*x;const noise=(r()-0.5)*16+Math.sin(i*0.9)*5;let v=trend+noise;v=Math.max(8,Math.min(74,v));pts.push([x*W,v]);}
+    pts[pts.length-1]=[W-2,12];
+    const line=pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+    const area=line+` L${W} ${H} L0 ${H} Z`;
+    document.getElementById('spark').innerHTML=`<defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f97316" stop-opacity=".45"/><stop offset="1" stop-color="#f97316" stop-opacity="0"/></linearGradient></defs>
+      <path d="${area}" fill="url(#sg)"/><path d="${line}" fill="none" stroke="#fb923c" stroke-width="2" stroke-linejoin="round"/>
+      <circle cx="${W-2}" cy="12" r="6" fill="#fb923c" opacity=".25"><animate attributeName="r" values="4;9;4" dur="1.8s" repeatCount="indefinite"/></circle>
+      <circle cx="${W-2}" cy="12" r="3" fill="#fff"/>`;
+  })();
+
+  /* ---------- interactive area chart ---------- */
+  const N=72, PEAK=40;
+  const RANGES_SPAN={'1H':60,'6H':360,'24H':1440,'7D':10080};
+  let curPts=[];
+  function showAt(index,isPeak){
+    const p=curPts[index]; if(!p)return;
+    const leftPct=(index/(N-1))*100, topPct=(p.y/200)*100;
+    const pl=document.getElementById('peakLine'), pd=document.getElementById('peakDot'), tip=document.getElementById('tip');
+    pl.style.left=leftPct+'%'; pl.style.height=(isPeak?topPct:100)+'%';
+    pd.style.left=leftPct+'%'; pd.style.top=topPct+'%'; pd.style.background=isPeak?'var(--vio-2)':'#fff';
+    tip.style.left=leftPct+'%'; tip.style.top=topPct+'%';
+    tip.innerHTML = isPeak ? `<b>${fmtTime(p.t,p.span)}</b><span>Pico de actividad detectado</span>`
+                           : `<b>${fmtTime(p.t,p.span)}</b><span>${p.v} menciones/hora</span>`;
+  }
+  function buildArea(key){
+    const seed={'1H':5,'6H':21,'24H':42,'7D':88}[key];
+    const span=RANGES_SPAN[key];
+    const W=1000,H=200,r=rng(seed),now=Date.now();let pts=[];
+    for(let i=0;i<N;i++){
+      const x=i/(N-1);
+      let v=40+Math.sin(i*0.5)*8+Math.sin(i*1.7+1)*5+(r()-0.5)*9;
+      const d=Math.abs(i-PEAK); v+=52*Math.exp(-(d*d)/12); v=Math.max(6,Math.min(98,v));
+      pts.push({x:x*W, y:H-(v/100)*H, v:Math.round(v), t:new Date(now-(1-x)*span*60000), span});
+    }
+    curPts=pts;
+    const line=pts.map((p,i)=>(i?'L':'M')+p.x.toFixed(1)+' '+p.y.toFixed(1)).join(' ');
+    const area=line+` L${W} ${H} L0 ${H} Z`;
+    document.getElementById('area').innerHTML=`<defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8b5cf6" stop-opacity=".5"/><stop offset="1" stop-color="#8b5cf6" stop-opacity="0"/></linearGradient></defs>
+      <path d="${area}" fill="url(#ag)"/><path d="${line}" fill="none" stroke="#a78bfa" stroke-width="2" stroke-linejoin="round" stroke-dasharray="3000" stroke-dashoffset="3000"><animate attributeName="stroke-dashoffset" from="3000" to="0" dur="1.1s" fill="freeze"/></path>`;
+    let labs=''; for(let k=0;k<7;k++){const fr=k/6;labs+=`<span>${fmtTime(new Date(now-(1-fr)*span*60000),span)}</span>`;}
+    document.getElementById('xAxisMain').innerHTML=labs;
+    showAt(PEAK,true);
+  }
+  buildArea('6H');
+  const chartInner=document.getElementById('chartInner');
+  chartInner.addEventListener('mousemove',e=>{
+    const rect=chartInner.getBoundingClientRect(); if(rect.width<2)return;
+    let ratio=(e.clientX-rect.left)/rect.width; ratio=Math.max(0,Math.min(1,ratio));
+    showAt(Math.round(ratio*(N-1)),false);
+  });
+  chartInner.addEventListener('mouseleave',()=>showAt(PEAK,true));
+  document.getElementById('ranges').addEventListener('click',e=>{
+    const b=e.target.closest('button'); if(!b)return;
+    [...e.currentTarget.children].forEach(x=>x.classList.remove('active'));
+    b.classList.add('active'); buildArea(b.textContent);
+  });
+
+  /* ---------- tabs / panels ---------- */
+  function setTab(i){
+    document.querySelectorAll('#tabs button').forEach((b,k)=>b.classList.toggle('active',k===i));
+    document.querySelectorAll('.panel').forEach((p,k)=>p.classList.toggle('active',k===i));
+  }
+  document.getElementById('tabs').addEventListener('click',e=>{
+    const b=e.target.closest('button'); if(!b)return; setTab(+b.dataset.tab);
+  });
+
+  /* ---------- conversation expand ---------- */
+  document.getElementById('convGrid').addEventListener('click',e=>{
+    const link=e.target.closest('.ce-link'); if(link){e.stopPropagation();toast('Abriendo hilo original…','info');return;}
+    const c=e.target.closest('.conv'); if(c)c.classList.toggle('open');
+  });
+
+  /* ---------- conversation filters ---------- */
+  document.getElementById('convFilters').addEventListener('click',e=>{
+    const c=e.target.closest('.fchip'); if(!c)return;
+    document.querySelectorAll('#convFilters .fchip').forEach(x=>x.classList.remove('active'));
+    c.classList.add('active');
+    const f=c.dataset.f;
+    document.querySelectorAll('#convList .crow').forEach(r=>{ r.style.display=(f==='all'||r.dataset.src===f)?'':'none'; });
+  });
+
+  /* ---------- rail source follow ---------- */
+  document.getElementById('railSources').addEventListener('click',e=>{
+    const row=e.target.closest('.src-row'); if(!row)return;
+    const on=row.classList.toggle('followed');
+    toast(on?`Fuente fijada: ${row.dataset.name}`:'Fuente quitada del panel', on?'success':'info');
+  });
+
+  /* ---------- fuentes follow ---------- */
+  document.getElementById('fuentesList').addEventListener('click',e=>{
+    const b=e.target.closest('.fbtn'); if(!b)return;
+    const on=b.classList.toggle('on');
+    b.innerHTML=on?'<i data-lucide="check"></i> Siguiendo':'<i data-lucide="plus"></i> Seguir';
+    lucide.createIcons();
+    toast(on?`Siguiendo ${b.dataset.name}`:`Dejaste de seguir ${b.dataset.name}`, on?'success':'info');
+  });
+
+  /* ---------- toasts ---------- */
+  const TOAST_IC={success:'check-circle',info:'info',warn:'alert-triangle'};
+  function toast(msg,type){
+    type=type||'info';
+    const el=document.createElement('div'); el.className='toast '+type;
+    el.innerHTML=`<i data-lucide="${TOAST_IC[type]||'info'}"></i><span>${msg}</span>`;
+    document.getElementById('toasts').appendChild(el); lucide.createIcons();
+    setTimeout(()=>{el.classList.add('out');setTimeout(()=>el.remove(),260);},2600);
+  }
+
+  /* ---------- follow / alert / copy ---------- */
+  const SUMMARY='La discusión se centra en posibles restricciones a modelos de IA de propósito general y transparencia algorítmica. Posible impacto en startups europeas.';
+  const fb=document.getElementById('followBtn');
+  function toggleFollow(){const on=fb.classList.toggle('on');fb.innerHTML=on?'<i data-lucide="star"></i> Siguiendo':'<i data-lucide="star"></i> Seguir tema';lucide.createIcons();toast(on?'Tema añadido a tu seguimiento':'Dejaste de seguir el tema',on?'success':'info');}
+  fb.addEventListener('click',toggleFollow);
+  const ab=document.getElementById('alertBtn');
+  function toggleAlert(){const on=ab.classList.toggle('on');ab.innerHTML=on?'<i data-lucide="bell-off"></i> Alerta activa':'<i data-lucide="bell"></i> Crear alerta';lucide.createIcons();toast(on?'Alerta creada · te avisaremos de picos':'Alerta desactivada',on?'success':'info');}
+  ab.addEventListener('click',toggleAlert);
+  const cb=document.getElementById('copyBtn');
+  function copySummary(){try{navigator.clipboard&&navigator.clipboard.writeText(SUMMARY);}catch(e){}const o=cb.innerHTML;cb.innerHTML='<i data-lucide="check"></i> Copiado';lucide.createIcons();toast('Resumen IA copiado al portapapeles','success');setTimeout(()=>{cb.innerHTML=o;lucide.createIcons();},1400);}
+  cb.addEventListener('click',copySummary);
+
+  /* ---------- live metrics ---------- */
+  const mh=document.getElementById('mhNum');
+  setInterval(()=>{const v=82+(Math.floor(Math.random()*6)-2);mh.textContent=v;mh.classList.remove('flash');void mh.offsetWidth;mh.classList.add('flash');},2600);
+  const detectStart=Date.now()-(2*60+14)*60000, da=document.getElementById('detectAgo');
+  setInterval(()=>{const ms=Date.now()-detectStart;da.textContent=`Detectado hace ${Math.floor(ms/3600000)}h ${Math.floor(ms%3600000/60000)}m`;},20000);
+  const sigBar=document.getElementById('sigBar');
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{if(sigBar)sigBar.style.width='89%';}));
+
+  /* ---------- streaming AI feed ---------- */
+  const FEED=[
+    {ic:'shield',t:()=>`Nemotron analizó ${ri(20,60)} nuevos posts en Reddit`},
+    {ic:'cpu',t:()=>`GPT clasificó el sentimiento como ${pick(['positivo','neutro','mixto'])}`},
+    {ic:'file-text',t:()=>`Indexando ${ri(8,30)} artículos nuevos`},
+    {ic:'alert-triangle',t:()=>`Encontradas ${ri(1,3)} anomalías inusuales`},
+    {ic:'refresh-cw',t:()=>`Actualizando modelo de tendencias`},
+    {ic:'sparkles',t:()=>`Nuevo cluster detectado: ${pick(['#AIAct','#OpenSource','#Crypto'])}`},
+    {ic:'globe',t:()=>`Bluesky: +${ri(5,18)} menciones en 60s`},
+    {ic:'git-branch',t:()=>`GitHub: ${ri(2,9)} repos en tendencia`}
+  ];
+  function feedRow(o,flash,when){return `<div class="act-row${flash?' flash-in':''}"><span class="act-ic"><i data-lucide="${o.ic}"></i></span><span class="t">${o.t()}</span><span class="ts">${hhmmss(when)}</span></div>`;}
+  const aiFeed=document.getElementById('aiFeed');
+  const now0=Date.now();
+  aiFeed.innerHTML=FEED.slice(0,5).map((o,i)=>feedRow(o,false,new Date(now0-i*4000))).join('');
+  setInterval(()=>{
+    const o=pick(FEED);
+    aiFeed.insertAdjacentHTML('afterbegin',feedRow(o,true,new Date()));
+    while(aiFeed.children.length>7)aiFeed.lastElementChild.remove();
+    lucide.createIcons();
+  },3500);
+
+  /* ---------- command palette ---------- */
+  const PALETTE=[
+    {g:'Acciones',ic:'star',label:'Seguir este tema',kw:'follow seguir estrella',run:toggleFollow},
+    {g:'Acciones',ic:'bell',label:'Crear alerta de tendencia',kw:'alerta notificar pico',run:toggleAlert},
+    {g:'Acciones',ic:'copy',label:'Copiar resumen IA',kw:'copiar resumen portapapeles',run:copySummary},
+    {g:'Acciones',ic:'layout-dashboard',label:'Ir a Resumen',kw:'resumen vista',run:()=>setTab(0)},
+    {g:'Acciones',ic:'brain',label:'Ir a Análisis IA',kw:'analisis ia sentimiento impacto',run:()=>setTab(1)},
+    {g:'Acciones',ic:'messages-square',label:'Ir a Conversaciones',kw:'conversaciones hilos',run:()=>setTab(2)},
+    {g:'Acciones',ic:'database',label:'Ir a Fuentes',kw:'fuentes motores',run:()=>setTab(3)},
+    {g:'Acciones',ic:'history',label:'Ir a Historial',kw:'historial deteccion timeline',run:()=>setTab(4)},
+    {g:'Temas',ic:'flame',label:'Regulación de IA en la UE',kw:'ia ue regulacion comision',run:()=>toast('Tema activo: Regulación de IA en la UE','info')},
+    {g:'Temas',ic:'bird',label:'Nueva API de Bluesky',kw:'bluesky api señal',run:()=>toast('Abriendo tendencia: Nueva API de Bluesky','info')},
+    {g:'Temas',ic:'circle-dollar-sign',label:'Cripto se recupera',kw:'crypto bitcoin estable',run:()=>toast('Abriendo tendencia: Cripto se recupera','info')},
+    {g:'Temas',ic:'atom',label:'Avances en fusión nuclear',kw:'fusion nuclear energia',run:()=>toast('Abriendo tendencia: Avances en fusión nuclear','info')},
+    {g:'Fuentes',ic:'globe',label:'Filtrar por Reddit',kw:'reddit r/artificial',run:()=>{setTab(3);toast('Filtrando fuentes por Reddit','info');}},
+    {g:'Fuentes',ic:'globe',label:'Filtrar por Bluesky',kw:'bluesky',run:()=>{setTab(3);toast('Filtrando fuentes por Bluesky','info');}},
+    {g:'Fuentes',ic:'globe',label:'Filtrar por Hacker News',kw:'hn hacker news',run:()=>{setTab(3);toast('Filtrando fuentes por Hacker News','info');}}
+  ];
+  const palOverlay=document.getElementById('palOverlay'), palInput=document.getElementById('palInput'), palList=document.getElementById('palList');
+  let visible=[], selIdx=0;
+  function renderList(q){
+    q=(q||'').trim().toLowerCase();
+    visible=PALETTE.filter(it=>{const hay=(it.label+' '+it.kw+' '+it.g).toLowerCase();return q.split(/\s+/).filter(Boolean).every(tok=>hay.includes(tok));});
+    selIdx=0;
+    if(!visible.length){palList.innerHTML='<div class="pal-empty">Sin resultados para “'+q+'”</div>';return;}
+    let html='',last='';
+    visible.forEach((it,i)=>{if(it.g!==last){last=it.g;html+=`<div class="pal-group">${it.g}</div>`;}
+      html+=`<button class="pal-item" data-pi="${i}"><i data-lucide="${it.ic}"></i><span>${it.label}</span><span class="gi">${it.g}</span></button>`;});
+    palList.innerHTML=html; lucide.createIcons(); markSel();
+  }
+  function markSel(){palList.querySelectorAll('.pal-item').forEach(el=>el.classList.toggle('sel',+el.dataset.pi===selIdx));
+    const el=palList.querySelector('.pal-item.sel'); if(el)el.scrollIntoView({block:'nearest'});}
+  function openPalette(){palOverlay.classList.add('open');palInput.value='';renderList('');setTimeout(()=>palInput.focus(),20);}
+  function closePalette(){palOverlay.classList.remove('open');}
+  palInput.addEventListener('input',()=>renderList(palInput.value));
+  palInput.addEventListener('keydown',e=>{
+    if(e.key==='ArrowDown'){e.preventDefault();selIdx=Math.min(selIdx+1,visible.length-1);markSel();}
+    else if(e.key==='ArrowUp'){e.preventDefault();selIdx=Math.max(selIdx-1,0);markSel();}
+    else if(e.key==='Enter'){e.preventDefault();const it=visible[selIdx];if(it){closePalette();it.run();}}
+    else if(e.key==='Escape'){e.preventDefault();closePalette();}
+  });
+  palList.addEventListener('click',e=>{const b=e.target.closest('.pal-item');if(!b)return;const it=visible[+b.dataset.pi];if(it){closePalette();it.run();}});
+  palOverlay.addEventListener('mousedown',e=>{if(e.target===palOverlay)closePalette();});
+
+  const searchOpen=document.getElementById('searchOpen');
+  searchOpen.addEventListener('click',openPalette);
+  searchOpen.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openPalette();}});
+  document.addEventListener('keydown',e=>{
+    const open=palOverlay.classList.contains('open');
+    if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();open?closePalette():openPalette();return;}
+    if(open)return;
+    if(e.key==='/'&&!/INPUT|TEXTAREA/.test(document.activeElement.tagName)){e.preventDefault();openPalette();}
+  });
+
+  /* ---------- sidebar nav ---------- */
+  document.querySelectorAll('.nav a').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();document.querySelectorAll('.nav a').forEach(x=>x.classList.remove('active'));a.classList.add('active');}));
+
+  /* ---------- final icon pass + reveal ---------- */
+  lucide.createIcons();
+  const io=new IntersectionObserver(es=>es.forEach(en=>{if(en.isIntersecting){en.target.classList.add('in');io.unobserve(en.target);}}),{threshold:.08});
+  document.querySelectorAll('.reveal').forEach((el,i)=>{el.style.transitionDelay=(i*45)+'ms';io.observe(el);});
+</script>
+</body>
+</html>
