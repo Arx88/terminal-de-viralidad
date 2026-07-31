@@ -394,6 +394,18 @@ class ClusterStore {
     // Single-mention clusters get a deterministic low score (not NaN/null).
     // Per DataSanity rule: mentions=1 → confidence must be < 50.
     if (mentions.length === 1) score = Math.min(score, 25)
+    // Hard scoring gate (DataSanity rule): conf>=50 requires
+    //   mentions >= 5 AND sources >= 3 AND trashPenalty < 0.3
+    // Without this, age/velocity ramp lets a 3-mention cluster creep past 50.
+    if (score >= 50) {
+      if (mentions.length < 5 || sourcesSet.size < 3 || trashPenalty >= 0.3) {
+        score = Math.min(score, 49)
+      }
+    }
+    // Hard scoring gate: conf>=70 requires mentions >= 10 AND sources >= 4
+    if (score >= 70 && (mentions.length < 10 || sourcesSet.size < 4)) {
+      score = Math.min(score, 69)
+    }
 
     cstate.scoreHistory.push({ ts: now, score })
     if (cstate.scoreHistory.length > 120) cstate.scoreHistory.shift()

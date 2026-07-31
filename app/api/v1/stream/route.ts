@@ -55,7 +55,10 @@ export async function GET(req: NextRequest): Promise<Response> {
         const { events, needsFullResync } = sseBus.replaySince(lastEventId)
         for (const e of events) safeEnqueue(formatSseEvent(e))
         if (needsFullResync) {
-          // Tell the client the buffer was lost; they should reconcile
+          // Buffer lost (different Vercel lambda). Tell client to reconcile.
+          // Client will fetch fresh /api/v1/trends snapshot itself, so we
+          // skip server-side snapshot to avoid sending ~15 trend.upserted
+          // events the client will discard anyway (or might mishandle).
           safeEnqueue(formatSseEvent({
             id: generateEventId(),
             type: 'connection.heartbeat',
@@ -67,8 +70,7 @@ export async function GET(req: NextRequest): Promise<Response> {
             },
             ts: new Date().toISOString(),
           }))
-          // Snapshot is required because we don't know what the client missed
-          skipSnapshot = false
+          skipSnapshot = true
         } else {
           // Client is up to date — skip the initial snapshot to avoid duplicates
           skipSnapshot = true

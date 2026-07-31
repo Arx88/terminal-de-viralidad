@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react'
 import {
+  AlertTriangle,
   ArrowDownRight,
   ArrowRight,
   ArrowUpRight,
@@ -12,6 +13,7 @@ import {
   Equal,
   Flame,
   Plus,
+  Sparkles,
   X,
 } from 'lucide-react'
 import { CountUp } from '@/components/count-up'
@@ -133,6 +135,7 @@ export function AnalysisPanel() {
     toggleAlert,
     setScreen,
     live,
+    selectedBriefing,
   } = useVirahub()
 
   const isSaved = saved.includes(selected.id)
@@ -361,6 +364,45 @@ export function AnalysisPanel() {
               {selected.why}
             </p>
           </div>
+
+          {/* Briefing IA — render narrative + keyPoints + riskFlags */}
+          {selectedBriefing && (
+            <div className="mt-4 border-t border-border pt-4">
+              <p className="flex items-center gap-1.5 text-[11px] font-semibold tracking-[0.14em] text-[oklch(0.78_0.16_300)] uppercase">
+                <Sparkles className="size-3" strokeWidth={2.2} aria-hidden="true" />
+                Análisis IA
+              </p>
+              <p className="mt-2 text-[12.5px] leading-relaxed text-foreground/85 text-pretty">
+                {selectedBriefing.narrative}
+              </p>
+              {selectedBriefing.keyPoints.length > 0 && (
+                <ul className="mt-3 flex flex-col gap-1.5">
+                  {selectedBriefing.keyPoints.map((kp, i) => (
+                    <li key={i} className="flex items-start gap-2 text-[12px] text-muted-foreground">
+                      <span className="mt-0.5 size-1 shrink-0 rounded-full bg-primary" aria-hidden="true" />
+                      <span className="text-pretty">{kp}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {selectedBriefing.riskFlags.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {selectedBriefing.riskFlags.map((rf, i) => (
+                    <span
+                      key={i}
+                      className="inline-flex items-center gap-1 rounded-md border border-[var(--hot)]/30 bg-[var(--hot)]/10 px-2 py-1 text-[10.5px] font-medium text-[var(--hot)]"
+                    >
+                      <AlertTriangle className="size-2.5" strokeWidth={2.4} aria-hidden="true" />
+                      {rf}
+                    </span>
+                  ))}
+                </div>
+              )}
+              <p className="mt-3 text-[10px] text-muted-foreground/70">
+                {selectedBriefing.model} · {selectedBriefing.confidence.toFixed(2)} confianza · {selectedBriefing.tokensUsed} tokens
+              </p>
+            </div>
+          )}
 
           <div className="mt-5 flex items-center gap-2">
             <button

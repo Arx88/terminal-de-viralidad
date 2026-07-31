@@ -1,19 +1,41 @@
 /**
  * POST /api/v1/saved/:id — save a cluster by id
+ *
+ * FIX (v2.0.2): one-shot ingest if cluster not in store (Vercel stateless).
+ * Without this, POST /saved/cl_xxx returns 404 because the lambda handling
+ * the POST doesn't have the cluster in its in-memory store.
  */
 import { NextRequest } from 'next/server'
 import { apiOk, apiError, parseZod, SaveTrendBodySchema } from '@/lib/server/api/schemas'
-import { store, clusterToTrend } from '@/lib/server/core/store'
+import { store, clusterToTrend, ingestMentions } from '@/lib/server/core/store'
 import type { SavedTrendDTO } from '@/lib/types'
 import { saved } from '@/app/api/v1/saved/route'
+import { runIngestion } from '@/lib/server/ingest/adapters'
+import { ALL_SOURCES } from '@/lib/types'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
+export const maxDuration = 30
+
+let savedOneShotDone = false
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }): Promise<Response> {
   const params = await ctx.params
-  const cluster = store.getCluster(params.id)
-  if (!cluster) return apiError(404, 'Not found', `Cluster ${params.id} not found`)
+  let cluster = store.getCluster(params.id)
+
+  // One-shot ingest if cluster not found (Vercel stateless cold-start)
+  if (!cluster && !savedOneShotDone) {
+    savedOneShotDone = true
+    try {
+      const mentions = await runIngestion(ALL_SOURCES)
+      ingestMentions(mentions)
+      cluster = store.getCluster(params.id)
+    } catch {
+      // swallow
+    }
+  }
+
+  if (!cluster) return apiError(404, 'Not found', `Cluster ${params.id} not found after ingest`)
 
   const body = await req.json().catch(() => ({}))
   const b = parseZod(SaveTrendBodySchema, body)
@@ -37,7 +59,6 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
 export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: string }> }): Promise<Response> {
   const params = await ctx.params
-  // Try by saved entry id first, then by clusterId
   let deleted = false
   for (const [sid, sv] of saved.entries()) {
     if (sid === params.id || sv.clusterId === params.id) {

@@ -22,10 +22,22 @@ const ringBuffer: SseEvent[] = []
 let counter = 0
 
 function nextId(): string {
-  counter++
-  // Globally monotonic: timestamp_ms + counter (always increasing within a process)
-  return `${Date.now()}-${counter}`
+  // Use high-resolution timestamp with counter fallback for sub-ms collisions.
+  // Pure Date.now() can produce duplicates when many events publish in the same
+  // ms; counter disambiguates them. Counter is process-local, but since the
+  // timestamp dominates the sort order, IDs from different processes are still
+  // monotonic enough for Last-Event-ID dedup (the client only cares about
+  // "give me events strictly after this one I last saw").
+  const now = Date.now()
+  if (now === lastTs) {
+    counter++
+  } else {
+    lastTs = now
+    counter = 1
+  }
+  return `${now}-${counter}`
 }
+let lastTs = 0
 
 export const sseBus = {
   publish<T>(type: SseEventType, data: T): SseEvent<T> {

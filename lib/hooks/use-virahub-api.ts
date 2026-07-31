@@ -159,6 +159,8 @@ export function useTrends(): {
   const refresh = useCallback(async () => {
     try {
       const data = await apiGet<{ trends: Trend[] }>('/api/v1/trends?limit=30')
+      // Replace entire list (authoritative snapshot from server).
+      // Avoids stale "phantom trends" that no longer exist server-side.
       setTrends(data.trends)
       setError(null)
     } catch (err) {
@@ -170,6 +172,9 @@ export function useTrends(): {
 
   useEffect(() => {
     refresh()
+    // Periodic reconciliation: re-fetch the full list every 60s to prune
+    // stale trends the server may have GC'd (no trend.removed event exists).
+    const reconcileInterval = setInterval(refresh, 60_000)
     // Subscribe to SSE for live updates
     const unsub = sseClient.subscribe((event) => {
       if (event.type === 'trend.upserted') {
@@ -181,10 +186,19 @@ export function useTrends(): {
           next[idx] = t
           return next.sort((a, b) => b.confidence - a.confidence)
         })
+      } else if (event.type === 'connection.heartbeat') {
+        const data = event.data as { resyncRequired?: boolean }
+        if (data?.resyncRequired) {
+          // Server told us buffer was lost — fetch fresh snapshot
+          refresh()
+        }
       }
     })
     sseClient.connect()
-    return unsub
+    return () => {
+      unsub()
+      clearInterval(reconcileInterval)
+    }
   }, [refresh])
 
   return { trends, loading, error, refresh }

@@ -59,7 +59,7 @@ export default function Page() {
           />
 
           {/* Contenido scrolleable */}
-          <div className="relative flex min-w-0 flex-1 gap-4 overflow-y-auto px-3 pb-6 sm:px-4 lg:px-6 lg:flex-row lg:gap-4">
+          <div className="relative flex min-w-0 flex-1 flex-col gap-4 overflow-y-auto px-3 pb-6 sm:px-4 lg:flex-row lg:px-6 lg:gap-4">
             <ScreenRouter />
             <AnalysisPanel />
           </div>

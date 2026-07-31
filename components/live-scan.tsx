@@ -57,7 +57,7 @@ export function LiveScan() {
           <span className="flex items-center gap-1.5">
             <Database className="size-3.5 text-[var(--cool)]" strokeWidth={2} />
             <span className="tabular-nums text-foreground/85">
-              {analyzed.toLocaleString('es-ES')}
+              {(Number.isFinite(analyzed) ? analyzed : 0).toLocaleString('es-ES')}
             </span>
             posts/historiados
           </span>

@@ -18,7 +18,9 @@ const bars = Array.from({ length: 64 }, (_, i) => i)
  * Exposes a role="img" + aria-label so screen readers announce state.
  */
 function Waveform({ live, latency }: { live: boolean; latency: number }) {
-  const stressed = live && latency > 1.5
+  // Hard null/NaN guard — agent-browser cycle 2 found crashes when latency was null
+  const safeLatency = Number.isFinite(latency) ? latency : 0
+  const stressed = live && safeLatency > 1.5
   const barColor = !live
     ? 'bg-muted-foreground/50'
     : stressed
@@ -27,8 +29,8 @@ function Waveform({ live, latency }: { live: boolean; latency: number }) {
   const label = !live
     ? 'Forma de onda del sistema: en pausa, sin captura de señales.'
     : stressed
-      ? `Forma de onda del sistema: activa, latencia elevada (${latency.toFixed(1)}s).`
-      : `Forma de onda del sistema: activa, latencia nominal (${latency.toFixed(1)}s).`
+      ? `Forma de onda del sistema: activa, latencia elevada (${safeLatency.toFixed(1)}s).`
+      : `Forma de onda del sistema: activa, latencia nominal (${safeLatency.toFixed(1)}s).`
 
   return (
     <div
