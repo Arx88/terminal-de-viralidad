@@ -450,84 +450,14 @@ class GitHubAdapter implements Adapter {
 }
 
 // ---------------------------------------------------------------------------
-// X (Twitter) — scrape xcancel.com profile pages (verified working from Vercel)
-// xcancel.com/search has JS challenge, but profile pages return clean HTML
-// with tweet-content divs and /username/status/id links.
-// We scrape a rotating list of influential accounts to get diverse tweets.
+// X (Twitter) — stub vacío
+// X no aporta valor al detector de viralidad temprana. Las 6 fuentes
+// activas (Reddit, Bluesky, HN, RSS, GDELT, GitHub) son suficientes.
 // ---------------------------------------------------------------------------
-const X_WATCH_ACCOUNTS = [
-  'elonmusk', 'OpenAI', 'sama', 'ylecun', 'kaboro', 'AndrewYNg', 'fchollet',
-  'huanghaijin', 'balajis', 'vitalikbuterin', 'CathieDWood', 'zaborowski',
-]
-
 class XAdapter implements Adapter {
   source: SourceKey = 'x'
   async fetch(): Promise<RawMention[]> {
-    const out: RawMention[] = []
-    // Rotar 3 accounts por ciclo para diversificar
-    const accounts = X_WATCH_ACCOUNTS.sort(() => Math.random() - 0.5).slice(0, 3)
-    for (const account of accounts) {
-      const r = await httpGet(`https://xcancel.com/${account}`, {
-        timeoutMs: 8000,
-        headers: { 'Accept': 'text/html,application/xhtml+xml' },
-      })
-      if (!r.ok || r.body.length < 1000) {
-        logger.warn('x adapter: xcancel profile failed', { account, status: r.status })
-        continue
-      }
-      const html = r.body
-
-      // Estructura confirmada de xcancel:
-      // <div class="tweet-content media-body" dir="auto">texto</div>
-      // <a href="/username/status/123456">...</a>
-      // Extraer todos los bloques de tweet-content con su link de status
-      const tweetContentRegex = /<div class="tweet-content[^"]*"[^>]*>([\s\S]*?)<\/div>/g
-      const statusLinkRegex = /href="\/([^\/"']+)\/status\/(\d+)"/g
-
-      const contents: string[] = []
-      let m: RegExpExecArray | null
-      while ((m = tweetContentRegex.exec(html)) !== null) {
-        const text = m[1]
-          .replace(/<[^>]+>/g, ' ')
-          .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
-          .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, ' ')
-          .replace(/\s+/g, ' ')
-          .trim()
-        if (text.length > 10) contents.push(text)
-      }
-
-      const statusLinks: { user: string; id: string }[] = []
-      while ((m = statusLinkRegex.exec(html)) !== null) {
-        statusLinks.push({ user: m[1], id: m[2] })
-      }
-
-      // Emparejar contents con statusLinks (están en orden en el HTML)
-      const count = Math.min(contents.length, statusLinks.length, 8)
-      for (let i = 0; i < count; i++) {
-        const text = contents[i]
-        const { user, id: tweetId } = statusLinks[i]
-        // Aceptar cualquier tweet con >20 chars de contenido sustantivo
-        // (el clustering + scoring se encarga de filtrar ruido)
-        if (text.length < 20) continue
-
-        out.push({
-          contentHash: fnv1a64(normalizeText(text + tweetId)),
-          source: 'x',
-          externalId: tweetId,
-          authorId: user,
-          authorHandle: `@${user}`,
-          text,
-          language: 'und',
-          publishedAt: new Date().toISOString(),
-          url: `https://x.com/${user}/status/${tweetId}`,
-          hasMedia: false,
-          rawPayload: JSON.stringify({ user, tweetId, text: text.slice(0, 200) }),
-        })
-      }
-      // Pequeño delay entre accounts
-      await new Promise((r) => setTimeout(r, 300))
-    }
-    return out
+    return []
   }
 }
 
