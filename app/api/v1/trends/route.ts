@@ -10,6 +10,7 @@ import { store, clusterToTrend, ingestMentions } from '@/lib/server/core/redis-s
 import { ListTrendsQuerySchema, apiOk, apiError, parseZod } from '@/lib/server/api/schemas'
 import { startIngestLoop, getIngestStats, updateEngineStatesFromIngest } from '@/lib/server/streaming/loop'
 import { runIngestion } from '@/lib/server/ingest/adapters'
+import type { Cluster } from '@/lib/types'
 import { ALL_SOURCES } from '@/lib/types'
 
 export const runtime = 'nodejs'
@@ -46,7 +47,7 @@ export async function GET(req: NextRequest): Promise<Response> {
 
   const { source, phase, minScore, q, limit } = parsed.value
 
-  let clusters
+  let clusters: Cluster[]
   try {
     clusters = await store.getTrending(100)
   } catch (err) {
