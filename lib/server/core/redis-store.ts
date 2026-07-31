@@ -492,15 +492,20 @@ class RedisClusterStore {
   }
 
   private parseCluster(data: Record<string, string>): Cluster {
+    const safeParse = (val: string | undefined, fallback: unknown): unknown => {
+      if (!val) return fallback
+      if (typeof val !== 'string') return val // ya es objeto/array
+      try { return JSON.parse(val) } catch { return fallback }
+    }
     return {
       id: data.id,
       signatureHash: data.signatureHash || '',
       title: data.title || 'Untitled',
       summary: data.summary || '',
       primarySource: data.primarySource as SourceKey,
-      sources: JSON.parse(data.sources || '[]'),
-      languages: JSON.parse(data.languages || '["und"]'),
-      entities: JSON.parse(data.entities || '[]'),
+      sources: safeParse(data.sources, []) as SourceKey[],
+      languages: safeParse(data.languages, ['und']) as string[],
+      entities: safeParse(data.entities, []) as Entity[],
       firstSeen: data.firstSeen,
       lastSeen: data.lastSeen,
       mentionsCount: parseInt(data.mentionsCount || '0', 10),
@@ -516,7 +521,7 @@ class RedisClusterStore {
       } : undefined,
       trashPenalty: parseFloat(data.trashPenalty || '0'),
       isTrending: data.isTrending === 'true',
-      sourceCounts: JSON.parse(data.sourceCounts || '{}'),
+      sourceCounts: safeParse(data.sourceCounts, {}) as Record<SourceKey, number>,
     }
   }
 
