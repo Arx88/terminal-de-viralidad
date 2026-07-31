@@ -33,7 +33,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     detailOneShotDone = true
     try {
       const mentions = await runIngestion(ALL_SOURCES)
-      ingestMentions(mentions)
+      await ingestMentions(mentions)
       cluster = await store.getCluster(p.value.id)
     } catch {
       // swallow

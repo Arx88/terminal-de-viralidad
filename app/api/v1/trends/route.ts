@@ -32,7 +32,7 @@ export async function GET(req: NextRequest): Promise<Response> {
       try {
         const start = Date.now()
         const mentions = await runIngestion(ALL_SOURCES)
-        ingestMentions(mentions)
+        await ingestMentions(mentions)
         updateEngineStatesFromIngest(mentions, Date.now() - start)
       } catch {
         // swallow — return whatever we have

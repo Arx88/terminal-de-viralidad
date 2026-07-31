@@ -28,7 +28,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     savedOneShotDone = true
     try {
       const mentions = await runIngestion(ALL_SOURCES)
-      ingestMentions(mentions)
+      await ingestMentions(mentions)
       cluster = await store.getCluster(params.id)
     } catch {
       // swallow
