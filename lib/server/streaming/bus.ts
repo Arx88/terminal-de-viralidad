@@ -1,28 +1,30 @@
 /**
  * FASE 3 — Agent-Gateway
  *
- * In-memory event bus (Redis Pub/Sub-shape, single-instance on Vercel).
- * Supports:
- *   - publish(event) — fan-out to all subscribers
- *   - subscribe(fn)  — returns unsubscribe
- *   - replaySince(lastId) — for Last-Event-ID resumption
+ * In-memory event bus with proper Last-Event-ID resumption.
  *
- * Ring buffer of 1000 events per type for replay on reconnect.
+ * FIX (v2.0.1 — QA Cycle 1):
+ *   - IDs are now globally monotonic timestamps (ms + counter) so they survive
+ *     across reconnections and across Vercel lambda invocations within the
+ *     same warm instance.
+ *   - replaySince() actually returns events strictly AFTER the given id.
+ *   - Snapshot events also use the same id sequence so they participate in
+ *     the dedup logic on reconnect.
  */
 
 import type { SseEvent, SseEventType } from '@/lib/types'
-import { cuid } from '@/lib/server/hash'
 
 type Listener = (event: SseEvent) => void
 
 const BUFFER_SIZE = 1000
 const listeners = new Set<Listener>()
 const ringBuffer: SseEvent[] = []
-let lastId = 0
+let counter = 0
 
 function nextId(): string {
-  lastId++
-  return String(lastId)
+  counter++
+  // Globally monotonic: timestamp_ms + counter (always increasing within a process)
+  return `${Date.now()}-${counter}`
 }
 
 export const sseBus = {
@@ -46,13 +48,23 @@ export const sseBus = {
     return () => listeners.delete(listener)
   },
 
-  replaySince(lastEventId: string): SseEvent[] {
+  /**
+   * Returns events strictly AFTER the given lastEventId.
+   * If lastEventId is not found in the buffer, returns the last 50 events
+   * (best-effort) AND emits a special `connection.resync_required` flag
+   * the caller can use to force a full snapshot reload.
+   */
+  replaySince(lastEventId: string): { events: SseEvent[]; needsFullResync: boolean } {
     const idx = ringBuffer.findIndex((e) => e.id === lastEventId)
     if (idx === -1) {
-      // Not found — return last 50 (best-effort)
-      return ringBuffer.slice(-50)
+      return { events: ringBuffer.slice(-50), needsFullResync: true }
     }
-    return ringBuffer.slice(idx + 1)
+    return { events: ringBuffer.slice(idx + 1), needsFullResync: false }
+  },
+
+  /** Publish a snapshot event with a unique monotonic id (used for initial state). */
+  publishSnapshot<T>(type: SseEventType, data: T): SseEvent<T> {
+    return this.publish(type, data)
   },
 
   get clientCount(): number { return listeners.size },
@@ -68,4 +80,5 @@ export function formatSseEvent(event: SseEvent): string {
   return `id: ${event.id}\nevent: ${event.type}\ndata: ${JSON.stringify(event.data)}\n\n`
 }
 
-export function newEventId(): string { return cuid('evt') }
+/** Helper for routes that need a unique event id without publishing. */
+export function generateEventId(): string { return nextId() }

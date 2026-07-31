@@ -14,7 +14,9 @@ export const ListTrendsQuerySchema = z.object({
   phase: PhaseSchema.optional(),
   minScore: z.coerce.number().min(0).max(100).optional(),
   q: z.string().max(200).optional(),
-  cursor: z.string().optional(),
+  // Cursor must be a valid alphanumeric id (cuid pattern) — reject SQL-like
+  // or arbitrary junk with 400 instead of silently falling back to page 1.
+  cursor: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/, 'Invalid cursor format').optional(),
   limit: z.coerce.number().int().min(1).max(100).default(30),
 })
 

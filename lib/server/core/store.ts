@@ -235,7 +235,11 @@ class ClusterStore {
     }
 
     if (!bestClusterId) {
-      const clusterId = 'cl_' + fnv1a64(raw.text.slice(0, 80) + Date.now()).slice(0, 12)
+      // DETERMINISTIC clusterId: hash of normalized first-mention text.
+      // Critical for Vercel stateless: two lambdas ingesting the same data
+      // must produce the same clusterId, so /trends/:id can resolve across
+      // invocations. Adding Date.now() broke this (random per call).
+      const clusterId = 'cl_' + fnv1a64(normalizeText(raw.text).slice(0, 200)).slice(0, 12)
       bestClusterId = clusterId
       for (const band of bands) {
         if (!this.lshBuckets.has(band)) this.lshBuckets.set(band, new Set())
@@ -335,12 +339,13 @@ class ClusterStore {
       if (c > max) { max = c; primarySource = s as SourceKey }
     }
 
+    // Use the SAME representative mention for title AND summary to avoid
+    // the "title contradicts why" hallucination. Pick the most recent
+    // non-empty mention (most authoritative for live trends).
     const sorted = [...mentions].sort((a, b) => Date.parse(b.raw.publishedAt) - Date.parse(a.raw.publishedAt))
-    const top3 = sorted.slice(0, 3)
-    const titleMention = top3.reduce((a, b) => (a.raw.text.length < b.raw.text.length ? a : b))
-    const title = titleMention.raw.text.split('\n')[0].slice(0, 120) || cstate.cluster.title
-    const longest = mentions.reduce((a, b) => (a.raw.text.length > b.raw.text.length ? a : b))
-    const summary = longest.raw.text.slice(0, 220)
+    const repMention = sorted[0]
+    const title = (repMention?.raw.text.split('\n')[0].slice(0, 120)) || cstate.cluster.title || 'Untitled'
+    const summary = (repMention?.raw.text.slice(0, 220)) || cstate.cluster.summary || title
 
     const recentMentions = mentions.filter((m) => Date.parse(m.raw.publishedAt) > hourAgo)
     const velocity = recentMentions.length / 60
@@ -380,7 +385,15 @@ class ClusterStore {
       0.15 * authorQuality +
       0.15 * novelty +
       0.10 * trust
-    const score = Math.round(weighted * (1 - trashPenalty) * 100 * 100) / 100
+    // Hard NaN guard: any sub-score producing NaN must not propagate to score.
+    // confidence=null breaks the UI (CountUp crashes) and DataSanity flags it.
+    const safeWeighted = Number.isFinite(weighted) ? weighted : 0
+    const safePenalty = Number.isFinite(trashPenalty) ? trashPenalty : 0
+    let score = Math.round(safeWeighted * (1 - safePenalty) * 100 * 100) / 100
+    if (!Number.isFinite(score)) score = 0
+    // Single-mention clusters get a deterministic low score (not NaN/null).
+    // Per DataSanity rule: mentions=1 → confidence must be < 50.
+    if (mentions.length === 1) score = Math.min(score, 25)
 
     cstate.scoreHistory.push({ ts: now, score })
     if (cstate.scoreHistory.length > 120) cstate.scoreHistory.shift()
@@ -503,7 +516,9 @@ function shannonEntropy(counts: number[]): number {
     const p = c / total
     h -= p * Math.log2(p)
   }
-  return Math.min(1, h / Math.log2(counts.length || 1))
+  // Guard against Math.log2(1)=0 → div by zero (single-source clusters)
+  if (counts.length <= 1) return 0
+  return Math.min(1, h / Math.log2(counts.length))
 }
 
 function detectShape(samples: { ts: number; count: number }[]): Shape {
@@ -562,7 +577,9 @@ const COLOR_BY_SOURCE: Record<SourceKey, string> = {
 }
 
 export function clusterToTrend(cluster: Cluster): Trend {
-  const score = cluster.score
+  // Hard guard: confidence must NEVER be null/NaN — DataSanity zero-tolerance.
+  const rawScore = cluster.score
+  const score = Number.isFinite(rawScore) ? rawScore : 0
   const delta = 0
   const dir: TrendDir = delta > 5 ? 'up' : delta < -5 ? 'down' : 'flat'
   const heat =

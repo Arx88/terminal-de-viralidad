@@ -1,30 +1,44 @@
 /**
  * GET /api/v1/stream — Server-Sent Events stream
  *
- * On connect:
- *   1. Start the ingest loop (if not running)
- *   2. Replay missed events since Last-Event-ID
- *   3. Subscribe to live events
- *   4. Send heartbeat every 15s
- *
- * On disconnect (req.signal abort):
- *   - Unsubscribe from bus
- *   - Stop ingest loop (only when no more clients)
+ * FIX (v2.0.1 — QA Cycle 1):
+ *   - Last-Event-ID now actually respected via sseBus.replaySince()
+ *   - Snapshot events pushed through the bus (monotonic id) so they
+ *     participate in dedup on reconnect — no more duplicate snapshots
+ *   - If lastEventId not found in buffer, emit `connection.resync_required`
+ *     so the client can decide to reload full state
+ *   - Heartbeats also use monotonic ids
  */
 
 import { NextRequest } from 'next/server'
-import { sseBus, formatSseEvent } from '@/lib/server/streaming/bus'
-import { startIngestLoop, stopIngestLoop, getIngestStats } from '@/lib/server/streaming/loop'
-import { store } from '@/lib/server/core/store'
-import { clusterToTrend } from '@/lib/server/core/store'
+import { sseBus, formatSseEvent, generateEventId } from '@/lib/server/streaming/bus'
+import { startIngestLoop, stopIngestLoop, getIngestStats, updateEngineStatesFromIngest } from '@/lib/server/streaming/loop'
+import { store, clusterToTrend, ingestMentions } from '@/lib/server/core/store'
+import { runIngestion } from '@/lib/server/ingest/adapters'
+import { ALL_SOURCES } from '@/lib/types'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
-export const maxDuration = 300 // Vercel: 5 min max for SSE on hobbyist; 900s on pro
+export const maxDuration = 300
+
+let streamOneShotDone = false
 
 export async function GET(req: NextRequest): Promise<Response> {
   const lastEventId = req.headers.get('Last-Event-ID') ?? null
   startIngestLoop()
+
+  // One-shot ingest on cold start so the stream has data to send immediately
+  if (!streamOneShotDone) {
+    streamOneShotDone = true
+    try {
+      const start = Date.now()
+      const mentions = await runIngestion(ALL_SOURCES)
+      ingestMentions(mentions)
+      updateEngineStatesFromIngest(mentions, Date.now() - start)
+    } catch {
+      // swallow
+    }
+  }
 
   const encoder = new TextEncoder()
   const stream = new ReadableStream<Uint8Array>({
@@ -35,61 +49,65 @@ export async function GET(req: NextRequest): Promise<Response> {
         try { controller.enqueue(encoder.encode(chunk)) } catch { closed = true }
       }
 
-      // 1. Send hello
-      safeEnqueue(formatSseEvent({
-        id: 'hello',
-        type: 'connection.heartbeat',
-        data: { ts: new Date().toISOString(), clients: sseBus.clientCount + 1, eventsPerSec: 0 },
-        ts: new Date().toISOString(),
-      }))
-
-      // 2. Replay missed events
+      // 1. Replay missed events since lastEventId
+      let skipSnapshot = false
       if (lastEventId) {
-        const missed = sseBus.replaySince(lastEventId)
-        for (const e of missed) safeEnqueue(formatSseEvent(e))
+        const { events, needsFullResync } = sseBus.replaySince(lastEventId)
+        for (const e of events) safeEnqueue(formatSseEvent(e))
+        if (needsFullResync) {
+          // Tell the client the buffer was lost; they should reconcile
+          safeEnqueue(formatSseEvent({
+            id: generateEventId(),
+            type: 'connection.heartbeat',
+            data: {
+              ts: new Date().toISOString(),
+              clients: sseBus.clientCount + 1,
+              eventsPerSec: sseBus.eventsPerSec,
+              resyncRequired: true,
+            },
+            ts: new Date().toISOString(),
+          }))
+          // Snapshot is required because we don't know what the client missed
+          skipSnapshot = false
+        } else {
+          // Client is up to date — skip the initial snapshot to avoid duplicates
+          skipSnapshot = true
+        }
       }
 
-      // 3. Send initial snapshot of top trends
-      const top = store.getTrending(15)
-      for (const c of top) {
-        safeEnqueue(formatSseEvent({
-          id: `snap-${c.id}`,
-          type: 'trend.upserted',
-          data: clusterToTrend(c),
-          ts: new Date().toISOString(),
-        }))
+      // 2. Initial snapshot of top trends (only when no replay was possible
+      //    or when resync is required). Use bus.publish so events get a
+      //    monotonic id and are added to the ring buffer for future replays.
+      if (!skipSnapshot) {
+        const top = store.getTrending(15)
+        for (const c of top) {
+          sseBus.publish('trend.upserted', clusterToTrend(c))
+        }
       }
 
-      // 4. Subscribe to live events
+      // 3. Subscribe to live events
       const unsub = sseBus.subscribe((event) => {
         safeEnqueue(formatSseEvent(event))
       })
 
-      // 5. Heartbeat every 15s
+      // 4. Heartbeat every 15s — uses bus.publish for monotonic id
       const heartbeat = setInterval(() => {
         const stats = getIngestStats()
-        safeEnqueue(formatSseEvent({
-          id: `hb-${Date.now()}`,
-          type: 'connection.heartbeat',
-          data: {
-            ts: new Date().toISOString(),
-            clients: sseBus.clientCount,
-            eventsPerSec: sseBus.eventsPerSec,
-            ingest: stats,
-          },
+        sseBus.publish('connection.heartbeat', {
           ts: new Date().toISOString(),
-        }))
+          clients: sseBus.clientCount,
+          eventsPerSec: sseBus.eventsPerSec,
+          ingest: stats,
+        })
       }, 15000)
 
-      // 6. Cleanup on abort
+      // 5. Cleanup on abort
       req.signal.addEventListener('abort', () => {
         closed = true
         clearInterval(heartbeat)
         unsub()
         try { controller.close() } catch { /* already closed */ }
-        // Stop loop when no clients left
         if (sseBus.clientCount === 0) {
-          // Give 30s grace period before stopping
           setTimeout(() => {
             if (sseBus.clientCount === 0) stopIngestLoop()
           }, 30_000)

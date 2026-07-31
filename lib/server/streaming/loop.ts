@@ -9,7 +9,7 @@
  */
 
 import { ALL_SOURCES, type SourceKey, type RawMention } from '@/lib/types'
-import { runIngestion } from '@/lib/server/ingest/adapters'
+import { runIngestion, getAdapterLatency } from '@/lib/server/ingest/adapters'
 import { ingestMentions, store, startGcLoop } from '@/lib/server/core/store'
 import { sseBus } from '@/lib/server/streaming/bus'
 import { clusterToTrend, generateExtractiveBriefing } from '@/lib/server/core/store'
@@ -78,18 +78,16 @@ export function updateEngineStatesFromIngest(mentions: RawMention[], durationMs:
     const st = engineStates.get(s)
     if (!st) continue
     const ingested = bySource.get(s) ?? 0
+    // Per-adapter latency (real, not uniform) — FIX from DataSanity audit
+    const adapterLatency = getAdapterLatency(s)
     st.lastRunAt = startTs
     st.itemsIngested = ingested
     st.itemsTotal += ingested
-    st.latencyMs = durationMs
+    st.latencyMs = adapterLatency || durationMs
     st.health = ingested > 0 ? 'online' : (st.enabled ? 'degraded' : 'offline')
   }
-  // Also update loop-level stats so /about reflects one-shot ingests
   lastIngestAt = startTs
   lastIngestDurationMs = durationMs
-  // Count truly NEW mentions (deduplicated) by re-running ingest
-  // — but we already ran ingestMentions in the caller, so just count the
-  // unique content hashes we saw this round.
   const uniqueHashes = new Set<string>()
   for (const m of mentions) uniqueHashes.add(m.contentHash)
   totalIngested += uniqueHashes.size

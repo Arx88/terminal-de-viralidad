@@ -405,7 +405,18 @@ export const adapters: Record<SourceKey, Adapter> = {
 /** Run all enabled adapters in parallel, returning the merged RawMention[]. */
 export async function runIngestion(enabledSources: SourceKey[]): Promise<RawMention[]> {
   const active = enabledSources.map((s) => adapters[s]).filter(Boolean)
-  const results = await Promise.allSettled(active.map((a) => a.fetch()))
+  const results = await Promise.allSettled(active.map(async (a) => {
+    const start = Date.now()
+    try {
+      const mentions = await a.fetch()
+      // Stash per-adapter duration on the adapter instance for the loop to read
+      ;(a as Adapter & { _lastDurationMs?: number })._lastDurationMs = Date.now() - start
+      return mentions
+    } catch (err) {
+      ;(a as Adapter & { _lastDurationMs?: number })._lastDurationMs = Date.now() - start
+      throw err
+    }
+  }))
   const out: RawMention[] = []
   for (let i = 0; i < results.length; i++) {
     const r = results[i]
@@ -416,4 +427,10 @@ export async function runIngestion(enabledSources: SourceKey[]): Promise<RawMent
     }
   }
   return out
+}
+
+/** Get the last per-adapter fetch duration (ms). Used by loop to populate per-engine latency. */
+export function getAdapterLatency(source: SourceKey): number {
+  const a = adapters[source] as Adapter & { _lastDurationMs?: number }
+  return a?._lastDurationMs ?? 0
 }
