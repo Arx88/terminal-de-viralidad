@@ -1,9 +1,32 @@
+'use client'
+
 import { AnalysisPanel } from '@/components/analysis-panel'
 import { HeroCard } from '@/components/hero-card'
 import { LeftRail } from '@/components/left-rail'
 import { LiveScan } from '@/components/live-scan'
 import { TopBar } from '@/components/top-bar'
 import { TrendTimeline } from '@/components/trend-timeline'
+import { ExploreScreen } from '@/components/screens/explore-screen'
+import { AlertsScreen } from '@/components/screens/alerts-screen'
+import { SavedScreen } from '@/components/screens/saved-screen'
+import { useVirahub } from '@/components/virahub-provider'
+
+function ScreenRouter() {
+  const { screen } = useVirahub()
+
+  if (screen === 'explorar') return <ExploreScreen />
+  if (screen === 'alertas') return <AlertsScreen />
+  if (screen === 'guardados') return <SavedScreen />
+
+  // radar (default)
+  return (
+    <main className="flex min-w-0 flex-1 flex-col gap-4">
+      <HeroCard />
+      <LiveScan />
+      <TrendTimeline />
+    </main>
+  )
+}
 
 export default function Page() {
   return (
@@ -23,11 +46,7 @@ export default function Page() {
         <div className="flex items-stretch gap-2 px-4 pb-6 lg:px-6">
           <LeftRail />
           <div className="flex min-w-0 flex-1 flex-col gap-4 lg:flex-row">
-            <main className="flex min-w-0 flex-1 flex-col gap-4">
-              <HeroCard />
-              <LiveScan />
-              <TrendTimeline />
-            </main>
+            <ScreenRouter />
             <AnalysisPanel />
           </div>
         </div>
