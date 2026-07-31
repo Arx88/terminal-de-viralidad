@@ -83,11 +83,55 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Global focus-visible ring for all interactive elements.
+     Applied here so every <button>, <a>, <input>, <select>, <textarea>,
+     and [tabindex] gets a consistent, visible focus indicator without
+     each component needing to repeat the utility classes. */
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  [tabindex]:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+
+  /* Remove default outline only when focus-visible ring is shown */
+  button:focus:not(:focus-visible),
+  a:focus:not(:focus-visible),
+  input:focus:not(:focus-visible),
+  select:focus:not(:focus-visible),
+  textarea:focus:not(:focus-visible) {
+    outline: none;
+  }
 }
 
 @utility scrollbar-thin {
   scrollbar-width: thin;
-  scrollbar-color: oklch(0.3 0.03 285) transparent;
+  scrollbar-color: oklch(0.32 0.03 285) transparent;
+}
+
+/* WebKit scrollbar styling — applied globally to all scrollable elements
+   for a consistent, slim appearance that matches the dark theme. */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: oklch(0.3 0.03 285 / 60%);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.4 0.04 285 / 80%);
+  background-clip: content-box;
 }
 
 @keyframes vh-pulse {

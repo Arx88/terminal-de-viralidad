@@ -170,6 +170,8 @@ export function TrendTimeline() {
                 <button
                   type="button"
                   onClick={() => select(lane.id)}
+                  aria-label={`Seleccionar ${lane.title}`}
+                  aria-pressed={isSel}
                   className="flex cursor-pointer items-center gap-2 pl-4 text-left"
                 >
                   <SourceGlyph source={lane.source} className="size-3.5" />
@@ -187,6 +189,8 @@ export function TrendTimeline() {
                     type="button"
                     onClick={() => toggleLane(lane.id)}
                     title={hidden ? 'Mostrar serie' : 'Ocultar serie'}
+                    aria-label={hidden ? `Mostrar serie ${lane.title}` : `Ocultar serie ${lane.title}`}
+                    aria-pressed={!hidden}
                     className="cursor-pointer text-muted-foreground/60 transition-colors hover:text-foreground"
                   >
                     {hidden ? (

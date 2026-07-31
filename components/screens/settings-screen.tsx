@@ -224,7 +224,7 @@ export function SettingsScreen() {
       }
     >
       {/* TABS */}
-      <div className="flex items-center gap-1 overflow-x-auto border-b border-border scrollbar-thin">
+      <div className="flex items-center gap-1 overflow-x-auto border-b border-border scrollbar-thin pb-px">
         {TABS.map(({ key, label, Icon }) => (
           <button
             key={key}
@@ -334,7 +334,7 @@ export function SettingsScreen() {
               <button
                 type="button"
                 onClick={saveProfile}
-                className="flex cursor-pointer items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground transition-all hover:shadow-[0_0_20px_-4px_var(--primary)]"
+                className="flex cursor-pointer items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground transition-all hover:shadow-[0_0_20px_-4px_var(--primary)] active:translate-y-px"
               >
                 <Save className="size-4" strokeWidth={2} /> Guardar cambios
               </button>
@@ -534,7 +534,7 @@ export function SettingsScreen() {
               <button
                 type="button"
                 onClick={saveNotifications}
-                className="flex cursor-pointer items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground transition-all hover:shadow-[0_0_20px_-4px_var(--primary)]"
+                className="flex cursor-pointer items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground transition-all hover:shadow-[0_0_20px_-4px_var(--primary)] active:translate-y-px"
               >
                 <Save className="size-4" strokeWidth={2} /> Guardar
               </button>
@@ -594,7 +594,8 @@ export function SettingsScreen() {
                         type="button"
                         onClick={() => toggleKeyVisibility(meta.id)}
                         className="flex size-7 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-white/[0.04] hover:text-foreground"
-                        aria-label={state.visible ? 'Ocultar' : 'Mostrar'}
+                        aria-label={state.visible ? `Ocultar API key de ${meta.label}` : `Mostrar API key de ${meta.label}`}
+                        title={state.visible ? 'Ocultar' : 'Mostrar'}
                       >
                         {state.visible ? <EyeOff className="size-3.5" strokeWidth={2} /> : <Eye className="size-3.5" strokeWidth={2} />}
                       </button>
@@ -602,7 +603,8 @@ export function SettingsScreen() {
                         type="button"
                         onClick={() => removeApiKey(meta.id)}
                         className="flex size-7 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-                        aria-label="Eliminar"
+                        aria-label={`Eliminar API key de ${meta.label}`}
+                        title="Eliminar"
                       >
                         <RefreshCw className="size-3.5" strokeWidth={2} />
                       </button>

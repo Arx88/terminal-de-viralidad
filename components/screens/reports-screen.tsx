@@ -194,7 +194,7 @@ export function ReportsScreen() {
           <button
             type="button"
             onClick={() => exportReport('pdf')}
-            className="flex cursor-pointer items-center gap-2 rounded-lg bg-primary px-3 py-2 text-[12.5px] font-semibold text-primary-foreground transition-all hover:shadow-[0_0_20px_-4px_var(--primary)]"
+            className="flex cursor-pointer items-center gap-2 rounded-lg bg-primary px-3 py-2 text-[12.5px] font-semibold text-primary-foreground transition-all hover:shadow-[0_0_20px_-4px_var(--primary)] active:translate-y-px"
           >
             <FileDown className="size-3.5" strokeWidth={2} />
             PDF
@@ -260,13 +260,16 @@ export function ReportsScreen() {
             {data.hourly.map((v, i) => (
               <div
                 key={i}
+                role="img"
+                aria-label={`${v} detecciones a las ${i + 1}ª hora del período`}
                 className="group/bar flex flex-1 flex-col items-center justify-end gap-1.5"
+                title={`${v} detecciones en esta hora`}
               >
                 <span className="text-[10px] font-semibold tabular-nums opacity-0 transition-opacity group-hover/bar:opacity-100">
                   {v}
                 </span>
                 <div
-                  className="w-full rounded-t-md bg-gradient-to-t from-primary/30 to-primary transition-all duration-300 hover:from-primary/40 hover:to-primary"
+                  className="w-full rounded-t-md bg-gradient-to-t from-primary/30 to-primary transition-all duration-300 group-hover/bar:from-primary/50 group-hover/bar:to-primary"
                   style={{ height: `${(v / maxHourly) * 100}%` }}
                 />
               </div>
@@ -370,13 +373,14 @@ export function ReportsScreen() {
               </div>
               <MiniSpark trend={t} step={step} className="hidden h-9 w-28 sm:block" />
               <div className="flex items-center gap-5">
-                <Stat label="menc/h" value={t.mentions} />
+                <Stat label="menc/h" value={t.mentions} title="Menciones por hora" />
                 <Stat
                   label="delta"
                   value={`${t.delta > 0 ? '+' : ''}${t.delta}%`}
                   tone={t.delta > 0 ? 'hot' : 'muted'}
+                  title="Crecimiento vs ayer"
                 />
-                <Stat label="confianza" value={`${t.confidence}`} tone="cool" />
+                <Stat label="confianza" value={`${t.confidence}`} tone="cool" title="Confianza del modelo (0-100)" />
               </div>
             </li>
           ))}
@@ -465,10 +469,12 @@ function Stat({
   label,
   value,
   tone,
+  title,
 }: {
   label: string
   value: number | string
   tone?: 'hot' | 'cool' | 'mint' | 'muted'
+  title?: string
 }) {
   const toneClass = {
     hot: 'text-[var(--hot)]',
@@ -477,7 +483,7 @@ function Stat({
     muted: 'text-muted-foreground',
   } as const
   return (
-    <div className="flex flex-col items-end">
+    <div className="flex flex-col items-end" title={title}>
       <span className={cn('text-[14px] font-semibold tabular-nums', tone ? toneClass[tone] : '')}>
         {value}
       </span>

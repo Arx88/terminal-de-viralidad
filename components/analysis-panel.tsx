@@ -210,6 +210,7 @@ export function AnalysisPanel() {
             <button
               type="button"
               onClick={() => setCardOpen(false)}
+              aria-label="Cerrar panel de detalle"
               className="cursor-pointer text-muted-foreground transition-colors hover:text-foreground"
             >
               <X className="size-4" strokeWidth={2} />
@@ -226,10 +227,14 @@ export function AnalysisPanel() {
                 TONE[selected.tone],
               )}
               style={{ background: 'oklch(1 0 0 / 7%)' }}
+              title="Nivel de actividad de la tendencia"
             >
               {selected.heat}
             </span>
-            <span className="text-[12px] text-muted-foreground">
+            <span
+              className="text-[12px] text-muted-foreground"
+              title="Puntuación de confianza del modelo (0–100)"
+            >
               <CountUp
                 value={selected.confidence}
                 className="font-semibold text-foreground tabular-nums"
@@ -239,14 +244,20 @@ export function AnalysisPanel() {
           </div>
 
           <div className="mt-4 flex items-end justify-between">
-            <p className="flex items-baseline gap-1.5">
+            <p
+              className="flex items-baseline gap-1.5"
+              title="Menciones detectadas por hora en tiempo real"
+            >
               <CountUp
                 value={selected.mentions}
                 className="text-4xl font-semibold tracking-tight tabular-nums"
               />
               <span className="text-[12px] text-muted-foreground">menciones/hora</span>
             </p>
-            <p className="text-right">
+            <p
+              className="text-right"
+              title="Variación porcentual vs mismo horario de ayer"
+            >
               <CountUp
                 value={selected.delta}
                 prefix={selected.delta > 0 ? '+' : ''}
@@ -291,7 +302,7 @@ export function AnalysisPanel() {
             <button
               type="button"
               onClick={() => setScreen('informes')}
-              className="group flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2.5 text-[13px] font-semibold whitespace-nowrap text-primary-foreground transition-all hover:opacity-90 hover:shadow-[0_0_20px_-4px_var(--primary)]"
+              className="group flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2.5 text-[13px] font-semibold whitespace-nowrap text-primary-foreground transition-all hover:opacity-90 hover:shadow-[0_0_20px_-4px_var(--primary)] active:translate-y-px"
             >
               Ver análisis completo
               <ArrowRight
@@ -321,6 +332,8 @@ export function AnalysisPanel() {
               type="button"
               onClick={() => toggleSaved(selected.id)}
               aria-pressed={isSaved}
+              aria-label={isSaved ? `Quitar ${selected.title} de guardados` : `Guardar ${selected.title}`}
+              title={isSaved ? 'Quitar de guardados' : 'Guardar en mi radar'}
               className={cn(
                 'flex cursor-pointer items-center justify-center rounded-lg border p-2.5 transition-colors',
                 isSaved

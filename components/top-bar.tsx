@@ -42,6 +42,7 @@ export function TopBar() {
       <button
         type="button"
         onClick={() => setScreen('radar')}
+        aria-label="Volver al radar — inicio VIRAHUB"
         className="flex cursor-pointer items-center gap-2.5"
       >
         <span className="relative flex size-8 items-center justify-center">
@@ -81,6 +82,8 @@ export function TopBar() {
             type="button"
             onClick={() => setLive(!live)}
             title={live ? 'Pausar escaneo' : 'Reanudar escaneo'}
+            aria-label={live ? 'Pausar escaneo en vivo' : 'Reanudar escaneo en vivo'}
+            aria-pressed={live}
             className="group flex cursor-pointer items-center gap-2"
           >
             <span
@@ -137,6 +140,8 @@ export function TopBar() {
               <button
                 type="button"
                 title={name}
+                aria-label={`Enfocar motor ${name}`}
+                aria-pressed={focused === id}
                 onClick={() => {
                   setFocused(id as SourceKey)
                   notify(`Foco en ${name}`)
@@ -170,6 +175,7 @@ export function TopBar() {
           <button
             type="button"
             onClick={() => setScreen('alertas')}
+            aria-label={`Notificaciones${alerts.length > 0 ? `, ${alerts.length} sin revisar` : ''}`}
             className="relative flex size-7 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground"
           >
             <BellRing className="size-4" strokeWidth={1.8} />

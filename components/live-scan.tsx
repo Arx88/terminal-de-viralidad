@@ -92,7 +92,7 @@ export function LiveScan() {
             />
           )}
         </p>
-        <ul className="mt-4 flex items-center gap-1 overflow-x-auto scrollbar-thin">
+        <ul className="mt-4 flex items-center gap-1 overflow-x-auto scrollbar-thin pb-1">
           {ENGINES.map(({ id, name, verbs }, i) => {
             const verb = live ? verbs[(phase + i) % verbs.length] : 'En pausa'
             const progress = live ? 20 + ((step * 17 + i * 29) % 80) : 4
@@ -101,6 +101,7 @@ export function LiveScan() {
                 <button
                   type="button"
                   onClick={() => notify(`${name}: ${progress}% del lote procesado`)}
+                  aria-label={`Estado del motor ${name}: ${verb}, ${progress}% procesado`}
                   className="group flex cursor-pointer items-center gap-2.5 rounded-lg px-1 py-1 pr-2 text-left transition-colors hover:bg-white/[0.04]"
                 >
                   <SourceTile

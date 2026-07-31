@@ -14,3 +14,9 @@ node_modules
 .next/
 .DS_Store
 .vercel
+
+# Build artifacts
+tsconfig.tsbuildinfo
+
+# Tool results (temp)
+tool-results/

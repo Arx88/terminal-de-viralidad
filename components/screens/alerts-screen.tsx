@@ -510,7 +510,8 @@ function RulesPanel({
                 type="button"
                 onClick={() => onDelete(rule.id)}
                 className="flex size-8 cursor-pointer items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-                aria-label="Eliminar regla"
+                aria-label={`Eliminar regla de ${trend.title}`}
+                title="Eliminar regla"
               >
                 <Trash2 className="size-4" strokeWidth={1.9} />
               </button>
@@ -584,7 +585,7 @@ function CreateRulePanel({
 
         {/* Step 1: trend */}
         <Field label="1 · Tendencia a vigilar" hint="Selecciona el tema que quieres monitorear.">
-          <div className="grid max-h-56 grid-cols-1 gap-1.5 overflow-y-auto scrollbar-thin sm:grid-cols-2">
+          <div className="grid max-h-56 grid-cols-1 gap-1.5 overflow-y-auto scrollbar-thin pr-1 sm:grid-cols-2">
             {trends.map((t) => (
               <button
                 key={t.id}
@@ -706,7 +707,7 @@ function CreateRulePanel({
             type="button"
             onClick={handleCreate}
             disabled={!trendId || channels.length === 0}
-            className="flex cursor-pointer items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground transition-all hover:shadow-[0_0_20px_-4px_var(--primary)] disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex cursor-pointer items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground transition-all hover:shadow-[0_0_20px_-4px_var(--primary)] active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Plus className="size-4" strokeWidth={2.2} /> Crear regla
           </button>
@@ -817,12 +818,13 @@ function HistoryPanel({
       </header>
 
       {/* Search — secondary, clearly a sub-control */}
-      <div className="mt-3 flex items-center gap-2 rounded-lg border border-border bg-white/[0.03] px-3 py-2">
+      <div className="mt-3 flex items-center gap-2 rounded-lg border border-border bg-white/[0.03] px-3 py-2 transition-colors focus-within:border-primary/40">
         <Search className="size-4 text-muted-foreground" strokeWidth={1.9} />
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Buscar en el historial…"
+          aria-label="Buscar en el historial de disparos"
           className="flex-1 bg-transparent text-[13px] outline-none placeholder:text-muted-foreground/70"
         />
         {query && (
@@ -837,9 +839,26 @@ function HistoryPanel({
       </div>
 
       {events.length === 0 ? (
-        <p className="mt-6 rounded-xl border border-dashed border-border py-10 text-center text-[13px] text-muted-foreground">
-          No hay disparos que coincidan con &ldquo;{query}&rdquo;.
-        </p>
+        <div className="mt-6 rounded-2xl border border-dashed border-border py-14 text-center">
+          <Clock className="mx-auto size-6 text-muted-foreground" strokeWidth={1.8} />
+          <p className="mt-3 text-[14px] font-medium">
+            {query ? `Sin disparos para &ldquo;${query}&rdquo;` : 'No hay disparos registrados'}
+          </p>
+          <p className="mt-1 text-[12.5px] text-muted-foreground">
+            {query
+              ? 'Prueba con otro término de búsqueda.'
+              : 'Las alertas activadas aparecerán aquí.'}
+          </p>
+          {query && (
+            <button
+              type="button"
+              onClick={() => setQuery('')}
+              className="mt-4 inline-flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-white/[0.04] px-4 py-2 text-[13px] font-semibold text-foreground transition-colors hover:bg-white/[0.08]"
+            >
+              Limpiar búsqueda
+            </button>
+          )}
+        </div>
       ) : (
         <ul className="mt-5 flex flex-col">
           {events.map((e, i) => {
@@ -1009,9 +1028,12 @@ function FeedPanel({
           </span>
         </header>
         {acked.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-border py-10 text-center text-[12.5px] text-muted-foreground">
-            Aún no has revisado ninguna alerta.
-          </p>
+          <div className="rounded-xl border border-dashed border-border py-10 text-center">
+            <Check className="mx-auto size-5 text-muted-foreground" strokeWidth={1.8} />
+            <p className="mt-2 text-[12.5px] text-muted-foreground">
+              Aún no has revisado ninguna alerta.
+            </p>
+          </div>
         ) : (
           <ul className="scrollbar-thin max-h-[480px] flex flex-col gap-1 overflow-y-auto pr-1">
             {acked.map((e) => (

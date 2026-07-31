@@ -56,11 +56,11 @@ export function ExploreScreen() {
         </div>
         <div className="flex flex-col gap-1.5 lg:min-w-[280px]">
           <div className="flex items-baseline justify-between gap-6">
-            <div>
+            <div title="Menciones por hora detectadas en tiempo real">
               <span className="font-mono text-3xl font-bold tabular-nums">{selected.mentions}</span>
               <small className="mt-1 block text-[11px] text-muted-foreground">menciones/hora</small>
             </div>
-            <div className="text-right">
+            <div title="Crecimiento porcentual comparado con el mismo horario de ayer">
               <span className="font-mono text-2xl font-bold text-[var(--hot)] tabular-nums">
                 +{selected.delta}%
               </span>
@@ -78,8 +78,9 @@ export function ExploreScreen() {
         <button
           type="button"
           onClick={() => toggleSaved(selected.id)}
+          aria-pressed={saved.includes(selected.id)}
           className={cn(
-            'flex items-center gap-2 rounded-[10px] border px-3.5 py-2 text-[13px] font-semibold transition-all',
+            'flex cursor-pointer items-center gap-2 rounded-[10px] border px-3.5 py-2 text-[13px] font-semibold transition-all',
             saved.includes(selected.id)
               ? 'border-primary bg-primary/20 text-primary'
               : 'border-primary/50 bg-primary/10 text-primary hover:bg-primary/20',
@@ -91,8 +92,9 @@ export function ExploreScreen() {
         <button
           type="button"
           onClick={() => toggleAlert(selected.id)}
+          aria-pressed={alerts.includes(selected.id)}
           className={cn(
-            'flex items-center gap-2 rounded-[10px] border px-3.5 py-2 text-[13px] font-semibold transition-all',
+            'flex cursor-pointer items-center gap-2 rounded-[10px] border px-3.5 py-2 text-[13px] font-semibold transition-all',
             alerts.includes(selected.id)
               ? 'border-[var(--hot)]/50 bg-[var(--hot)]/10 text-[var(--hot)]'
               : 'border-border bg-white/[0.04] text-foreground hover:bg-white/[0.08]',
@@ -103,14 +105,15 @@ export function ExploreScreen() {
       </div>
 
       {/* TABS */}
-      <div className="flex gap-6 border-b border-border">
+      <div className="flex gap-6 overflow-x-auto scrollbar-thin border-b border-border">
         {tabs.map((t, i) => (
           <button
             key={t}
             type="button"
             onClick={() => setTab(t)}
+            aria-pressed={tab === t}
             className={cn(
-              'relative pb-3 text-[14px] font-medium transition-colors',
+              'relative shrink-0 cursor-pointer pb-3 text-[14px] font-medium transition-colors',
               tab === t ? 'text-primary' : 'text-muted-foreground hover:text-foreground',
             )}
           >
@@ -138,14 +141,25 @@ export function ExploreScreen() {
 
       {/* SEARCH + FILTER ROW */}
       <div className="flex items-center gap-2 border-t border-border pt-4">
-        <div className="flex flex-1 items-center gap-2 rounded-xl border border-border bg-white/[0.03] px-3 py-2">
+        <div className="flex flex-1 items-center gap-2 rounded-xl border border-border bg-white/[0.03] px-3 py-2 transition-colors focus-within:border-primary/40">
           <Search className="size-4 text-muted-foreground" strokeWidth={1.9} />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Buscar tendencia…"
+            aria-label="Buscar tendencia por título"
             className="flex-1 bg-transparent text-[13px] outline-none placeholder:text-muted-foreground/70"
           />
+          {query && (
+            <button
+              type="button"
+              onClick={() => setQuery('')}
+              className="cursor-pointer text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+              aria-label="Limpiar búsqueda"
+            >
+              Limpiar
+            </button>
+          )}
         </div>
       </div>
 
@@ -155,7 +169,7 @@ export function ExploreScreen() {
           <li key={t.id} className="animate-in fade-in slide-in-from-bottom-2" style={{ animationDelay: `${i * 60}ms` }}>
             <article
               className={cn(
-                'group flex h-full cursor-pointer flex-col gap-3 rounded-xl border p-4 transition-all duration-300 hover:-translate-y-0.5',
+                'group flex h-full cursor-pointer flex-col gap-3 rounded-xl border p-5 transition-all duration-300 hover:-translate-y-0.5',
                 selected.id === t.id
                   ? 'border-primary/40 bg-primary/5'
                   : 'border-border bg-card hover:border-primary/30',
@@ -171,6 +185,9 @@ export function ExploreScreen() {
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); toggleSaved(t.id) }}
+                  aria-label={saved.includes(t.id) ? `Quitar ${t.title} de guardados` : `Guardar ${t.title}`}
+                  aria-pressed={saved.includes(t.id)}
+                  title={saved.includes(t.id) ? 'Quitar de guardados' : 'Guardar tendencia'}
                   className="text-muted-foreground transition-colors hover:text-foreground"
                 >
                   {saved.includes(t.id) ? (
@@ -196,9 +213,20 @@ export function ExploreScreen() {
       </ul>
 
       {list.length === 0 && (
-        <p className="rounded-xl border border-dashed border-border py-10 text-center text-[13px] text-muted-foreground">
-          Sin resultados para "{query}".
-        </p>
+        <div className="rounded-2xl border border-dashed border-border py-14 text-center">
+          <Search className="mx-auto size-6 text-muted-foreground" strokeWidth={1.8} />
+          <p className="mt-3 text-[14px] font-medium">Sin resultados para &ldquo;{query}&rdquo;</p>
+          <p className="mt-1 text-[12.5px] text-muted-foreground">
+            Prueba con otro término o explora todas las tendencias.
+          </p>
+          <button
+            type="button"
+            onClick={() => setQuery('')}
+            className="mt-4 inline-flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-white/[0.04] px-4 py-2 text-[13px] font-semibold text-foreground transition-colors hover:bg-white/[0.08]"
+          >
+            Limpiar búsqueda
+          </button>
+        </div>
       )}
     </div>
   )
@@ -271,10 +299,10 @@ function AnalisisIAPanel({ trend }: { trend: Trend }) {
           con una velocidad de {trend.mentions} menciones por hora. {trend.delta > 100 ? 'Este patrón coincide con tendencias que posteriormente alcanzaron cobertura mediática amplia.' : 'La tendencia aún no ha alcanzado el umbral de amplificación masiva.'}
         </p>
         <div className="mt-4 flex gap-2.5">
-          <button className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-primary/50 bg-primary/15 px-3.5 py-2 text-[13px] font-semibold text-primary transition hover:bg-primary/25">
+          <button type="button" className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg border border-primary/50 bg-primary/15 px-3.5 py-2 text-[13px] font-semibold text-primary transition hover:bg-primary/25">
             <FileText className="size-4" /> Ver análisis completo
           </button>
-          <button className="flex items-center justify-center gap-2 rounded-lg border border-border bg-white/[0.04] px-3.5 py-2 text-[13px] font-semibold transition hover:bg-white/[0.08]">
+          <button type="button" aria-label="Compartir análisis" className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-border bg-white/[0.04] px-3.5 py-2 text-[13px] font-semibold transition hover:bg-white/[0.08]">
             <Share2 className="size-4" />
           </button>
         </div>
@@ -371,7 +399,7 @@ function FuentesPanel({ trend }: { trend: Trend }) {
   return (
     <div className="rounded-xl border border-border bg-card p-5">
       <h3 className="mb-4 text-[15px] font-semibold">Fuentes detectadas</h3>
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto scrollbar-thin">
         <table className="w-full">
           <thead>
             <tr className="border-b border-border text-[11px] uppercase tracking-wide text-muted-foreground">

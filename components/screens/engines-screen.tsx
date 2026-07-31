@@ -305,16 +305,18 @@ export function EnginesScreen() {
                     <p className="mt-0.5 truncate text-[12px] text-muted-foreground">{meta.description}</p>
                   </div>
                   <div className="hidden items-center gap-5 sm:flex">
-                    <MiniMetric label="menc/min" value={rpm} Icon={Zap} />
-                    <MiniMetric label="latencia" value={latency} decimals={1} suffix="s" Icon={Clock} />
-                    <MiniMetric label="última sync" value={lastSync} Icon={RefreshCw} raw />
+                    <MiniMetric label="menc/min" value={rpm} Icon={Zap} title="Menciones por minuto" />
+                    <MiniMetric label="latencia" value={latency} decimals={1} suffix="s" Icon={Clock} title="Latencia de respuesta" />
+                    <MiniMetric label="última sync" value={lastSync} Icon={RefreshCw} raw title="Tiempo desde la última sincronización" />
                   </div>
                   <Toggle on={isActive} onChange={() => toggleEngine(meta.id)} label={`Activar ${engine?.name}`} />
                   <button
                     type="button"
                     onClick={() => setOpenId(isOpen ? null : meta.id)}
                     className="flex size-8 cursor-pointer items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-white/[0.04] hover:text-foreground"
-                    aria-label={isOpen ? 'Contraer' : 'Expandir'}
+                    aria-label={isOpen ? `Contraer configuración de ${engine?.name}` : `Expandir configuración de ${engine?.name}`}
+                    aria-expanded={isOpen}
+                    title={isOpen ? 'Contraer' : 'Expandir'}
                   >
                     <ChevronDown className={cn('size-4 transition-transform', isOpen && 'rotate-180')} strokeWidth={2} />
                   </button>
@@ -386,7 +388,8 @@ export function EnginesScreen() {
                             onClick={() => addQuery(meta.id)}
                             disabled={!cfg.draftQuery.trim()}
                             className="flex size-8 cursor-pointer items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                            aria-label="Añadir query"
+                            aria-label={`Añadir ${meta.queryLabel.toLowerCase()}`}
+                            title="Añadir"
                           >
                             <Plus className="size-3.5" strokeWidth={2.2} />
                           </button>
@@ -402,7 +405,8 @@ export function EnginesScreen() {
                                 type="button"
                                 onClick={() => removeQuery(meta.id, q)}
                                 className="cursor-pointer text-muted-foreground transition-colors hover:text-destructive"
-                                aria-label="Eliminar"
+                                aria-label={`Eliminar ${q}`}
+                                title="Eliminar"
                               >
                                 <Trash2 className="size-3" strokeWidth={2} />
                               </button>
@@ -535,6 +539,7 @@ function MiniMetric({
   decimals = 0,
   Icon,
   raw = false,
+  title,
 }: {
   label: string
   value: number | string
@@ -542,9 +547,10 @@ function MiniMetric({
   decimals?: number
   Icon: typeof Activity
   raw?: boolean
+  title?: string
 }) {
   return (
-    <div className="flex flex-col items-end gap-0.5 text-right">
+    <div className="flex flex-col items-end gap-0.5 text-right" title={title}>
       <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
         <Icon className="size-3" strokeWidth={2} />
         {label}

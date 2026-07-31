@@ -79,6 +79,7 @@ export function Toggle({
       type="button"
       role="switch"
       aria-checked={on}
+      aria-label={label}
       onClick={() => onChange(!on)}
       className={`relative h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors duration-300 ${
         on ? 'bg-primary' : 'bg-white/[0.12]'
@@ -86,7 +87,7 @@ export function Toggle({
     >
       <span className="sr-only">{label}</span>
       <span
-        className={`absolute top-0.5 size-5 rounded-full bg-white transition-all duration-300 ${
+        className={`absolute top-0.5 size-5 rounded-full bg-white shadow-sm transition-all duration-300 ${
           on ? 'left-[22px]' : 'left-0.5'
         }`}
       />

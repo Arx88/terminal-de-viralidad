@@ -78,6 +78,7 @@ export function HeroCard() {
             type="button"
             onClick={() => setHowOpen((v) => !v)}
             aria-expanded={howOpen}
+            aria-controls="how-it-works-steps"
             className="mt-8 flex cursor-pointer items-center gap-3 rounded-xl border border-border bg-white/[0.06] px-5 py-3 text-sm font-medium text-foreground backdrop-blur-sm transition-all hover:bg-white/[0.11] hover:shadow-[0_0_24px_-8px_var(--primary)]"
           >
             Cómo funciona
@@ -89,7 +90,10 @@ export function HeroCard() {
           </button>
 
           {howOpen && (
-            <ol className="mt-5 flex animate-in flex-col gap-2.5 fade-in slide-in-from-top-2 duration-400">
+            <ol
+              id="how-it-works-steps"
+              className="mt-5 flex animate-in flex-col gap-2.5 fade-in slide-in-from-top-2 duration-400"
+            >
               {steps.map((s, i) => (
                 <li key={s} className="flex items-start gap-3 text-[13px] text-muted-foreground">
                   <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border border-primary/40 bg-primary/15 text-[10px] font-bold text-primary tabular-nums">
@@ -113,6 +117,7 @@ export function HeroCard() {
                 <button
                   type="button"
                   onClick={() => setScreen(screen)}
+                  aria-label={`Ir a ${screen === 'alertas' ? 'alertas' : 'explorar'}: ${label}`}
                   className="group/stat flex w-full cursor-pointer items-start gap-3 text-left"
                 >
                   <CountUp

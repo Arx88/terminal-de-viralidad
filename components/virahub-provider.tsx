@@ -49,6 +49,7 @@ type Ctx = {
   setLive: (v: boolean) => void
   toast: string | null
   notify: (msg: string) => void
+  dismissToast: () => void
 }
 
 const VirahubContext = createContext<Ctx | null>(null)
@@ -108,6 +109,8 @@ export function VirahubProvider({ children }: { children: ReactNode }) {
     setToast(msg)
     setTimeout(() => setToast((t) => (t === msg ? null : t)), 2600)
   }, [])
+
+  const dismissToast = useCallback(() => setToast(null), [])
 
   const select = useCallback((id: string) => {
     setSelectedId(id)
@@ -184,6 +187,7 @@ export function VirahubProvider({ children }: { children: ReactNode }) {
       setLive,
       toast,
       notify,
+      dismissToast,
     }),
     [
       screen,
@@ -206,6 +210,7 @@ export function VirahubProvider({ children }: { children: ReactNode }) {
       live,
       toast,
       notify,
+      dismissToast,
       select,
     ],
   )

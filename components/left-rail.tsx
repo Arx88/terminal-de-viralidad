@@ -88,10 +88,14 @@ export function LeftRail() {
       </ul>
 
       <div className="mt-auto flex flex-col items-center gap-1.5 pt-8">
-        <button type="button" className="group relative cursor-pointer">
+        <button
+          type="button"
+          aria-label="Abrir menú de cuenta"
+          className="group relative cursor-pointer"
+        >
           <Image
             src="/avatar.png"
-            alt=""
+            alt="Foto de perfil del usuario"
             width={40}
             height={40}
             className="size-10 rounded-full border border-border object-cover transition-transform duration-300 group-hover:scale-105"

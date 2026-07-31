@@ -241,12 +241,13 @@ export function SavedScreen() {
           <div className="rounded-2xl border border-border bg-card p-3">
             {/* PRIMARY control row */}
             <div className="flex flex-wrap items-center gap-3">
-              <div className="flex min-w-[200px] flex-1 items-center gap-2 rounded-lg border border-border bg-white/[0.03] px-3 py-2">
+              <div className="flex min-w-[200px] flex-1 items-center gap-2 rounded-lg border border-border bg-white/[0.03] px-3 py-2 transition-colors focus-within:border-primary/40">
                 <Search className="size-4 text-muted-foreground" strokeWidth={1.9} />
                 <input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Buscar por título, estado o nota…"
+                  aria-label="Buscar en guardados"
                   className="flex-1 bg-transparent text-[13px] outline-none placeholder:text-muted-foreground/70"
                 />
                 {query && (
@@ -360,8 +361,28 @@ export function SavedScreen() {
 
           {/* GRID */}
           {list.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-border py-12 text-center text-[13px] text-muted-foreground">
-              {query ? `Sin resultados para &ldquo;${query}&rdquo;.` : 'No hay tendencias en esta vista.'}
+            <div className="rounded-2xl border border-dashed border-border py-14 text-center">
+              <Search className="mx-auto size-6 text-muted-foreground" strokeWidth={1.8} />
+              <p className="mt-3 text-[14px] font-medium">
+                {query ? `Sin resultados para &ldquo;${query}&rdquo;` : 'No hay tendencias en esta vista'}
+              </p>
+              <p className="mt-1 text-[12.5px] text-muted-foreground">
+                {query
+                  ? 'Prueba con otro término o cambia de carpeta.'
+                  : 'Selecciona otra carpeta o explora nuevas tendencias.'}
+              </p>
+              {(query || activeFolder !== 'all') && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQuery('')
+                    setActiveFolder('all')
+                  }}
+                  className="mt-4 inline-flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-white/[0.04] px-4 py-2 text-[13px] font-semibold text-foreground transition-colors hover:bg-white/[0.08]"
+                >
+                  Ver todas las guardadas
+                </button>
+              )}
             </div>
           ) : (
             <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -479,6 +500,7 @@ export function SavedScreen() {
                             select(t.id)
                             setScreen('radar')
                           }}
+                          aria-label={`Ver ${t.title} en el radar`}
                           className="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-[12px] font-semibold text-primary-foreground transition-opacity hover:opacity-90"
                         >
                           Ver en radar
@@ -547,6 +569,7 @@ function FolderChip({
     <button
       type="button"
       onClick={onClick}
+      aria-pressed={active}
       className={cn(
         'flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-[11.5px] font-medium transition-all',
         active
@@ -559,7 +582,7 @@ function FolderChip({
       <span
         className={cn(
           'rounded px-1 text-[10px] font-bold tabular-nums',
-          active ? 'bg-current/15' : 'bg-white/[0.06] text-muted-foreground',
+          active ? 'bg-white/20' : 'bg-white/[0.06] text-muted-foreground',
         )}
       >
         {count}

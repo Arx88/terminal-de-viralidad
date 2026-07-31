@@ -4,6 +4,7 @@ import { AnalysisPanel } from '@/components/analysis-panel'
 import { HeroCard } from '@/components/hero-card'
 import { LeftRail } from '@/components/left-rail'
 import { LiveScan } from '@/components/live-scan'
+import { Toast } from '@/components/toast'
 import { TopBar } from '@/components/top-bar'
 import { TrendTimeline } from '@/components/trend-timeline'
 import { AlertsScreen } from '@/components/screens/alerts-screen'
@@ -57,6 +58,8 @@ export default function Page() {
           </div>
         </div>
       </div>
+
+      <Toast />
     </div>
   )
 }
