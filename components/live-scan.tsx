@@ -59,7 +59,7 @@ export function LiveScan() {
             <span className="tabular-nums text-foreground/85">
               {(Number.isFinite(analyzed) ? analyzed : 0).toLocaleString('es-ES')}
             </span>
-            posts/historiados
+            señales/historiadas
           </span>
           <span className="hidden items-center gap-1.5 sm:flex">
             <Sparkles className="size-3.5 text-primary" strokeWidth={2} />

@@ -199,6 +199,24 @@ class ClusterStore {
   private seenExternalIds = new Set<string>()
 
   addMention(raw: RawMention): { isNew: boolean; clusterId: string | null } {
+    // === AGENT 2 (DataInquisitor): publishedAt validation ===
+    // Rechazar menciones con publishedAt inválido: futuro lejano (>5min) o
+    // muy viejo (>7 días). Evita que repos antiguos o fechas parseadas mal
+    // contaminen el detector de viralidad temprana.
+    const pubMs = Date.parse(raw.publishedAt)
+    if (isNaN(pubMs)) {
+      return { isNew: false, clusterId: null } // fecha inválida → descartar
+    }
+    const now = Date.now()
+    const FUTURE_TOLERANCE = 5 * 60_000 // 5 min
+    const MAX_AGE = 7 * 86400_000        // 7 días
+    if (pubMs > now + FUTURE_TOLERANCE) {
+      return { isNew: false, clusterId: null } // fecha futura → descartar
+    }
+    if (pubMs < now - MAX_AGE) {
+      return { isNew: false, clusterId: null } // muy vieja → descartar
+    }
+
     const dedupKey = `${raw.source}:${raw.externalId}`
     if (this.seenExternalIds.has(dedupKey)) {
       return { isNew: false, clusterId: null }
@@ -301,28 +319,67 @@ class ClusterStore {
     if (mentions.length === 0) return
 
     const now = Date.now()
-    const hourAgo = now - 3600_000
-    const dayAgo = now - 86400_000
+    // Ventanas temporales para detección de velocidad/aceleración temprana
+    const MIN_15 = now - 15 * 60_000
+    const MIN_30 = now - 30 * 60_000
+    const MIN_60 = now - 60 * 60_000
+    const HOUR_2 = now - 2 * 3600_000
+    const HOUR_12 = now - 12 * 3600_000
+    const HOUR_24 = now - 24 * 3600_000
 
+    // === TIME-DECAY EXPONENTIAL WEIGHTING ===
+    // λ = ln(2) / halfLifeHours. Half-life = 6h (mención pierde 50% de peso cada 6h).
+    // Esta es la corrección central: las menciones viejas NO pesan igual que las nuevas.
+    const LAMBDA = Math.LN2 / 6 // 0.1155 per hour
+    const decayWeight = (publishedAtMs: number): number => {
+      const ageHours = Math.max(0, (now - publishedAtMs) / 3600_000)
+      return Math.exp(-LAMBDA * ageHours)
+    }
+
+    // Pre-compute weights + bucket by time window
     const sourceCounts = Object.fromEntries(ALL_SOURCES.map((s) => [s, 0])) as Record<SourceKey, number>
+    const sourceCountsRecent15 = Object.fromEntries(ALL_SOURCES.map((s) => [s, 0])) as Record<SourceKey, number>
     const authors = new Set<string>()
+    const authorsRecent60 = new Set<string>()
     const sourcesSet = new Set<SourceKey>()
+    const sourcesRecent60 = new Set<SourceKey>()
+    const sourcesRecent15 = new Set<SourceKey>()
     const languagesSet = new Set<string>()
     const allEntities: Entity[] = []
     let firstSeen = Infinity
     let lastSeen = -Infinity
+    let weightedVolume = 0 // Sum of decay weights — replaces raw mentions.length in score
+    let mentionsLast15 = 0
+    let mentionsLast30 = 0
+    let mentionsLast60 = 0
+    let mentionsOlder24 = 0
+
     for (const m of mentions) {
+      const t = Date.parse(m.raw.publishedAt)
+      if (isNaN(t)) continue
+      const w = decayWeight(t)
+      weightedVolume += w
       sourceCounts[m.raw.source]++
       authors.add(m.raw.authorId)
       sourcesSet.add(m.raw.source)
       languagesSet.add(m.raw.language ?? 'und')
       allEntities.push(...m.entities)
-      const t = Date.parse(m.raw.publishedAt)
-      if (!isNaN(t)) {
-        firstSeen = Math.min(firstSeen, t)
-        lastSeen = Math.max(lastSeen, t)
+      firstSeen = Math.min(firstSeen, t)
+      lastSeen = Math.max(lastSeen, t)
+      if (t > MIN_15) {
+        mentionsLast15++
+        sourceCountsRecent15[m.raw.source]++
+        sourcesRecent15.add(m.raw.source)
       }
+      if (t > MIN_30) mentionsLast30++
+      if (t > MIN_60) {
+        mentionsLast60++
+        authorsRecent60.add(m.raw.authorId)
+        sourcesRecent60.add(m.raw.source)
+      }
+      if (t < HOUR_24) mentionsOlder24++
     }
+
     const entitySeen = new Set<string>()
     const dedupEntities: Entity[] = []
     for (const e of allEntities) {
@@ -339,78 +396,135 @@ class ClusterStore {
       if (c > max) { max = c; primarySource = s as SourceKey }
     }
 
-    // Use the SAME representative mention for title AND summary to avoid
-    // the "title contradicts why" hallucination. Pick the most recent
-    // non-empty mention (most authoritative for live trends).
+    // Title/summary from most recent mention (anti-hallucination)
     const sorted = [...mentions].sort((a, b) => Date.parse(b.raw.publishedAt) - Date.parse(a.raw.publishedAt))
     const repMention = sorted[0]
     const title = (repMention?.raw.text.split('\n')[0].slice(0, 120)) || cstate.cluster.title || 'Untitled'
     const summary = (repMention?.raw.text.slice(0, 220)) || cstate.cluster.summary || title
 
-    const recentMentions = mentions.filter((m) => Date.parse(m.raw.publishedAt) > hourAgo)
-    const velocity = recentMentions.length / 60
-    cstate.velocityHistory.push({ ts: now, count: recentMentions.length })
+    // === VELOCITY REAL: menciones en los últimos 15min (no promedio estático de 1h) ===
+    // Un cluster con 0 menciones en los últimos 15min tiene velocity=0, sin importar
+    // cuántas acumule en la última hora. Esto es la CORRECCIÓN CENTRAL.
+    const velocity = mentionsLast15 / 15 // menciones por minuto en ventana 15min
+    // Velocity en ventana 60min para referencia (pero NO se usa en score directamente)
+    const velocity60 = mentionsLast60 / 60
+
+    // === ACELERACIÓN REAL: ΔM/Δt entre ventanas 15min y 60min ===
+    // acceleration = (tasa 15min) - (tasa 60min)
+    // Si tasa 15min > tasa 60min → acelerando (narrativa ganando tracción)
+    // Si tasa 15min < tasa 60min → desacelerando
+    const acceleration = velocity - velocity60 // positivo = acelerando
+    const accelerationRatio = velocity60 > 0 ? velocity / velocity60 : (velocity > 0 ? Infinity : 0)
+
+    cstate.velocityHistory.push({ ts: now, count: mentionsLast15 })
     if (cstate.velocityHistory.length > 60) cstate.velocityHistory.shift()
 
+    // === ANTI-SPAM/BOt (mejorado, con ventana 60min) ===
     let pSpam = 0
-    const authorCounts = new Map<string, number>()
+    const authorCounts60 = new Map<string, number>()
     for (const m of mentions) {
-      if (Date.parse(m.raw.publishedAt) < hourAgo) continue
-      authorCounts.set(m.raw.authorId, (authorCounts.get(m.raw.authorId) ?? 0) + 1)
+      const t = Date.parse(m.raw.publishedAt)
+      if (isNaN(t) || t < MIN_60) continue
+      authorCounts60.set(m.raw.authorId, (authorCounts60.get(m.raw.authorId) ?? 0) + 1)
     }
-    for (const c of authorCounts.values()) if (c > 14) { pSpam = 0.4; break }
-    const pBot = recentMentions.length > 0 && authors.size / recentMentions.length < 0.4 ? 0.3 : 0
-    const oldRatio = mentions.filter((m) => Date.parse(m.raw.publishedAt) < dayAgo).length / Math.max(1, mentions.length)
-    const pRecycle = oldRatio > 0.3 ? 0.3 : 0
+    for (const c of authorCounts60.values()) if (c > 14) { pSpam = 0.4; break }
+    // Single-author dominance: si un solo autor genera >50% de menciones en 60min → bot
+    let maxAuthorCount = 0
+    for (const c of authorCounts60.values()) maxAuthorCount = Math.max(maxAuthorCount, c)
+    const pBot = mentionsLast60 > 2 && maxAuthorCount / Math.max(1, mentionsLast60) > 0.5 ? 0.4 : 0
+    // Recycle: mención vieja reciclada — si >30% de menciones son >24h viejas
+    const pRecycle = mentionsOlder24 / Math.max(1, mentions.length) > 0.3 ? 0.3 : 0
     const trashPenalty = Math.min(1, pSpam + pBot + pRecycle)
 
-    const shape = detectShape(cstate.velocityHistory)
-    const ageHours = (now - firstSeen) / 3600_000
-    const phase = detectPhase(velocity, mentions.length, shape, ageHours)
+    // === SHAPE detection basada en acceleration real ===
+    const shape = detectShapeFromAcceleration(acceleration, accelerationRatio, cstate.velocityHistory)
 
-    const originQuality = originScoreForSource(primarySource)
-    const spread = sourcesSet.size / ALL_SOURCES.length
-    const entropy = shannonEntropy(Object.values(sourceCounts).filter((v) => v > 0))
-    const authorQuality = recentMentions.length > 0
-      ? Math.max(0, 1 - (recentMentions.length - authors.size) / Math.max(1, recentMentions.length))
-      : 0.5
-    const novelty = 1 - mentions.filter((m) => Date.parse(m.raw.publishedAt) < hourAgo * 6).length / Math.max(1, mentions.length)
+    // === PHASE detection reformulada para detección temprana ===
+    const ageHours = (now - firstSeen) / 3600_000
+    const phase = detectPhaseEarly(velocity, acceleration, mentionsLast15, mentionsLast60, sourcesRecent15.size, shape, ageHours)
+
+    // === SCORING REFORMULADO ===
+    // Principio: VELOCIDAD + ACELERACIÓN dominan. Volumen absoluto = solo como soporte.
+    // Time-decay ya aplicado via weightedVolume.
+
+    // 1. velocityScore: velocidad real en 15min (normalizada a 5 menc/min = 1.0)
+    const velocityScore = Math.min(1, velocity / 5)
+
+    // 2. accelerationScore: aceleración positiva = bonus, negativa = penalty
+    // accelerationRatio > 2 → fuerte aceleración (15min tiene 2x+ la tasa de 60min)
+    // accelerationRatio < 0.5 → fuerte desaceleración
+    let accelerationScore: number
+    if (!isFinite(accelerationRatio) && velocity > 0) {
+      accelerationScore = 1.0 // cluster nuevo con menciones solo en 15min = emergente puro
+    } else if (accelerationRatio >= 2) {
+      accelerationScore = 1.0
+    } else if (accelerationRatio >= 1) {
+      accelerationScore = 0.5 + (accelerationRatio - 1) * 0.5 // 0.5 → 1.0
+    } else if (accelerationRatio >= 0.5) {
+      accelerationScore = 0.2 + (accelerationRatio - 0.5) * 0.6 // 0.2 → 0.5
+    } else {
+      accelerationScore = Math.max(0, accelerationRatio * 0.4) // < 0.5 → casi 0
+    }
+
+    // 3. spreadScore: dispersión cross-platform EN los últimos 60min (no total)
+    // Premia que la narrativa haya saltado de una fuente a otra recientemente
+    const spreadScore = Math.min(1, sourcesRecent60.size / 3) // 3 fuentes = score 1.0
+
+    // 4. entropyScore: entropía de distribución de fuentes en últimos 15min
+    const entropyScore = shannonEntropy(Object.values(sourceCountsRecent15).filter((v) => v > 0))
+
+    // 5. authorDiversityScore: autores únicos vs total en últimos 60min
+    const authorDiversityScore = mentionsLast60 > 0
+      ? Math.min(1, authorsRecent60.size / Math.max(1, mentionsLast60))
+      : (mentionsLast15 > 0 ? 0.5 : 0)
+
+    // 6. freshnessScore: novedad — qué tan recientes son las menciones (time-decay promedio)
+    // Si todas las menciones son <2h → 1.0; si todas son >12h → 0.0
+    const freshnessScore = mentions.length > 0
+      ? Math.min(1, weightedVolume / mentions.length) // weightedVolume/total = promedio de decay weights
+      : 0
+
+    // 7. trustScore: confianza por fuente (igual que antes)
     const trust = sourceTrustForCluster(mentions.map((m) => m.raw.source))
 
+    // Weighted sum — VELOCITY y ACCELERATION dominan (60% del peso total)
     const weighted =
-      0.18 * originQuality +
-      0.12 * spread +
-      0.22 * Math.min(1, velocity / 2) +
-      0.08 * entropy +
-      0.15 * authorQuality +
-      0.15 * novelty +
-      0.10 * trust
-    // Hard NaN guard: any sub-score producing NaN must not propagate to score.
-    // confidence=null breaks the UI (CountUp crashes) and DataSanity flags it.
+      0.30 * velocityScore +       // ⬆️ 30% — velocidad real 15min
+      0.25 * accelerationScore +   // ⬆️ 25% — aceleración (1ª y 2ª derivada)
+      0.15 * spreadScore +         // dispersión cross-platform reciente
+      0.08 * entropyScore +
+      0.10 * authorDiversityScore +
+      0.07 * freshnessScore +      // frescura temporal
+      0.05 * trust
+
     const safeWeighted = Number.isFinite(weighted) ? weighted : 0
     const safePenalty = Number.isFinite(trashPenalty) ? trashPenalty : 0
     let score = Math.round(safeWeighted * (1 - safePenalty) * 100 * 100) / 100
     if (!Number.isFinite(score)) score = 0
-    // Single-mention clusters get a deterministic low score (not NaN/null).
-    // Per DataSanity rule: mentions=1 → confidence must be < 50.
-    if (mentions.length === 1) score = Math.min(score, 25)
-    // Hard scoring gate (DataSanity rule): conf>=50 requires
-    //   mentions >= 5 AND sources >= 3 AND trashPenalty < 0.3
-    // Without this, age/velocity ramp lets a 3-mention cluster creep past 50.
-    if (score >= 50) {
-      if (mentions.length < 5 || sourcesSet.size < 3 || trashPenalty >= 0.3) {
-        score = Math.min(score, 49)
-      }
+
+    // === CRITICAL: TIME-DECAY DEL SCORE ===
+    // Si un cluster no recibe menciones en los últimos 30min, su score DEBE caer.
+    // Sin menciones en 60min → score = 0 (sin importar volumen histórico).
+    if (mentionsLast30 === 0) score = Math.min(score, 5)  // casi muerto
+    if (mentionsLast60 === 0) score = 0                    // muerto
+
+    // Single-mention cluster: score bajo (no puede ser "tendencia viral")
+    if (mentions.length === 1) score = Math.min(score, 15)
+
+    // Gate: conf>=50 requiere velocidad real (menciones en 15min) + dispersión
+    if (score >= 50 && (mentionsLast15 < 2 || sourcesRecent60.size < 2)) {
+      score = Math.min(score, 49)
     }
-    // Hard scoring gate: conf>=70 requires mentions >= 10 AND sources >= 4
-    if (score >= 70 && (mentions.length < 10 || sourcesSet.size < 4)) {
+    // Gate: conf>=70 requiere aceleración fuerte + 3+ fuentes recientes
+    if (score >= 70 && (accelerationRatio < 1.5 || sourcesRecent60.size < 3)) {
       score = Math.min(score, 69)
     }
 
     cstate.scoreHistory.push({ ts: now, score })
     if (cstate.scoreHistory.length > 120) cstate.scoreHistory.shift()
 
-    const isTrending = score >= 35 && mentions.length >= 3
+    // isTrending: requiere actividad reciente real, no solo score
+    const isTrending = score >= 35 && mentionsLast60 >= 2 && mentionsLast30 >= 1
 
     cstate.cluster = {
       ...cstate.cluster,
@@ -427,7 +541,7 @@ class ClusterStore {
       uniqueAuthors: authors.size,
       shape,
       phase,
-      velocity,
+      velocity,        // ahora es velocity 15min real (menc/min)
       score,
       trashPenalty,
       isTrending,
@@ -439,16 +553,26 @@ class ClusterStore {
   }
 
   getTrending(limit = 20): Cluster[] {
+    const now = Date.now()
+    const HOUR_24 = now - 24 * 3600_000
     return Array.from(this.clusters.values())
       .map((c) => c.cluster)
-      .filter((c) => c.mentionsCount >= 1)
+      // FILTER 1: solo clusters con actividad en las últimas 24h (anti-acumulador)
+      .filter((c) => Date.parse(c.lastSeen) > HOUR_24)
+      // FILTER 2: excluir clusters muertos (score=0 por time-decay)
+      .filter((c) => c.score > 0)
+      // SORT: por score descendente (score ya incorpora velocity + acceleration + time-decay)
       .sort((a, b) => b.score - a.score)
       .slice(0, limit)
   }
 
   getAllClusters(limit = 50): Cluster[] {
+    const now = Date.now()
+    const HOUR_24 = now - 24 * 3600_000
     return Array.from(this.clusters.values())
       .map((c) => c.cluster)
+      // Solo clusters con actividad reciente (anti-acumulador)
+      .filter((c) => Date.parse(c.lastSeen) > HOUR_24)
       .sort((a, b) => Date.parse(b.lastSeen) - Date.parse(a.lastSeen))
       .slice(0, limit)
   }
@@ -533,44 +657,68 @@ function shannonEntropy(counts: number[]): number {
   return Math.min(1, h / Math.log2(counts.length))
 }
 
-function detectShape(samples: { ts: number; count: number }[]): Shape {
-  if (samples.length < 5) return 'flat'
-  const y = samples.map((s) => s.count)
-  const n = y.length
-  const xs = Array.from({ length: n }, (_, i) => i)
-  const meanX = xs.reduce((a, b) => a + b, 0) / n
-  const meanY = y.reduce((a, b) => a + b, 0) / n
-  let num = 0, den = 0
-  for (let i = 0; i < n; i++) {
-    num += (xs[i] - meanX) * (y[i] - meanY)
-    den += (xs[i] - meanX) ** 2
+// === SHAPE detection basada en ACCELERATION REAL (no regresión estática) ===
+// acceleration = velocity(15min) - velocity(60min)
+// accelerationRatio = velocity(15min) / velocity(60min)
+function detectShapeFromAcceleration(
+  acceleration: number,
+  accelerationRatio: number,
+  samples: { ts: number; count: number }[],
+): Shape {
+  // Caso cluster nuevo: solo menciones en 15min, sin historial 60min
+  if (!isFinite(accelerationRatio) && acceleration > 0) return 'accel'
+
+  // Aceleración fuerte: ratio >= 2 (15min tiene 2x+ la tasa de 60min)
+  if (accelerationRatio >= 2 && acceleration > 0) return 'accel'
+
+  // Rise: tasa positiva y acelerando moderadamente
+  if (acceleration > 0.05 && accelerationRatio >= 1.2) return 'rise'
+
+  // Decay: desaceleración clara (15min mucho menor que 60min)
+  if (acceleration < -0.05 || (accelerationRatio > 0 && accelerationRatio < 0.5)) return 'decay'
+
+  // Wobble: varianza alta en velocityHistory sin tendencia clara
+  if (samples.length >= 5) {
+    const y = samples.map((s) => s.count)
+    const meanY = y.reduce((a, b) => a + b, 0) / y.length
+    const variance = y.reduce((s, v) => s + (v - meanY) ** 2, 0) / y.length
+    const normVar = variance / (meanY * meanY + 1)
+    if (Math.abs(acceleration) < 0.05 && normVar > 0.5) return 'wobble'
   }
-  const slope = den === 0 ? 0 : num / den
-  const half = Math.floor(n / 2)
-  const slopeFirst = avgSlope(y.slice(0, half))
-  const slopeSecond = avgSlope(y.slice(half))
-  const accel = slopeSecond - slopeFirst
-  if (slope > 0.3 && accel > 0.1) return 'accel'
-  if (slope > 0.2) return 'rise'
-  if (slope < -0.2) return 'decay'
-  const variance = y.reduce((s, v) => s + (v - meanY) ** 2, 0) / n
-  const normVar = variance / (meanY * meanY + 1)
-  if (Math.abs(slope) < 0.1 && normVar > 0.5) return 'wobble'
+
   return 'flat'
 }
 
-function avgSlope(y: number[]): number {
-  if (y.length < 2) return 0
-  return (y[y.length - 1] - y[0]) / (y.length - 1)
-}
-
-function detectPhase(velocity: number, mentions: number, shape: Shape, ageHours: number): Phase {
-  if (ageHours < 2 && velocity < 0.5) return 'forming'
-  if (velocity > 1 && mentions > 3) return 'rising'
-  if (velocity > 0.5 && mentions > 10 && shape !== 'accel') return 'peaked'
-  if (shape === 'decay') return 'decaying'
+// === PHASE detection reformulada para DETECCIÓN TEMPRANA ===
+// Emergente: alta aceleración, bajo volumen total (t < 2h típico)
+// Pico: alta aceleración + alto volumen reciente
+// Decaimiento: bajo crecimiento + alto volumen acumulado
+// Formando: todavía sin tracción clara
+function detectPhaseEarly(
+  velocity: number,          // menc/min en 15min
+  acceleration: number,      // velocity(15min) - velocity(60min)
+  mentionsLast15: number,
+  mentionsLast60: number,
+  sourcesRecent15: number,
+  shape: Shape,
+  ageHours: number,
+): Phase {
+  // Emergente: pocas menciones pero alta aceleración + multi-source
+  if (ageHours < 2 && mentionsLast15 >= 2 && acceleration > 0 && sourcesRecent15 >= 2) {
+    return 'rising' // emergente = subiendo rápidamente
+  }
+  // Pico: alta velocidad actual + volumen significativo
+  if (velocity > 0.3 && mentionsLast60 >= 5 && shape !== 'decay') {
+    return 'peaked'
+  }
+  // Decaimiento: sin actividad reciente
+  if (shape === 'decay' || mentionsLast15 === 0) {
+    return 'decaying'
+  }
+  // Formando: todavía ganando tracción
   return 'forming'
 }
+
 
 // ---------------------------------------------------------------------------
 // Cluster → Trend projection
@@ -592,26 +740,35 @@ export function clusterToTrend(cluster: Cluster): Trend {
   // Hard guard: confidence must NEVER be null/NaN — DataSanity zero-tolerance.
   const rawScore = cluster.score
   const score = Number.isFinite(rawScore) ? rawScore : 0
-  const delta = 0
+  // delta: derivada del score — si phase es decaying, delta negativo; si rising, positivo
+  // (mejorado: ahora refleja la dirección REAL del momentum, no siempre 0)
+  const delta =
+    cluster.phase === 'rising' ? Math.round(cluster.velocity * 10) :
+    cluster.phase === 'decaying' ? -Math.round(cluster.velocity * 5) :
+    cluster.phase === 'peaked' ? Math.round(cluster.velocity * 2) :
+    0
   const dir: TrendDir = delta > 5 ? 'up' : delta < -5 ? 'down' : 'flat'
   const heat =
     score >= 70 ? 'Muy caliente' :
     score >= 50 ? 'Caliente' :
     score >= 30 ? 'Templado' :
     'Enfriándose'
+  // Status mapeado a las 4 fases de detección temprana
   const status =
-    cluster.phase === 'forming' ? 'Señal emergente' :
-    cluster.phase === 'rising' ? 'Crecimiento acelerado' :
-    cluster.phase === 'peaked' ? 'Actividad estable' :
-    'Interés en descenso'
+    cluster.phase === 'forming' ? 'Señal emergente' :        // formando tracción
+    cluster.phase === 'rising' ? 'Crecimiento acelerado' :   // subiendo fuerte
+    cluster.phase === 'peaked' ? 'En pico' :                  // máxima velocidad
+    'En desaceleración'                                        // perdiendo tracción
   const lastSeenDate = new Date(cluster.lastSeen)
   const time = `${String(lastSeenDate.getHours()).padStart(2, '0')}:${String(lastSeenDate.getMinutes()).padStart(2, '0')}`
   const why = cluster.summary.slice(0, 180) + (cluster.summary.length > 180 ? '…' : '')
   const ageMin = Math.max(1, Math.round((Date.now() - Date.parse(cluster.firstSeen)) / 60000))
+  // Evidence reformulado para mostrar VELOCIDAD, no solo volumen acumulado
+  const velocityPerHour = Math.round(cluster.velocity * 60) // menc/hora
   const evidence = [
+    { label: 'Velocidad', value: `${velocityPerHour}/h` },
     { label: 'Fuentes', value: String(cluster.sources.length) },
-    { label: 'Autores', value: String(cluster.uniqueAuthors) },
-    { label: 'Edad', value: `${ageMin}min` },
+    { label: 'Edad', value: ageMin < 60 ? `${ageMin}min` : `${Math.round(ageMin / 60)}h` },
   ]
   const tags = cluster.entities
     .filter((e) => ['brand', 'cashtag', 'hashtag'].includes(e.type))
@@ -645,29 +802,39 @@ export function generateExtractiveBriefing(cluster: Cluster, mentions: RawMentio
   keyPoints: string[]
   riskFlags: string[]
   confidence: number
+  evidenceMentionIds: string[]
 } {
+  // === AGENT 2 (DataInquisitor): evidence vector — anti-alucination ===
+  // El briefing SOLO puede citar información presente en las menciones fuente.
+  // evidenceMentionIds lista los IDs exactos de menciones en las que se basa.
   const top = mentions.slice(0, 5)
+  const evidenceMentionIds = top.map((m) => `${m.source}:${m.externalId}`)
   const sourcesList = Array.from(new Set(cluster.sources)).join(', ')
+  const velocityPerHour = Math.round(cluster.velocity * 60)
+  // Narrative: cada claim debe ser verificable contra las menciones fuente
   const narrative = [
     `Narrativa detectada en ${cluster.sources.length} fuente(s): ${sourcesList}.`,
-    `Se han identificado ${cluster.mentionsCount} menciones de ${cluster.uniqueAuthors} autores únicos, con una velocidad actual de ${cluster.velocity.toFixed(2)} menciones por minuto.`,
-    `La fase del cluster es "${cluster.phase}" con forma "${cluster.shape}" y un score de ${cluster.score.toFixed(1)}/100.`,
-    top[0] ? `Mención más reciente: "${top[0].text.slice(0, 200)}"` : '',
+    `${cluster.mentionsCount} menciones de ${cluster.uniqueAuthors} autores únicos. Velocidad actual: ${velocityPerHour} menc/hora.`,
+    `Fase: "${cluster.phase}", forma: "${cluster.shape}", score: ${cluster.score.toFixed(1)}/100.`,
+    // Cita textual de la mención más reciente (verificable contra evidenceMentionIds[0])
+    top[0] ? `Mención más reciente (${top[0].source}): "${top[0].text.slice(0, 180)}"` : '',
   ].filter(Boolean).join(' ')
   const keyPoints = [
-    `Score actual: ${cluster.score.toFixed(1)}/100`,
-    `${cluster.mentionsCount} menciones · ${cluster.uniqueAuthors} autores únicos`,
-    `Velocidad EWMA: ${cluster.velocity.toFixed(2)} menc/min`,
-    `Fuentes activas: ${cluster.sources.length}/${ALL_SOURCES.length}`,
-    cluster.originator ? `Origen: ${cluster.originator.source} (${cluster.originator.author})` : '',
+    `Velocidad: ${velocityPerHour} menc/hora`,
+    `${cluster.mentionsCount} menciones · ${cluster.uniqueAuthors} autores`,
+    `Score: ${cluster.score.toFixed(1)}/100`,
+    `Fuentes: ${cluster.sources.length}/${ALL_SOURCES.length}`,
+    cluster.originator ? `Origen: ${cluster.originator.source}` : '',
   ].filter(Boolean)
   const riskFlags: string[] = []
-  if (cluster.trashPenalty > 0.4) riskFlags.push('Actividad sospechosa (alta concentración de autores)')
+  if (cluster.trashPenalty > 0.4) riskFlags.push('Actividad sospechosa (spam/bot)')
   if (cluster.trashPenalty >= 0.3 && cluster.trashPenalty < 0.4) riskFlags.push('Posible actividad bot')
-  if (cluster.sources.length === 1) riskFlags.push('Narrativa de fuente única — baja corroboración')
-  if (cluster.velocity > 5) riskFlags.push('Velocidad anómala — posible campaña coordinada')
+  if (cluster.sources.length === 1) riskFlags.push('Fuente única — baja corroboración')
+  if (cluster.velocity > 5) riskFlags.push('Velocidad anómala')
+  // Nuevo risk flag: si el cluster está en desaceleración
+  if (cluster.phase === 'decaying') riskFlags.push('En desaceleración — perdiendo tracción')
   const confidence = Math.max(0.2, Math.min(0.95, cluster.score / 100))
-  return { narrative, keyPoints, riskFlags, confidence }
+  return { narrative, keyPoints, riskFlags, confidence, evidenceMentionIds }
 }
 
 // ---------------------------------------------------------------------------

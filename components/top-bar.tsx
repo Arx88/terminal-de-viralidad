@@ -282,11 +282,11 @@ export function TopBar() {
               locale="es-ES"
               className="text-foreground/90 tabular-nums"
             />{' '}
-            publicaciones analizadas
+            señales procesadas
           </span>
           <span className="text-muted-foreground/70">•</span>
           <span>
-            latencia{' '}
+            escaneo{' '}
             <CountUp
               value={latency}
               decimals={1}

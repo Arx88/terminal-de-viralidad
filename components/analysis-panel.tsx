@@ -310,31 +310,35 @@ export function AnalysisPanel() {
             <p
               className="flex items-baseline gap-1.5"
               role="img"
-              aria-label={`${selected.mentions} menciones por hora detectadas en tiempo real`}
-              title="Menciones detectadas por hora en tiempo real. Suma de posts, comentarios y artículos."
+              aria-label={`Velocidad: ${Math.round((selected.velocity ?? 0) * 60)} menciones por hora en los últimos 15 minutos`}
+              title="Velocidad real: menciones por hora en ventana de 15 minutos."
             >
               <CountUp
-                value={selected.mentions}
+                value={Math.round((selected.velocity ?? 0) * 60)}
                 className="text-4xl font-semibold tracking-tight tabular-nums"
               />
-              <span className="text-[12px] text-muted-foreground">menciones/hora</span>
+              <span className="text-[12px] text-muted-foreground">menc/hora · 15min</span>
             </p>
             <p
               className="text-right"
               role="img"
-              aria-label={`Variación: ${selected.delta > 0 ? '+' : ''}${selected.delta} por ciento versus mismo horario de ayer`}
-              title="Variación porcentual vs mismo horario de ayer. Positivo = crecimiento."
+              aria-label={`Cambio de momentum: ${selected.delta > 0 ? '+' : ''}${selected.delta}. Positivo = acelerando.`}
+              title="Delta de momentum. Positivo = acelerando, negativo = desacelerando."
             >
               <CountUp
                 value={selected.delta}
                 prefix={selected.delta > 0 ? '+' : ''}
-                suffix="%"
                 className={cn(
                   'block text-[15px] font-semibold tabular-nums',
-                  selected.delta > 0 ? 'text-[var(--hot)]' : 'text-muted-foreground',
+                  selected.delta > 5 ? 'text-[var(--mint)]' :
+                  selected.delta < -5 ? 'text-[var(--hot)]' : 'text-muted-foreground',
                 )}
               />
-              <span className="block text-[11px] text-muted-foreground">vs ayer</span>
+              <span className="block text-[11px] text-muted-foreground">
+                {selected.phase === 'rising' ? 'acelerando' :
+                 selected.phase === 'decaying' ? 'frenando' :
+                 selected.phase === 'peaked' ? 'en pico' : 'estable'}
+              </span>
             </p>
           </div>
 

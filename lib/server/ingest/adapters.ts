@@ -353,6 +353,14 @@ class GitHubAdapter implements Adapter {
         const text = `${full}: ${desc}`
         const owner = repo['owner'] as Record<string, unknown> | undefined
         const ownerLogin = String(owner?.['login'] ?? 'unknown')
+        // GitHub: usar 'pushed_at' (último push real al repo) en vez de 'updated_at'
+        // (que cambia por cualquier metadata edit, no por contenido nuevo).
+        // Si pushed_at es >7 días viejo, descartar — no es señal temprana.
+        const pushedAt = String(repo['pushed_at'] ?? repo['updated_at'] ?? '')
+        const pushedDate = new Date(pushedAt)
+        if (isNaN(pushedDate.getTime())) continue
+        const daysSincePush = (Date.now() - pushedDate.getTime()) / 86400_000
+        if (daysSincePush > 7) continue // repo inactivo >7 días no es tendencia
         out.push({
           contentHash: fnv1a64(normalizeText(text + String(repo['id'] ?? ''))),
           source: 'github',
@@ -361,7 +369,7 @@ class GitHubAdapter implements Adapter {
           authorHandle: ownerLogin,
           text,
           language: 'en',
-          publishedAt: String(repo['updated_at'] ?? new Date().toISOString()),
+          publishedAt: pushedAt,
           url: String(repo['html_url'] ?? `https://github.com/${full}`),
           hasMedia: false,
           rawPayload: JSON.stringify(repo),

@@ -43,7 +43,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   if (!cluster) return apiError(404, 'Not found', `Cluster ${p.value.id} not found after ingest`)
 
   const mentions = store.getClusterMentions(p.value.id, 10)
-  const { narrative, keyPoints, riskFlags, confidence } = generateExtractiveBriefing(cluster, mentions)
+  const { narrative, keyPoints, riskFlags, confidence, evidenceMentionIds } = generateExtractiveBriefing(cluster, mentions)
 
   return apiOk({
     clusterId: cluster.id,
@@ -51,6 +51,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     keyPoints,
     riskFlags,
     confidence,
+    evidenceMentionIds,
     model: 'extractive-v1',
     tokensUsed: 0,
     latencyMs: 0,

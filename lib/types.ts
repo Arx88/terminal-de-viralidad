@@ -155,6 +155,8 @@ export interface AnalysisBriefing {
   keyPoints: string[]
   riskFlags: string[]
   confidence: number
+  /** IDs de menciones fuente que respaldan el briefing (anti-alucination). */
+  evidenceMentionIds?: string[]
   model: string
   tokensUsed: number
   latencyMs: number
