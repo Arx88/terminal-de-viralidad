@@ -37,22 +37,29 @@ function ScreenRouter() {
 
 export default function Page() {
   return (
-    <div className="relative min-h-svh overflow-hidden bg-background">
-      {/* ambient glows */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -top-40 left-1/3 size-[620px] rounded-full bg-[oklch(0.45_0.2_300)]/12 blur-[140px]"
-      />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute top-1/2 -right-40 size-[520px] rounded-full bg-[oklch(0.45_0.2_270)]/10 blur-[140px]"
-      />
+    <div className="flex h-svh flex-col bg-background">
+      {/* TopBar fijo arriba */}
+      <TopBar />
 
-      <div className="relative">
-        <TopBar />
-        <div className="flex items-start gap-2 px-3 pb-6 sm:px-4 sm:gap-2.5 lg:gap-3 lg:px-6">
-          <LeftRail />
-          <div className="flex min-w-0 flex-1 flex-col gap-4 lg:flex-row">
+      {/* Contenido: sidebar fijo + scroll principal */}
+      <div className="flex min-h-0 flex-1">
+        {/* Sidebar FIJO — no scrollea con el contenido */}
+        <LeftRail />
+
+        {/* Área de contenido con scroll independiente */}
+        <div className="relative flex min-w-0 flex-1 overflow-hidden">
+          {/* ambient glows */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute -top-40 left-1/3 size-[620px] rounded-full bg-[oklch(0.45_0.2_300)]/12 blur-[140px]"
+          />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute top-1/2 -right-40 size-[520px] rounded-full bg-[oklch(0.45_0.2_270)]/10 blur-[140px]"
+          />
+
+          {/* Contenido scrolleable */}
+          <div className="relative flex min-w-0 flex-1 gap-4 overflow-y-auto px-3 pb-6 sm:px-4 lg:px-6 lg:flex-row lg:gap-4">
             <ScreenRouter />
             <AnalysisPanel />
           </div>
