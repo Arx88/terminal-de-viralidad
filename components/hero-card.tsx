@@ -61,18 +61,17 @@ export function HeroCard() {
       aria-label="Resumen ejecutivo del radar"
       className="group relative overflow-hidden rounded-2xl border border-border bg-card"
     >
-      {/* Planet — opacity reduced + stronger overlays so it reads as ambient
-          texture, not the focal point of an operational dashboard. */}
+      {/* Planet — visible, atmospheric, not overpowering */}
       <Image
         src="/hero-planet.png"
         alt=""
         fill
         priority
         sizes="(max-width: 1024px) 100vw, 70vw"
-        className="scale-105 object-cover object-[center_26%] opacity-50 transition-transform duration-[3000ms] ease-out group-hover:scale-110"
+        className="scale-105 object-cover object-[center_26%] opacity-90 transition-transform duration-[3000ms] ease-out group-hover:scale-110"
       />
-      <div className="absolute inset-0 bg-gradient-to-r from-background from-10% via-background/95 via-50% to-background/60" />
-      <div className="absolute inset-0 bg-gradient-to-t from-background via-background/55 to-background/30" />
+      <div className="absolute inset-0 bg-gradient-to-r from-background from-5% via-background/70 via-40% to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
       {live && (
         <div
           aria-hidden="true"
