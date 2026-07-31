@@ -1,0 +1,12 @@
+{
+  "name": "virahub-local-x-scraper",
+  "version": "1.0.0",
+  "description": "Scraper local de X/Twitter via xcancel.com para VIRAHUB. Pasa JS challenge con Playwright y envía tweets a Vercel.",
+  "scripts": {
+    "start": "node scraper.js",
+    "dev": "node scraper.js --once"
+  },
+  "dependencies": {
+    "playwright": "^1.49.0"
+  }
+}
