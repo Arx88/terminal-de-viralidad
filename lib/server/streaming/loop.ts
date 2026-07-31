@@ -8,7 +8,7 @@
  * On local v2.0, this would run as a separate worker process.
  */
 
-import { ALL_SOURCES, type SourceKey } from '@/lib/types'
+import { ALL_SOURCES, type SourceKey, type RawMention } from '@/lib/types'
 import { runIngestion } from '@/lib/server/ingest/adapters'
 import { ingestMentions, store, startGcLoop } from '@/lib/server/core/store'
 import { sseBus } from '@/lib/server/streaming/bus'
@@ -66,6 +66,23 @@ export function setEngineEnabled(source: SourceKey, enabled: boolean): void {
       health: st.health,
       circuitState: st.circuitState,
     })
+  }
+}
+
+/** Update engine states from a fresh batch of mentions. Shared by tick() and one-shot ingests. */
+export function updateEngineStatesFromIngest(mentions: RawMention[], durationMs: number): void {
+  const startTs = Date.now() - durationMs
+  const bySource = new Map<SourceKey, number>()
+  for (const m of mentions) bySource.set(m.source, (bySource.get(m.source) ?? 0) + 1)
+  for (const s of ALL_SOURCES) {
+    const st = engineStates.get(s)
+    if (!st) continue
+    const ingested = bySource.get(s) ?? 0
+    st.lastRunAt = startTs
+    st.itemsIngested = ingested
+    st.itemsTotal += ingested
+    st.latencyMs = durationMs
+    st.health = ingested > 0 ? 'online' : (st.enabled ? 'degraded' : 'offline')
   }
 }
 
