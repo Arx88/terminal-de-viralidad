@@ -46,7 +46,13 @@ export async function GET(req: NextRequest): Promise<Response> {
 
   const { source, phase, minScore, q, limit } = parsed.value
 
-  let clusters = await store.getTrending(100)
+  let clusters
+  try {
+    clusters = await store.getTrending(100)
+  } catch (err) {
+    console.error('trends: getTrending failed', err)
+    clusters = []
+  }
   if (source) clusters = clusters.filter((c) => c.primarySource === source)
   if (phase) clusters = clusters.filter((c) => c.phase === phase)
   if (typeof minScore === 'number') clusters = clusters.filter((c) => c.score >= minScore)
@@ -58,6 +64,11 @@ export async function GET(req: NextRequest): Promise<Response> {
     )
   }
 
-  const trends = clusters.slice(0, limit).map(clusterToTrend)
-  return apiOk({ trends, nextCursor: null as string | null }, { total: trends.length })
+  try {
+    const trends = clusters.slice(0, limit).map(clusterToTrend)
+    return apiOk({ trends, nextCursor: null as string | null }, { total: trends.length })
+  } catch (err) {
+    console.error('trends: clusterToTrend failed', err)
+    return apiOk({ trends: [], nextCursor: null }, { total: 0 })
+  }
 }
