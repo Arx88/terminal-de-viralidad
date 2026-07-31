@@ -9,7 +9,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { TRENDS, type RangeKey, type Trend } from '@/lib/virahub-data'
+import { ENGINES, TRENDS, type RangeKey, type Trend } from '@/lib/virahub-data'
 
 export type ScreenKey =
   | 'radar'
@@ -37,6 +37,9 @@ type Ctx = {
   toggleSaved: (id: string) => void
   alerts: string[]
   toggleAlert: (id: string) => void
+  /** engine ids currently enabled */
+  engines: string[]
+  toggleEngine: (id: string) => void
   cardOpen: boolean
   setCardOpen: (v: boolean) => void
   analyzed: number
@@ -64,6 +67,7 @@ export function VirahubProvider({ children }: { children: ReactNode }) {
   const [hiddenLanes, setHiddenLanes] = useState<string[]>([])
   const [saved, setSaved] = useState<string[]>(['nvidia'])
   const [alerts, setAlerts] = useState<string[]>(['ia'])
+  const [engines, setEngines] = useState<string[]>(ENGINES.map((e) => e.id))
   const [cardOpen, setCardOpen] = useState(true)
   const [analyzed, setAnalyzed] = useState(231421)
   const [latency, setLatency] = useState(1.2)
@@ -136,6 +140,17 @@ export function VirahubProvider({ children }: { children: ReactNode }) {
     [notify],
   )
 
+  const toggleEngine = useCallback(
+    (id: string) => {
+      setEngines((arr) => {
+        const has = arr.includes(id)
+        notify(has ? 'Motor pausado' : 'Motor reactivado')
+        return has ? arr.filter((x) => x !== id) : [...arr, id]
+      })
+    },
+    [notify],
+  )
+
   const selected = useMemo(
     () => TRENDS.find((t) => t.id === selectedId) ?? TRENDS[0],
     [selectedId],
@@ -158,6 +173,8 @@ export function VirahubProvider({ children }: { children: ReactNode }) {
       toggleSaved,
       alerts,
       toggleAlert,
+      engines,
+      toggleEngine,
       cardOpen,
       setCardOpen,
       analyzed,
@@ -180,6 +197,8 @@ export function VirahubProvider({ children }: { children: ReactNode }) {
       toggleSaved,
       alerts,
       toggleAlert,
+      engines,
+      toggleEngine,
       cardOpen,
       analyzed,
       latency,

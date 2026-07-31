@@ -6,9 +6,12 @@ import { LeftRail } from '@/components/left-rail'
 import { LiveScan } from '@/components/live-scan'
 import { TopBar } from '@/components/top-bar'
 import { TrendTimeline } from '@/components/trend-timeline'
-import { ExploreScreen } from '@/components/screens/explore-screen'
 import { AlertsScreen } from '@/components/screens/alerts-screen'
+import { EnginesScreen } from '@/components/screens/engines-screen'
+import { ExploreScreen } from '@/components/screens/explore-screen'
+import { ReportsScreen } from '@/components/screens/reports-screen'
 import { SavedScreen } from '@/components/screens/saved-screen'
+import { SettingsScreen } from '@/components/screens/settings-screen'
 import { useVirahub } from '@/components/virahub-provider'
 
 function ScreenRouter() {
@@ -17,6 +20,9 @@ function ScreenRouter() {
   if (screen === 'explorar') return <ExploreScreen />
   if (screen === 'alertas') return <AlertsScreen />
   if (screen === 'guardados') return <SavedScreen />
+  if (screen === 'motores') return <EnginesScreen />
+  if (screen === 'informes') return <ReportsScreen />
+  if (screen === 'ajustes') return <SettingsScreen />
 
   // radar (default)
   return (

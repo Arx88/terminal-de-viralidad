@@ -115,3 +115,120 @@
     stroke-dashoffset: -1000;
   }
 }
+
+/* SVG stroke draw-in: large dasharray → fully drawn */
+@keyframes vh-draw {
+  from {
+    stroke-dashoffset: var(--vh-dash-len, 1200);
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Expanding ring (ripple) — scale up + fade out, used on circles with transformOrigin */
+@keyframes vh-ripple {
+  0% {
+    transform: scale(1);
+    opacity: 0.85;
+  }
+  70% {
+    opacity: 0.18;
+  }
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+
+/* Horizontal sweep overlay (used on trend timeline rect) */
+@keyframes vh-sweep {
+  0% {
+    transform: translateX(-120px);
+  }
+  100% {
+    transform: translateX(1000px);
+  }
+}
+
+/* Vertical/horizontal sweep band used on hero card */
+@keyframes vh-sweep-x {
+  0% {
+    transform: translateX(-60%);
+    opacity: 0;
+  }
+  35% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(360%);
+    opacity: 0;
+  }
+}
+
+/* Subtle flame/logo flicker */
+@keyframes vh-flicker {
+  0%,
+  100% {
+    opacity: 0.95;
+    transform: scale(1);
+  }
+  20% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+  45% {
+    opacity: 0.78;
+    transform: scale(0.98);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.03);
+  }
+}
+
+/* Continuous stroke-dashoffset flow for ribbon paths */
+@keyframes vh-flow {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: -200;
+  }
+}
+
+/* Gentle vertical float for small circles */
+@keyframes vh-float {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.9;
+  }
+  50% {
+    transform: translateY(-5px);
+    opacity: 0.55;
+  }
+}
+
+/* Small horizontal nudge for arrow indicators */
+@keyframes vh-nudge {
+  0%,
+  100% {
+    transform: translateX(0);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translateX(4px);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

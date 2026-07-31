@@ -2,16 +2,16 @@
 
 import { useMemo, useState } from 'react'
 import {
-  ArrowUpRight, ArrowRight, Bookmark, BookmarkCheck, Search,
+  ArrowUpRight, Bookmark, BookmarkCheck, Search,
   Flame, TrendingUp, Clock, Globe, Bell, Star, ChevronDown,
-  MessageSquare, Share2, Users, Info, Zap, Sparkles,
-  ArrowUp, Activity, FileText, GitCompare,
+  MessageSquare, Share2, Users, Info, Sparkles,
+  ArrowUp, Activity, FileText,
 } from 'lucide-react'
 import { useVirahub } from '@/components/virahub-provider'
 import { SourceTile } from '@/components/source-icon'
 import { MiniSpark } from '@/components/screens/screen-shell'
 import { cn } from '@/lib/utils'
-import { TRENDS, ENGINES, type Trend } from '@/lib/virahub-data'
+import { TRENDS, ENGINES, type SourceKey, type Trend } from '@/lib/virahub-data'
 
 const tabs = ['Resumen', 'Análisis IA', 'Conversaciones', 'Fuentes', 'Historial'] as const
 type Tab = (typeof tabs)[number]
@@ -305,7 +305,17 @@ function AnalisisIAPanel({ trend }: { trend: Trend }) {
 
 /* ═══ PANEL: CONVERSACIONES ═══ */
 function ConversacionesPanel({ trend, openConv, setOpenConv }: { trend: Trend; openConv: number | null; setOpenConv: (v: number | null) => void }) {
-  const convs = [
+  const convs: {
+    author: string
+    handle: string
+    source: SourceKey
+    text: string
+    time: string
+    score: number
+    comments: number
+    reach: string
+    shares: number
+  }[] = [
     { author: 'r/Artificial', handle: 'u/ia_policy_es', source: 'reddit', text: 'Borrador filtrado sobre IA general del artículo 7 es preocupante. Define "modelo de uso general" de forma demasiado amplia.', time: 'hace 54m', score: 342, comments: 128, reach: '4.2k', shares: 38 },
     { author: '@dev_es', handle: 'Bluesky', source: 'bluesky', text: 'Hilo sobre implicaciones del artículo 7 para devs independientes. Si se aprueba tal cual, cualquier dev que use modelos de +10B params tendría que registrar el uso.', time: 'hace 1h', score: 456, comments: 43, reach: '7.2k', shares: 112 },
     { author: 'u/tech_observer', handle: 'r/spain', source: 'reddit', text: '¿Alguien leyó el borrador de la UE? Lo subí a r/spain pero pasó desaparecido. Ahora está explotando en Bluesky.', time: 'hace 45m', score: 847, comments: 213, reach: '12k', shares: 89 },
@@ -322,7 +332,7 @@ function ConversacionesPanel({ trend, openConv, setOpenConv }: { trend: Trend; o
           )}
         >
           <div className="flex items-center gap-2.5">
-            <SourceTile source={c.source as any} className="size-8 shrink-0 rounded-lg" />
+            <SourceTile source={c.source} className="size-8 shrink-0 rounded-lg" />
             <div className="min-w-0">
               <b className="block text-[13.5px] font-semibold">{c.author}</b>
               <span className="text-[12px] text-muted-foreground">{c.handle}</span>
@@ -378,7 +388,7 @@ function FuentesPanel({ trend }: { trend: Trend }) {
               const menc = [14, 9, 3, 5, 8, 2][i] || 0
               return (
                 <tr key={e.id} className="border-b border-border/50 transition-colors hover:bg-white/[0.02]">
-                  <td className="py-3"><SourceTile source={e.id as any} className="size-8 rounded-lg" /></td>
+                  <td className="py-3"><SourceTile source={e.id as SourceKey} className="size-8 rounded-lg" /></td>
                   <td className="py-3">
                     <div className="font-semibold text-[13.5px]">{e.name}</div>
                     <div className="text-[11.5px] text-muted-foreground">{e.verbs[0]}</div>
