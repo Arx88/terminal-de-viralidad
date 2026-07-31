@@ -35,10 +35,20 @@ async function fetchXcancelProfile(account: string): Promise<RawMention[]> {
       redirect: 'follow',
     })
     clearTimeout(timeout)
-    if (!resp.ok) return []
+    if (!resp.ok) {
+      logger.warn('x adapter: xcancel non-ok', { account, status: resp.status })
+      return []
+    }
 
     const html = await resp.text()
-    if (html.length < 1000 || !html.includes('tweet-content')) return []
+    const hasTweets = html.includes('tweet-content')
+    logger.info('x adapter: xcancel response', {
+      account,
+      htmlLength: html.length,
+      hasTweets,
+      statusLinks: (html.match(/\/status\/\d+/g) ?? []).length,
+    })
+    if (html.length < 1000 || !hasTweets) return []
 
     // Estructura xcancel: <div class="tweet-content media-body" dir="auto">texto</div>
     // <a href="/username/status/123456">...</a>
