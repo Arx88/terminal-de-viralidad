@@ -219,12 +219,16 @@ export class XAdapter implements Adapter {
     if (accountsToScrape.length === 0) {
       accountsToScrape = getActiveAuthorsAsSeeds()
     }
-    // Si todavía vacío, usar cuentas que sabemos que xcancel sirve sin
-    // JS challenge como último recurso para mantener el motor online.
-    // Estas NO son celebrities para seguimiento — son cuentas técnicas
-    // que publican sobre AI/tech/crypto (el dominio del producto).
+    // Bootstrap mínimo: solo cuentas verificadas que xcancel sirve SIN
+    // JS challenge desde Vercel. Estas NO son el objetivo del detector —
+    // son el bootstrap para que el motor arranque mientras el pool dinámico
+    // se llena con cuentas descubiertas en otras fuentes.
+    // El pool dinámico TIENE prioridad: si tiene cuentas, se usan primero.
     if (accountsToScrape.length === 0) {
-      accountsToScrape = ['OpenAI', 'ylecun', 'karpathy']
+      accountsToScrape = ['elonmusk', 'sama']
+    } else {
+      // Si el pool dinámico tiene cuentas, añadir 1 bootstrap para diversificar
+      accountsToScrape.push('elonmusk')
     }
 
     const results = await Promise.allSettled(accountsToScrape.map((h) => fetchXcancelProfile(h)))
