@@ -502,16 +502,13 @@ class XAdapter implements Adapter {
       }
 
       // Emparejar contents con statusLinks (están en orden en el HTML)
-      const count = Math.min(contents.length, statusLinks.length, 5)
+      const count = Math.min(contents.length, statusLinks.length, 8)
       for (let i = 0; i < count; i++) {
         const text = contents[i]
         const { user, id: tweetId } = statusLinks[i]
-        // Solo aceptar si el texto menciona keywords de interés
-        const lowerText = text.toLowerCase()
-        const hasKeyword = ['ai', 'crypto', 'fusion', 'regulation', 'chip', 'gpu', 'openai',
-          'gpt', 'llm', 'bitcoin', 'ethereum', 'nvidia', 'apple', 'google', 'microsoft',
-          'eu', 'regulation', 'tech', 'startup', 'agent'].some(k => lowerText.includes(k))
-        if (!hasKeyword) continue
+        // Aceptar cualquier tweet con >20 chars de contenido sustantivo
+        // (el clustering + scoring se encarga de filtrar ruido)
+        if (text.length < 20) continue
 
         out.push({
           contentHash: fnv1a64(normalizeText(text + tweetId)),
@@ -521,7 +518,7 @@ class XAdapter implements Adapter {
           authorHandle: `@${user}`,
           text,
           language: 'und',
-          publishedAt: new Date().toISOString(), // xcancel no expone timestamp fácilmente
+          publishedAt: new Date().toISOString(),
           url: `https://x.com/${user}/status/${tweetId}`,
           hasMedia: false,
           rawPayload: JSON.stringify({ user, tweetId, text: text.slice(0, 200) }),
