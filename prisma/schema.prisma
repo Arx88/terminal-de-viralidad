@@ -1,0 +1,335 @@
+// =============================================================================
+// VIRAHUB — Terminal de Viralidad
+// Prisma schema (SQLite for sandbox; PostgreSQL 16 + TimescaleDB + pgvector in prod)
+//
+// Production note (do NOT remove):
+//   In production the `mentions` table becomes a TimescaleDB hypertable:
+//     SELECT create_hypertable('mentions', 'captured_at', chunk_time_interval => INTERVAL '1 hour');
+//   Continuous aggregates:
+//     CREATE MATERIALIZED VIEW mentions_1h WITH (timescaledb.continuous) AS
+//       SELECT source, cluster_id, bucket(captured_at, '1 hour') AS bucket,
+//              count(*) AS mentions, count(distinct author_id) AS unique_authors
+//       FROM mentions GROUP BY source, cluster_id, bucket;
+//   `mention_embeddings.vector` becomes pgvector:
+//     CREATE EXTENSION IF NOT EXISTS vector;
+//     ALTER TABLE mention_embeddings ADD COLUMN vector vector(384);
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Raw mentions — every captured post/tweet/article/issue across 7 engines.
+// In prod: TimescaleDB hypertable partitioned by captured_at.
+// ---------------------------------------------------------------------------
+model Mention {
+  id            String   @id @default(cuid())
+  // Stable content hash for dedup (xxhash64 of normalized text). UNIQUE.
+  contentHash   String   @unique
+  // Source engine that produced this mention.
+  source        String
+  // Native id at the source (e.g. reddit post id, github issue number).
+  externalId    String
+  // Author handle / id at source.
+  authorId      String
+  authorHandle  String?
+  // Normalized text used for dedup + clustering.
+  text          String
+  // Original language ISO 639-1 (e.g. "es", "en").
+  language      String   @default("und")
+  // Raw payload as received from the source (JSON string — SQLite has no JSON type).
+  rawPayload    String
+  // Captured by us at this timestamp (UTC ISO).
+  capturedAt    DateTime @default(now())
+  // Originally published at source (UTC ISO).
+  publishedAt   DateTime
+  // URL to the original post (if available).
+  url           String?
+  // FK to cluster (set after dedup+clustering).
+  clusterId     String?  @unique
+  // Enrichment metadata (JSON string).
+  enrichment    String?
+  // True if media was extracted and enriched (OCR/caption).
+  hasMedia      Boolean  @default(false)
+
+  cluster       Cluster? @relation(fields: [clusterId], references: [id])
+
+  @@index([source, capturedAt])
+  @@index([clusterId])
+  @@index([publishedAt])
+  @@index([authorId, source, capturedAt])
+}
+
+// ---------------------------------------------------------------------------
+// Cluster — a group of deduplicated mentions forming a single narrative.
+// ---------------------------------------------------------------------------
+model Cluster {
+  id            String   @id @default(cuid())
+  // Stable hash of the cluster (minhash signature hash).
+  signatureHash String   @unique
+  // Best single-line title (extractive from highest-scoring mention).
+  title         String
+  // Best short summary (extractive or generated).
+  summary       String
+  // Primary source (the source with most mentions).
+  primarySource String
+  // All sources contributing mentions (JSON array of SourceKey).
+  sourcesJson   String   @default("[]")
+  // Languages present (JSON array of ISO 639-1).
+  languagesJson String   @default("[]")
+  // Rigid entities extracted (JSON array of {type, value}).
+  entitiesJson  String   @default("[]")
+  // First time we saw this cluster.
+  firstSeen     DateTime @default(now())
+  // Last time we saw new activity in this cluster.
+  lastSeen      DateTime @default(now())
+  // Mentions count (denormalized for fast reads).
+  mentionsCount Int      @default(0)
+  // Unique authors count (denormalized).
+  uniqueAuthors Int      @default(0)
+  // Trend shape: accel | rise | flat | decay | wobble
+  shape         String   @default("flat")
+  // Lifecycle phase: forming | rising | peaked | decaying
+  phase         String   @default("forming")
+  // EWMA velocity (mentions per minute).
+  velocity      Float    @default(0)
+  // Multiplicative score 0..100.
+  score         Float    @default(0)
+  // Originator attribution (JSON: {source, author, url, lagSeconds}).
+  originatorJson String?
+  // Anti-gaming combined penalty 0..1 (1 = maximum penalty).
+  trashPenalty  Float    @default(0)
+  // Is this cluster currently trending (score > threshold)?
+  isTrending    Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @default(now())
+
+  mentions      Mention[]
+  scores        TrendScore[]
+  embeddings    MentionEmbedding[]
+  briefings     Briefing[]
+  savedBy       SavedTrend[]
+  alerts        AlertRule[]
+
+  @@index([isTrending, score])
+  @@index([primarySource, lastSeen])
+  @@index([phase, score])
+}
+
+// ---------------------------------------------------------------------------
+// Embedding storage for clustering similarity (pgvector in prod).
+// ---------------------------------------------------------------------------
+model MentionEmbedding {
+  id        String  @id @default(cuid())
+  mentionId String  @unique
+  // Embedding serialized as JSON array of floats (384 dims for multilingual-e5-small).
+  // In prod: vector(384) with cosine index.
+  vector    String
+  // Model used to produce this embedding.
+  model     String  @default("multilingual-e5-small")
+  createdAt DateTime @default(now())
+
+  mention   Mention @relation(fields: [mentionId], references: [id])
+
+  @@index([model])
+}
+
+// ---------------------------------------------------------------------------
+// TrendScore — timeseries of cluster scores (continuous aggregate in prod).
+// ---------------------------------------------------------------------------
+model TrendScore {
+  id        String   @id @default(cuid())
+  clusterId String
+  // Score at this bucket.
+  score     Float
+  // Velocity at this bucket (mentions per minute).
+  velocity  Float
+  // Mentions count in this bucket.
+  mentions  Int
+  // Bucket timestamp.
+  bucket    DateTime
+  createdAt DateTime @default(now())
+
+  cluster   Cluster  @relation(fields: [clusterId], references: [id])
+
+  @@unique([clusterId, bucket])
+  @@index([clusterId, bucket])
+}
+
+// ---------------------------------------------------------------------------
+// Briefing — AI-generated narrative briefing for a cluster.
+// ---------------------------------------------------------------------------
+model Briefing {
+  id          String   @id @default(cuid())
+  clusterId   String
+  // Generated briefing text.
+  narrative   String
+  // Key points (JSON array of strings).
+  keyPointsJson String @default("[]")
+  // Risk flags (JSON array of strings).
+  riskFlagsJson String @default("[]")
+  // Confidence 0..1.
+  confidence  Float    @default(0)
+  // Model used (e.g. "nvidia/nemotron-3-ultra-550b").
+  model       String
+  // Tokens consumed.
+  tokensUsed  Int      @default(0)
+  // Latency in ms.
+  latencyMs   Int      @default(0)
+  // Range key used to generate (1H | 6H | 24H | 7D).
+  rangeKey    String   @default("6H")
+  createdAt   DateTime @default(now())
+
+  cluster     Cluster  @relation(fields: [clusterId], references: [id])
+
+  @@index([clusterId, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// EngineStatus — last-known status of each of the 7 ingestion engines.
+// ---------------------------------------------------------------------------
+model EngineStatus {
+  id            String   @id @default(cuid())
+  // Engine source key (reddit | bluesky | hn | rss | gdelt | github | x).
+  source        String   @unique
+  // enabled = user-controlled toggle. health = observed.
+  enabled       Boolean  @default(true)
+  // online | degraded | offline
+  health        String   @default("online")
+  // Last successful run at.
+  lastRunAt     DateTime?
+  // Items ingested in last run.
+  itemsIngested Int      @default(0)
+  // Total items ingested lifetime.
+  itemsTotal    Int      @default(0)
+  // Errors count in last 24h.
+  errorsLast24h Int      @default(0)
+  // Average latency in ms.
+  latencyMs     Int      @default(0)
+  // Circuit breaker state: closed | open | half_open
+  circuitState  String   @default("closed")
+  updatedAt     DateTime @default(now())
+
+  logs          EngineLog[]
+}
+
+// ---------------------------------------------------------------------------
+// EngineLog — terminal-style log entries per engine.
+// ---------------------------------------------------------------------------
+model EngineLog {
+  id        String   @id @default(cuid())
+  source    String
+  level     String   // info | warn | error
+  message   String
+  // Optional structured metadata (JSON string).
+  metaJson  String?
+  ts        DateTime @default(now())
+
+  @@index([source, ts])
+}
+
+// ---------------------------------------------------------------------------
+// AlertRule — user-defined alert on a trend.
+// ---------------------------------------------------------------------------
+model AlertRule {
+  id          String   @id @default(cuid())
+  clusterId   String?
+  // Human label.
+  label       String
+  // Condition: score_gt | velocity_gt | mentions_gt | phase_is | delta_pct_gt
+  condition   String
+  // Threshold value (numeric or phase name).
+  threshold   String
+  // Channel: toast | email | webhook
+  channel     String   @default("toast")
+  // Whether the alert is currently armed.
+  armed       Boolean  @default(true)
+  // Last time this alert fired.
+  lastFiredAt DateTime?
+  // Anti-fatigue: minimum seconds between fires.
+  cooldownSec Int      @default(300)
+  // Times this alert has fired lifetime.
+  fireCount   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now())
+
+  cluster     Cluster? @relation(fields: [clusterId], references: [id])
+  triggers    AlertTrigger[]
+
+  @@index([clusterId])
+  @@index([armed])
+}
+
+// ---------------------------------------------------------------------------
+// AlertTrigger — historical record of alert firings.
+// ---------------------------------------------------------------------------
+model AlertTrigger {
+  id        String   @id @default(cuid())
+  ruleId    String
+  // Snapshot of the value that triggered.
+  valueJson String
+  ts        DateTime @default(now())
+
+  rule      AlertRule @relation(fields: [ruleId], references: [id])
+
+  @@index([ruleId, ts])
+}
+
+// ---------------------------------------------------------------------------
+// SavedTrend — bookmarked trends with optional folder + notes.
+// ---------------------------------------------------------------------------
+model SavedTrend {
+  id        String   @id @default(cuid())
+  clusterId String
+  // Optional user folder name.
+  folder    String?
+  // Optional user notes.
+  notes     String?
+  // Pinned to top of saved list.
+  pinned    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  cluster   Cluster  @relation(fields: [clusterId], references: [id])
+
+  @@index([folder])
+  @@index([clusterId])
+}
+
+// ---------------------------------------------------------------------------
+// UserProfile — single-row user profile (sandbox: no auth).
+// ---------------------------------------------------------------------------
+model UserProfile {
+  id        String   @id @default("singleton")
+  handle    String   @default("operator")
+  email     String?
+  bio       String?
+  // JSON: { push, email, desktop, soundEnabled, soundVolume, minScore, quietHoursStart, quietHoursEnd }
+  settingsJson String @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// ApiKey — encrypted-at-rest API keys for upstream sources.
+// In the sandbox we store nothing sensitive; only a status flag is persisted.
+// ---------------------------------------------------------------------------
+model ApiKey {
+  id        String   @id @default(cuid())
+  source    String   @unique // reddit | bluesky | hn | rss | gdelt | github | x | nemotron
+  // Status: unset | valid | invalid
+  status    String   @default("unset")
+  // SHA-256 of the key (never store the key itself).
+  keyHash   String?
+  // Masked preview (e.g. "nvapi-•••••r8B").
+  maskedPreview String?
+  lastVerifiedAt DateTime?
+  updatedAt DateTime @default(now())
+}
