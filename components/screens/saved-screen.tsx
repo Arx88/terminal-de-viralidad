@@ -50,17 +50,17 @@ const FOLDER_STYLES: Record<string, string> = {
   'var(--cool)': 'border-[var(--cool)]/40 bg-[var(--cool)]/12 text-[var(--cool)]',
 }
 
-const TONE_DELTAS: Record<Trend['tone'], string> = {
-  hot: 'text-[var(--hot)]',
-  cool: 'text-[var(--cool)]',
-  mint: 'text-[var(--mint)]',
-  muted: 'text-muted-foreground',
+const TONE_BADGES: Record<Trend['tone'], string> = {
+  hot: 'border-[var(--hot)]/30 bg-[var(--hot)]/10 text-[var(--hot)]',
+  cool: 'border-[var(--cool)]/30 bg-[var(--cool)]/10 text-[var(--cool)]',
+  mint: 'border-[var(--mint)]/30 bg-[var(--mint)]/10 text-[var(--mint)]',
+  muted: 'border-border bg-white/[0.04] text-muted-foreground',
 }
 
 const SORTS = [
   { key: 'recent', label: 'Recientes' },
-  { key: 'mentions', label: 'Más menciones' },
-  { key: 'delta', label: 'Mayor crecimiento' },
+  { key: 'mentions', label: 'Menciones' },
+  { key: 'delta', label: 'Crecimiento' },
   { key: 'confidence', label: 'Confianza' },
 ] as const
 type SortKey = (typeof SORTS)[number]['key']
@@ -193,36 +193,30 @@ export function SavedScreen() {
     notify(`Exportado como ${format.toUpperCase()}`)
   }
 
+  const headingLabel =
+    activeFolder === 'all'
+      ? 'Todas las tendencias guardadas'
+      : activeFolder === 'pinned'
+        ? 'Tendencias fijadas'
+        : activeFolder === 'none'
+          ? 'Sin clasificar'
+          : (folders.find((f) => f.id === activeFolder)?.name ?? 'Guardados')
+
   return (
     <ScreenShell
       eyebrow="Guardados"
       title="Tu colección de señales"
       description="Las tendencias que marcaste siguen actualizándose en segundo plano, incluso si salen del radar principal. Organízalas, anótalas y expórtalas cuando quieras."
       actions={
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => exportData('json')}
-            disabled={list.length === 0}
-            className="flex cursor-pointer items-center gap-2 rounded-xl border border-border bg-white/[0.03] px-3 py-2 text-[12.5px] font-medium transition-colors hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <FileJson className="size-3.5 text-primary" strokeWidth={2} />
-            JSON
-          </button>
-          <button
-            type="button"
-            onClick={() => exportData('markdown')}
-            disabled={list.length === 0}
-            className="flex cursor-pointer items-center gap-2 rounded-xl border border-border bg-white/[0.03] px-3 py-2 text-[12.5px] font-medium transition-colors hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <FileText className="size-3.5 text-[var(--mint)]" strokeWidth={2} />
-            Markdown
-          </button>
-          <span className="flex items-center gap-2 rounded-xl border border-border bg-white/[0.03] px-3 py-2 text-[12.5px] text-muted-foreground">
-            <Bookmark className="size-3.5" strokeWidth={2} />
-            <CountUp value={counts.total} className="font-semibold tabular-nums text-foreground" /> guardadas
-          </span>
-        </div>
+        /* Single primary count badge — header keeps one clear signal */
+        <span className="flex items-center gap-2 rounded-xl border border-border bg-card px-3.5 py-2 text-[13px] font-medium">
+          <Bookmark className="size-3.5 text-primary" strokeWidth={2} />
+          <CountUp
+            value={counts.total}
+            className="font-semibold tabular-nums text-foreground"
+          />{' '}
+          guardadas
+        </span>
       }
     >
       {saved.length === 0 ? (
@@ -242,97 +236,135 @@ export function SavedScreen() {
         </div>
       ) : (
         <>
-          {/* TOOLBAR */}
-          <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-card p-3">
-            <div className="flex flex-1 items-center gap-2 rounded-lg border border-border bg-white/[0.03] px-3 py-2">
-              <Search className="size-4 text-muted-foreground" strokeWidth={1.9} />
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Buscar por título, estado o nota…"
-                className="flex-1 bg-transparent text-[13px] outline-none placeholder:text-muted-foreground/70"
-              />
-              {query && (
+          {/* SINGLE TOOLBAR — consolidates search + sort + export (primary row)
+              with folder chips as a clearly secondary sub-filter below */}
+          <div className="rounded-2xl border border-border bg-card p-3">
+            {/* PRIMARY control row */}
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex min-w-[200px] flex-1 items-center gap-2 rounded-lg border border-border bg-white/[0.03] px-3 py-2">
+                <Search className="size-4 text-muted-foreground" strokeWidth={1.9} />
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Buscar por título, estado o nota…"
+                  className="flex-1 bg-transparent text-[13px] outline-none placeholder:text-muted-foreground/70"
+                />
+                {query && (
+                  <button
+                    type="button"
+                    onClick={() => setQuery('')}
+                    className="cursor-pointer text-[11px] text-muted-foreground hover:text-foreground"
+                  >
+                    Limpiar
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center gap-1 rounded-lg border border-border bg-white/[0.03] p-1">
+                {SORTS.map((s) => (
+                  <button
+                    key={s.key}
+                    type="button"
+                    onClick={() => setSort(s.key)}
+                    className={cn(
+                      'cursor-pointer rounded-md px-2.5 py-1.5 text-[11.5px] font-medium transition-colors',
+                      sort === s.key
+                        ? 'bg-primary/15 text-primary'
+                        : 'text-muted-foreground hover:text-foreground',
+                    )}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-1.5">
                 <button
                   type="button"
-                  onClick={() => setQuery('')}
-                  className="cursor-pointer text-[11px] text-muted-foreground hover:text-foreground"
+                  onClick={() => exportData('json')}
+                  disabled={list.length === 0}
+                  className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-white/[0.03] px-3 py-2 text-[12px] font-medium transition-colors hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-50"
+                  title="Exportar como JSON"
                 >
-                  Limpiar
+                  <FileJson className="size-3.5 text-primary" strokeWidth={2} />
+                  JSON
                 </button>
-              )}
+                <button
+                  type="button"
+                  onClick={() => exportData('markdown')}
+                  disabled={list.length === 0}
+                  className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-white/[0.03] px-3 py-2 text-[12px] font-medium transition-colors hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-50"
+                  title="Exportar como Markdown"
+                >
+                  <FileText className="size-3.5 text-[var(--mint)]" strokeWidth={2} />
+                  MD
+                </button>
+              </div>
             </div>
-            <div className="flex items-center gap-1.5 rounded-lg border border-border bg-white/[0.03] p-1">
-              {SORTS.map((s) => (
-                <button
-                  key={s.key}
-                  type="button"
-                  onClick={() => setSort(s.key)}
-                  className={cn(
-                    'cursor-pointer rounded-md px-2.5 py-1.5 text-[11.5px] font-medium transition-colors',
-                    sort === s.key ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:text-foreground',
-                  )}
-                >
-                  {s.label}
-                </button>
+
+            {/* SECONDARY sub-filter row — clearly lighter, clearly a refinement zone */}
+            <div className="mt-2.5 flex flex-wrap items-center gap-1.5 border-t border-border/70 pt-2.5">
+              <span className="mr-1 text-[10px] font-semibold tracking-[0.14em] text-muted-foreground/70 uppercase">
+                Carpeta
+              </span>
+              <FolderChip
+                active={activeFolder === 'all'}
+                onClick={() => setActiveFolder('all')}
+                Icon={Folder}
+                label="Todas"
+                count={counts.total}
+              />
+              <FolderChip
+                active={activeFolder === 'pinned'}
+                onClick={() => setActiveFolder('pinned')}
+                Icon={Pin}
+                label="Fijadas"
+                count={counts.pinned}
+                color="var(--hot)"
+              />
+              <FolderChip
+                active={activeFolder === 'none'}
+                onClick={() => setActiveFolder('none')}
+                Icon={FolderOpen}
+                label="Sin carpeta"
+                count={counts.none}
+              />
+              <span className="mx-0.5 h-4 w-px bg-border/70" />
+              {folders.map((f) => (
+                <FolderChip
+                  key={f.id}
+                  active={activeFolder === f.id}
+                  onClick={() => setActiveFolder(f.id)}
+                  Icon={Folder}
+                  label={f.name}
+                  count={counts.byFolder[f.id] ?? 0}
+                  color={f.color}
+                />
               ))}
+              <button
+                type="button"
+                onClick={() => notify('Creador de carpetas próximamente')}
+                className="flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-[11.5px] font-medium text-muted-foreground/70 transition-colors hover:bg-white/[0.04] hover:text-foreground"
+              >
+                <FolderPlus className="size-3" strokeWidth={2} />
+                Nueva
+              </button>
             </div>
           </div>
 
-          {/* FOLDER PILLS */}
-          <div className="flex flex-wrap items-center gap-2">
-            <FolderPill
-              active={activeFolder === 'all'}
-              onClick={() => setActiveFolder('all')}
-              Icon={Folder}
-              label="Todas"
-              count={counts.total}
-            />
-            <FolderPill
-              active={activeFolder === 'pinned'}
-              onClick={() => setActiveFolder('pinned')}
-              Icon={Pin}
-              label="Fijadas"
-              count={counts.pinned}
-              color="var(--hot)"
-            />
-            <FolderPill
-              active={activeFolder === 'none'}
-              onClick={() => setActiveFolder('none')}
-              Icon={FolderOpen}
-              label="Sin carpeta"
-              count={counts.none}
-              color="var(--muted-foreground)"
-            />
-            <span className="mx-1 h-5 w-px bg-border" />
-            {folders.map((f) => (
-              <FolderPill
-                key={f.id}
-                active={activeFolder === f.id}
-                onClick={() => setActiveFolder(f.id)}
-                Icon={Folder}
-                label={f.name}
-                count={counts.byFolder[f.id] ?? 0}
-                color={f.color}
-              />
-            ))}
-            <button
-              type="button"
-              onClick={() => notify('Creador de carpetas próximamente')}
-              className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-dashed border-border px-2.5 py-1 text-[11.5px] font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
-            >
-              <FolderPlus className="size-3.5" strokeWidth={2} />
-              Nueva carpeta
-            </button>
+          {/* SECTION HEADER — anchors the main content area with a clear primary heading */}
+          <div className="flex items-baseline justify-between px-1">
+            <h2 className="text-[14px] font-semibold text-foreground">{headingLabel}</h2>
+            <span className="text-[12px] text-muted-foreground tabular-nums">
+              {list.length} {list.length === 1 ? 'resultado' : 'resultados'}
+            </span>
           </div>
 
           {/* GRID */}
           {list.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-border py-12 text-center text-[13px] text-muted-foreground">
-              {query ? `Sin resultados para "${query}".` : 'No hay tendencias en esta vista.'}
+              {query ? `Sin resultados para &ldquo;${query}&rdquo;.` : 'No hay tendencias en esta vista.'}
             </div>
           ) : (
-            <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {list.map((t, i) => {
                 const note = notes[t.id]
                 const folder = folders.find((f) => f.id === note?.folderId)
@@ -340,26 +372,33 @@ export function SavedScreen() {
                 return (
                   <li
                     key={t.id}
-                    className="animate-in fade-in slide-in-from-bottom-2"
+                    className="animate-in fade-in slide-in-from-bottom-2 duration-400"
                     style={{ animationDelay: `${i * 40}ms` }}
                   >
                     <article
                       className={cn(
-                        'group flex h-full flex-col gap-3 rounded-2xl border bg-card p-4 transition-all duration-300 hover:-translate-y-0.5',
-                        note?.pinned ? 'border-[var(--hot)]/30' : 'border-border hover:border-primary/40',
+                        'group flex h-full flex-col gap-3 rounded-2xl border bg-card p-5 transition-all duration-300 hover:-translate-y-0.5',
+                        note?.pinned
+                          ? 'border-[var(--hot)]/30 hover:border-[var(--hot)]/50'
+                          : 'border-border hover:border-primary/40',
                       )}
                     >
+                      {/* ZONE 1 — identity: source + title + pin (primary visual anchor) */}
                       <div className="flex items-start gap-3">
-                        <SourceTile source={t.source} className="size-10 shrink-0" />
+                        <SourceTile source={t.source} className="size-9 shrink-0" />
                         <div className="min-w-0 flex-1">
-                          <h3 className="truncate text-[14px] font-semibold">{t.title}</h3>
-                          <p className="truncate text-[12px] text-muted-foreground">{t.status}</p>
+                          <h3 className="truncate text-[14.5px] font-semibold leading-tight">
+                            {t.title}
+                          </h3>
+                          <p className="mt-0.5 truncate text-[11.5px] text-muted-foreground">
+                            {t.status}
+                          </p>
                         </div>
                         <button
                           type="button"
                           onClick={() => setNote(t.id, { pinned: !note?.pinned })}
                           className={cn(
-                            'flex size-7 cursor-pointer items-center justify-center rounded-md transition-colors',
+                            'flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md transition-colors',
                             note?.pinned
                               ? 'text-[var(--hot)]'
                               : 'text-muted-foreground hover:text-foreground',
@@ -367,94 +406,115 @@ export function SavedScreen() {
                           aria-label="Fijar"
                           title={note?.pinned ? 'Desfijar' : 'Fijar'}
                         >
-                          <Pin className={cn('size-3.5', note?.pinned && 'fill-current')} strokeWidth={2} />
+                          <Pin
+                            className={cn('size-3.5', note?.pinned && 'fill-current')}
+                            strokeWidth={2}
+                          />
                         </button>
                       </div>
 
-                      <MiniSpark trend={t} step={step} className="h-12 w-full" />
-
-                      <div className="flex items-end justify-between">
-                        <p className="flex items-baseline gap-1">
-                          <CountUp
-                            value={t.mentions}
-                            className="text-xl font-semibold tabular-nums"
+                      {/* ZONE 2 — key metric (single emphasized data point + sparkline + delta) */}
+                      <div className="flex items-end justify-between gap-3 border-y border-border/60 py-3">
+                        <div className="min-w-0">
+                          <p className="flex items-baseline gap-1">
+                            <CountUp
+                              value={t.mentions}
+                              className="text-2xl font-bold leading-none tabular-nums"
+                            />
+                            <span className="text-[11px] text-muted-foreground">menc/h</span>
+                          </p>
+                          <MiniSpark
+                            trend={t}
+                            step={step}
+                            className="mt-1.5 h-8 w-32"
                           />
-                          <span className="text-[11px] text-muted-foreground">menc/h</span>
-                        </p>
-                        <p className={cn('text-[13px] font-semibold tabular-nums', TONE_DELTAS[t.tone])}>
-                          {t.delta > 0 ? '+' : ''}{t.delta}%
-                        </p>
-                      </div>
-
-                      {folder && (
+                        </div>
                         <span
                           className={cn(
-                            'inline-flex w-fit items-center gap-1.5 rounded-md border px-2 py-0.5 text-[11px] font-medium',
-                            FOLDER_STYLES[folder.color] ?? FOLDER_STYLES['var(--primary)'],
+                            'shrink-0 rounded-lg border px-2.5 py-1 text-[13px] font-semibold tabular-nums',
+                            TONE_BADGES[t.tone],
                           )}
                         >
-                          <Folder className="size-3" strokeWidth={2} />
-                          {folder.name}
+                          {t.delta > 0 ? '+' : ''}
+                          {t.delta}%
                         </span>
-                      )}
-
-                      {/* NOTE / ACTIONS */}
-                      <div className="mt-auto border-t border-border pt-3">
-                        {note?.text && !isOpen ? (
-                          <p className="mb-2 line-clamp-1 text-[11.5px] italic text-muted-foreground">
-                            "{note.text}"
-                          </p>
-                        ) : null}
-                        {isOpen && (
-                          <textarea
-                            value={note?.text ?? ''}
-                            onChange={(e) => setNote(t.id, { text: e.target.value })}
-                            placeholder="Añade una nota…"
-                            rows={2}
-                            className="mb-2 w-full resize-none rounded-lg border border-border bg-white/[0.03] px-2.5 py-2 text-[12px] outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/40"
-                          />
-                        )}
-                        <div className="flex items-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              select(t.id)
-                              setScreen('radar')
-                            }}
-                            className="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-[12px] font-semibold text-primary-foreground transition-opacity hover:opacity-90"
-                          >
-                            Ver en radar
-                            <ArrowUpRight className="size-3" strokeWidth={2.2} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setExpanded(isOpen ? null : t.id)}
-                            className={cn(
-                              'flex cursor-pointer items-center justify-center rounded-lg border p-1.5 transition-colors',
-                              isOpen
-                                ? 'border-primary/40 bg-primary/10 text-primary'
-                                : 'border-border text-muted-foreground hover:text-foreground',
-                            )}
-                            aria-label="Editar nota"
-                            title="Editar nota"
-                          >
-                            <ChevronDown className={cn('size-3.5 transition-transform', isOpen && 'rotate-180')} strokeWidth={2} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => toggleSaved(t.id)}
-                            className="flex cursor-pointer items-center justify-center rounded-lg border border-border p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-                            aria-label="Quitar de guardados"
-                            title="Quitar"
-                          >
-                            <Trash2 className="size-3.5" strokeWidth={2} />
-                          </button>
-                        </div>
-                        <p className="mt-2 text-[10.5px] text-muted-foreground">
-                          {note?.addedAt ?? 'recién añadida'}
-                          {note?.pinned ? ' · fijada' : ''}
-                        </p>
                       </div>
+
+                      {/* ZONE 3 — context: folder tag + note preview (secondary) */}
+                      <div className="flex min-h-[20px] flex-wrap items-center gap-2 text-[11.5px]">
+                        {folder ? (
+                          <span
+                            className={cn(
+                              'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 font-medium',
+                              FOLDER_STYLES[folder.color] ?? FOLDER_STYLES['var(--primary)'],
+                            )}
+                          >
+                            <Folder className="size-3" strokeWidth={2} />
+                            {folder.name}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground/70">Sin carpeta</span>
+                        )}
+                        {note?.text && !isOpen && (
+                          <p className="min-w-0 flex-1 truncate italic text-muted-foreground">
+                            &ldquo;{note.text}&rdquo;
+                          </p>
+                        )}
+                      </div>
+
+                      {/* ZONE 4 — actions (collapsed note editor + CTA cluster) */}
+                      {isOpen && (
+                        <textarea
+                          value={note?.text ?? ''}
+                          onChange={(e) => setNote(t.id, { text: e.target.value })}
+                          placeholder="Añade una nota…"
+                          rows={2}
+                          className="w-full resize-none rounded-lg border border-border bg-white/[0.03] px-2.5 py-2 text-[12px] outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-primary/40"
+                        />
+                      )}
+                      <div className="mt-auto flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            select(t.id)
+                            setScreen('radar')
+                          }}
+                          className="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-[12px] font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+                        >
+                          Ver en radar
+                          <ArrowUpRight className="size-3" strokeWidth={2.2} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setExpanded(isOpen ? null : t.id)}
+                          className={cn(
+                            'flex cursor-pointer items-center justify-center rounded-lg border p-2 transition-colors',
+                            isOpen
+                              ? 'border-primary/40 bg-primary/10 text-primary'
+                              : 'border-border text-muted-foreground hover:text-foreground',
+                          )}
+                          aria-label="Editar nota"
+                          title="Editar nota"
+                        >
+                          <ChevronDown
+                            className={cn('size-3.5 transition-transform', isOpen && 'rotate-180')}
+                            strokeWidth={2}
+                          />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => toggleSaved(t.id)}
+                          className="flex cursor-pointer items-center justify-center rounded-lg border border-border p-2 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                          aria-label="Quitar de guardados"
+                          title="Quitar"
+                        >
+                          <Trash2 className="size-3.5" strokeWidth={2} />
+                        </button>
+                      </div>
+                      <p className="text-[10.5px] text-muted-foreground">
+                        {note?.addedAt ?? 'recién añadida'}
+                        {note?.pinned ? ' · fijada' : ''}
+                      </p>
                     </article>
                   </li>
                 )
@@ -468,7 +528,7 @@ export function SavedScreen() {
 }
 
 /* ═══════ HELPERS ═══════ */
-function FolderPill({
+function FolderChip({
   active,
   onClick,
   Icon,
@@ -488,18 +548,18 @@ function FolderPill({
       type="button"
       onClick={onClick}
       className={cn(
-        'flex cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11.5px] font-medium transition-all',
+        'flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-[11.5px] font-medium transition-all',
         active
-          ? cn('border-current', FOLDER_STYLES[color] ?? FOLDER_STYLES['var(--primary)'])
-          : 'border-border text-muted-foreground hover:border-primary/30 hover:text-foreground',
+          ? cn('border', FOLDER_STYLES[color] ?? FOLDER_STYLES['var(--primary)'])
+          : 'text-muted-foreground/80 hover:bg-white/[0.04] hover:text-foreground',
       )}
     >
       <Icon className="size-3" strokeWidth={2} />
       {label}
       <span
         className={cn(
-          'rounded-full px-1.5 text-[10px] font-bold tabular-nums',
-          active ? 'bg-current/15' : 'bg-white/[0.08]',
+          'rounded px-1 text-[10px] font-bold tabular-nums',
+          active ? 'bg-current/15' : 'bg-white/[0.06] text-muted-foreground',
         )}
       >
         {count}

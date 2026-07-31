@@ -288,80 +288,83 @@ export function AlertsScreen() {
       title="Centro de monitoreo y notificaciones"
       description="Define reglas precisas por tendencia, condición y canal. Recibe el aviso en el momento exacto en que la señal cruza tu umbral."
       actions={
-        <div className="flex flex-wrap items-center gap-2">
-          <span
-            className={cn(
-              'flex items-center gap-2 rounded-xl border px-3 py-2 text-[12.5px] font-medium',
-              stats.unack > 0
-                ? 'border-[var(--hot)]/40 bg-[var(--hot)]/10 text-[var(--hot)]'
-                : 'border-border bg-white/[0.03] text-muted-foreground',
-            )}
-          >
-            <BellRing
-              className={cn('size-3.5', stats.unack > 0 && live)}
-              strokeWidth={2}
-              style={stats.unack > 0 && live ? { animation: 'vh-pulse 1.6s ease-in-out infinite' } : undefined}
-            />
-            {stats.unack} sin revisar
-          </span>
-          <span className="flex items-center gap-2 rounded-xl border border-border bg-white/[0.03] px-3 py-2 text-[12.5px] text-muted-foreground">
-            <Activity className="size-3.5 text-[var(--mint)]" strokeWidth={2} />
-            {stats.active} reglas activas
-          </span>
-        </div>
+        /* ONE primary status badge — single focus indicator */
+        <span
+          className={cn(
+            'flex items-center gap-2 rounded-xl border px-3.5 py-2 text-[13px] font-semibold transition-colors',
+            stats.unack > 0
+              ? 'border-[var(--hot)]/40 bg-[var(--hot)]/10 text-[var(--hot)]'
+              : 'border-[var(--mint)]/40 bg-[var(--mint)]/10 text-[var(--mint)]',
+          )}
+        >
+          <BellRing
+            className={cn('size-4', stats.unack > 0 && live && 'text-[var(--hot)]')}
+            strokeWidth={2.2}
+            style={
+              stats.unack > 0 && live
+                ? { animation: 'vh-pulse 1.6s ease-in-out infinite' }
+                : undefined
+            }
+          />
+          {stats.unack > 0 ? `${stats.unack} sin revisar` : 'Estás al día'}
+        </span>
       }
     >
-      {/* TOP STATS */}
-      <ul className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      {/* COMPACT SUMMARY RIBBON — single card with inline stats (was 4 competing cards) */}
+      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border bg-border sm:grid-cols-4">
         {[
           { label: 'Reglas activas', value: stats.active, Icon: Bell, color: 'text-primary' },
           { label: 'Disparos hoy', value: stats.triggeredToday, Icon: Zap, color: 'text-[var(--hot)]' },
           { label: 'Sin revisar', value: stats.unack, Icon: BellRing, color: 'text-[var(--cool)]' },
-          { label: 'Total histórico', value: stats.totalTriggers, Icon: TrendingUp, color: 'text-[var(--mint)]' },
+          { label: 'Histórico', value: stats.totalTriggers, Icon: TrendingUp, color: 'text-[var(--mint)]' },
         ].map(({ label, value, Icon, color }) => (
-          <li
+          <div
             key={label}
-            className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4 transition-colors hover:border-primary/30"
+            className="flex items-center gap-3 bg-card px-4 py-3.5 transition-colors hover:bg-white/[0.02]"
           >
-            <span className={cn('flex size-9 items-center justify-center rounded-lg bg-white/[0.04]', color)}>
-              <Icon className="size-4" strokeWidth={2} />
-            </span>
+            <Icon className={cn('size-4 shrink-0', color)} strokeWidth={2} />
             <div className="min-w-0">
               <CountUp
                 value={value}
-                className="block text-xl font-bold tabular-nums"
+                className="block text-lg font-bold leading-none tabular-nums"
               />
-              <span className="block text-[11.5px] text-muted-foreground">{label}</span>
+              <span className="mt-1 block text-[10.5px] tracking-wide text-muted-foreground uppercase">
+                {label}
+              </span>
             </div>
-          </li>
+          </div>
         ))}
-      </ul>
+      </div>
 
-      {/* TABS */}
-      <div className="flex flex-wrap items-center gap-1 border-b border-border">
+      {/* TABS — single segmented control, clearer single nav element */}
+      <nav className="flex flex-wrap items-center gap-1 rounded-xl border border-border bg-card p-1">
         {TABS.map(({ key, label, Icon }) => (
           <button
             key={key}
             type="button"
             onClick={() => setTab(key)}
             className={cn(
-              'relative flex cursor-pointer items-center gap-2 px-3 py-2.5 text-[13.5px] font-medium transition-colors',
-              tab === key ? 'text-primary' : 'text-muted-foreground hover:text-foreground',
+              'relative flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg px-3 py-2 text-[13px] font-medium transition-all sm:flex-initial',
+              tab === key
+                ? 'bg-primary/12 text-primary'
+                : 'text-muted-foreground hover:bg-white/[0.04] hover:text-foreground',
             )}
           >
             <Icon className="size-3.5" strokeWidth={2} />
             {label}
             {key === 'history' && events.length > 0 && (
-              <span className="rounded-full bg-white/[0.08] px-1.5 py-0.5 text-[10px] font-semibold tabular-nums">
+              <span className="rounded-full bg-white/[0.1] px-1.5 py-0.5 text-[10px] font-bold tabular-nums">
                 {events.length}
               </span>
             )}
-            {tab === key && (
-              <span className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-primary" />
+            {key === 'feed' && stats.unack > 0 && (
+              <span className="rounded-full bg-[var(--hot)]/20 px-1.5 py-0.5 text-[10px] font-bold text-[var(--hot)] tabular-nums">
+                {stats.unack}
+              </span>
             )}
           </button>
         ))}
-      </div>
+      </nav>
 
       {/* PANELS */}
       {tab === 'rules' && (
@@ -456,7 +459,7 @@ function RulesPanel({
             className={cn(
               'group rounded-2xl border bg-card p-4 transition-all duration-300',
               rule.active
-                ? 'border-border hover:border-primary/40'
+                ? 'border-border hover:border-primary/40 hover:-translate-y-0.5'
                 : 'border-border/60 opacity-70',
             )}
           >
@@ -794,16 +797,14 @@ function HistoryPanel({
   onSelectTrend: (id: string) => void
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex flex-1 items-center gap-2 rounded-lg border border-border bg-white/[0.03] px-3 py-2">
-          <Search className="size-4 text-muted-foreground" strokeWidth={1.9} />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscar en el historial…"
-            className="flex-1 bg-transparent text-[13px] outline-none placeholder:text-muted-foreground/70"
-          />
+    <div className="rounded-2xl border border-border bg-card p-5">
+      {/* Header with title + actions — single row, clear primary zone */}
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
+        <div>
+          <h2 className="text-[15px] font-semibold">Historial de disparos</h2>
+          <p className="mt-0.5 text-[12px] text-muted-foreground">
+            Cronología de todas las alertas activadas
+          </p>
         </div>
         <button
           type="button"
@@ -813,14 +814,34 @@ function HistoryPanel({
           <Check className="size-3.5" strokeWidth={2} />
           Marcar todo como revisado
         </button>
+      </header>
+
+      {/* Search — secondary, clearly a sub-control */}
+      <div className="mt-3 flex items-center gap-2 rounded-lg border border-border bg-white/[0.03] px-3 py-2">
+        <Search className="size-4 text-muted-foreground" strokeWidth={1.9} />
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Buscar en el historial…"
+          className="flex-1 bg-transparent text-[13px] outline-none placeholder:text-muted-foreground/70"
+        />
+        {query && (
+          <button
+            type="button"
+            onClick={() => setQuery('')}
+            className="cursor-pointer text-[11px] text-muted-foreground hover:text-foreground"
+          >
+            Limpiar
+          </button>
+        )}
       </div>
 
       {events.length === 0 ? (
         <p className="mt-6 rounded-xl border border-dashed border-border py-10 text-center text-[13px] text-muted-foreground">
-          No hay disparos que coincidan con "{query}".
+          No hay disparos que coincidan con &ldquo;{query}&rdquo;.
         </p>
       ) : (
-        <ul className="mt-4 flex flex-col">
+        <ul className="mt-5 flex flex-col">
           {events.map((e, i) => {
             const trend = trends.find((t) => t.id === e.trendId)
             return (
@@ -889,7 +910,7 @@ function HistoryPanel({
   )
 }
 
-/* ═══════ PANEL: FEED ═══════ */
+/* ═══════ PANEL: FEED — clear primary (inbox 2fr) + secondary (reviewed 1fr) hierarchy ═══════ */
 function FeedPanel({
   events,
   trends,
@@ -903,91 +924,115 @@ function FeedPanel({
   const acked = events.filter((e) => e.ack)
 
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
-      <div className="rounded-2xl border border-border bg-card p-4">
-        <h2 className="flex items-center gap-2 text-[13px] font-semibold tracking-[0.1em] text-muted-foreground uppercase">
-          <BellRing className="size-3.5 text-[var(--hot)]" strokeWidth={2} />
-          Bandeja de entrada
+    <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
+      {/* PRIMARY: inbox — wider, larger items, prominent header */}
+      <section className="rounded-2xl border border-border bg-card p-5">
+        <header className="mb-4 flex items-center justify-between border-b border-border pb-3">
+          <div className="flex items-center gap-2.5">
+            <span className="flex size-7 items-center justify-center rounded-lg border border-[var(--hot)]/40 bg-[var(--hot)]/10 text-[var(--hot)]">
+              <BellRing className="size-3.5" strokeWidth={2.2} />
+            </span>
+            <div>
+              <h2 className="text-[15px] font-semibold">Bandeja de entrada</h2>
+              <p className="text-[11.5px] text-muted-foreground">Acciones requeridas</p>
+            </div>
+          </div>
           {unack.length > 0 && (
-            <span className="rounded-full bg-[var(--hot)]/15 px-2 py-0.5 text-[10.5px] font-bold text-[var(--hot)] tabular-nums">
-              {unack.length}
+            <span className="rounded-full bg-[var(--hot)]/15 px-2.5 py-1 text-[11px] font-bold text-[var(--hot)] tabular-nums">
+              {unack.length} pendientes
             </span>
           )}
-        </h2>
+        </header>
         {unack.length === 0 ? (
-          <div className="mt-6 rounded-xl border border-dashed border-border py-10 text-center text-[13px] text-muted-foreground">
-            <Check className="mx-auto size-5 text-[var(--mint)]" strokeWidth={2} />
-            Estás al día. Sin notificaciones pendientes.
+          <div className="rounded-xl border border-dashed border-border py-12 text-center">
+            <Check className="mx-auto size-6 text-[var(--mint)]" strokeWidth={2} />
+            <p className="mt-2 text-[13px] font-medium">Estás al día</p>
+            <p className="mt-0.5 text-[12px] text-muted-foreground">Sin notificaciones pendientes</p>
           </div>
         ) : (
-          <ul className="mt-4 flex flex-col gap-2">
+          <ul className="flex flex-col gap-2">
             {unack.map((e) => {
               const trend = trends.find((t) => t.id === e.trendId)
               return (
                 <li
                   key={e.id}
                   className={cn(
-                    'flex items-start gap-3 rounded-xl border bg-white/[0.02] p-3 transition-colors hover:bg-white/[0.04]',
+                    'group flex items-start gap-3 rounded-xl border bg-white/[0.02] p-3.5 transition-all hover:-translate-y-0.5 hover:bg-white/[0.04]',
                     TONE_STYLES[e.tone],
                   )}
                 >
-                  <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full border border-current">
+                  <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full border border-current">
                     {e.tone === 'hot' ? (
-                      <Flame className="size-3" strokeWidth={2.2} />
+                      <Flame className="size-3.5" strokeWidth={2.2} />
                     ) : (
-                      <TrendingUp className="size-3" strokeWidth={2.2} />
+                      <TrendingUp className="size-3.5" strokeWidth={2.2} />
                     )}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-[13px] leading-snug text-pretty text-foreground">{e.title}</p>
-                    <p className="mt-0.5 text-[11.5px] text-muted-foreground">{e.detail}</p>
-                    <div className="mt-2 flex items-center gap-2">
-                      <span className="text-[11px] text-muted-foreground tabular-nums">{e.time}</span>
+                    <p className="text-[13.5px] font-medium leading-snug text-pretty text-foreground">{e.title}</p>
+                    <p className="mt-1 text-[12px] text-muted-foreground">{e.detail}</p>
+                    <div className="mt-2 flex items-center gap-2 text-[11px] text-muted-foreground">
+                      <span className="tabular-nums">{e.time}</span>
                       {trend && (
-                        <span className="text-[11px] text-muted-foreground">· {trend.title}</span>
+                        <>
+                          <span>·</span>
+                          <span className="truncate">{trend.title}</span>
+                        </>
                       )}
                     </div>
                   </div>
                   <button
                     type="button"
                     onClick={() => onAck(e.id)}
-                    className="flex shrink-0 cursor-pointer items-center gap-1 rounded-md border border-border bg-white/[0.04] px-2 py-1 text-[10.5px] font-medium transition-colors hover:text-foreground"
+                    className="flex shrink-0 cursor-pointer items-center gap-1 rounded-md border border-border bg-white/[0.04] px-2.5 py-1.5 text-[11px] font-medium transition-colors hover:bg-white/[0.08]"
                   >
-                    <Check className="size-3" strokeWidth={2} />
+                    <Check className="size-3" strokeWidth={2} /> Revisado
                   </button>
                 </li>
               )
             })}
           </ul>
         )}
-      </div>
+      </section>
 
-      <div className="rounded-2xl border border-border bg-card p-4">
-        <h2 className="flex items-center gap-2 text-[13px] font-semibold tracking-[0.1em] text-muted-foreground uppercase">
-          <Check className="size-3.5 text-[var(--mint)]" strokeWidth={2} />
-          Revisadas
-        </h2>
+      {/* SECONDARY: reviewed — narrower, compact list, clearly a sidebar */}
+      <aside className="rounded-2xl border border-border bg-card p-5">
+        <header className="mb-3 flex items-center gap-2.5 border-b border-border pb-3">
+          <span className="flex size-6 items-center justify-center rounded-lg border border-[var(--mint)]/40 bg-[var(--mint)]/10 text-[var(--mint)]">
+            <Check className="size-3" strokeWidth={2.4} />
+          </span>
+          <h2 className="text-[12.5px] font-semibold tracking-wide text-muted-foreground uppercase">
+            Revisadas
+          </h2>
+          <span className="ml-auto text-[11px] font-medium text-muted-foreground tabular-nums">
+            {acked.length}
+          </span>
+        </header>
         {acked.length === 0 ? (
-          <p className="mt-6 rounded-xl border border-dashed border-border py-10 text-center text-[13px] text-muted-foreground">
+          <p className="rounded-xl border border-dashed border-border py-10 text-center text-[12.5px] text-muted-foreground">
             Aún no has revisado ninguna alerta.
           </p>
         ) : (
-          <ul className="mt-4 flex flex-col gap-1">
+          <ul className="scrollbar-thin max-h-[480px] flex flex-col gap-1 overflow-y-auto pr-1">
             {acked.map((e) => (
               <li
                 key={e.id}
-                className="flex items-center gap-3 rounded-lg px-2 py-2 opacity-70 transition-opacity hover:opacity-100"
+                className="flex items-center gap-2.5 rounded-lg px-2 py-2 opacity-65 transition-opacity hover:opacity-100"
               >
-                <span className={cn('flex size-6 items-center justify-center rounded-full border', TONE_STYLES[e.tone])}>
-                  {e.tone === 'hot' ? <Flame className="size-3" strokeWidth={2.2} /> : <TrendingUp className="size-3" strokeWidth={2.2} />}
+                <span className={cn('flex size-5 shrink-0 items-center justify-center rounded-full border', TONE_STYLES[e.tone])}>
+                  {e.tone === 'hot' ? (
+                    <Flame className="size-2.5" strokeWidth={2.2} />
+                  ) : (
+                    <TrendingUp className="size-2.5" strokeWidth={2.2} />
+                  )}
                 </span>
-                <p className="min-w-0 flex-1 truncate text-[12.5px] text-muted-foreground">{e.title}</p>
-                <span className="text-[11px] text-muted-foreground tabular-nums">{e.time}</span>
+                <p className="min-w-0 flex-1 truncate text-[12px] text-muted-foreground">{e.title}</p>
+                <span className="shrink-0 text-[10.5px] text-muted-foreground tabular-nums">{e.time}</span>
               </li>
             ))}
           </ul>
         )}
-      </div>
+      </aside>
     </div>
   )
 }
