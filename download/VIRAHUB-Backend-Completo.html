@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VIRAHUB v2.0 — Documentación Completa del Backend</title>
+<style>
+:root{--bg:#0a0a0f;--bg-elev:#12121a;--bg-card:#181822;--bg-code:#0d0d14;--border:#2a2a38;--border-soft:#1f1f2c;--text:#e8e8f0;--text-muted:#8b8b9e;--text-dim:#5c5c70;--accent:#8b5cf6;--accent-bright:#a78bfa;--accent-dim:rgba(139,92,246,.15);--hot:#ef4444;--cool:#3b82f6;--mint:#10b981;--warn:#f59e0b;--cyan:#06b6d4}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;scroll-padding-top:24px}
+body{font-family:'Inter',-apple-system,BlinkMacSystemFont,system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased}
+.container{max-width:1400px;margin:0 auto;padding:0 24px}
+.cover{padding:60px 24px 40px;background:radial-gradient(circle at 20% 0%,rgba(139,92,246,.15),transparent 50%),linear-gradient(180deg,#0c0c14,var(--bg));border-bottom:1px solid var(--border)}
+.cover h1{font-size:42px;font-weight:800;letter-spacing:-.03em;margin:20px 0 8px;background:linear-gradient(180deg,#fff,#b4b4d0);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.cover .subtitle{font-size:17px;color:var(--text-muted);max-width:700px}
+.cover-meta{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:32px;padding-top:24px;border-top:1px solid var(--border-soft)}
+.cover-meta-item .label{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-dim);margin-bottom:4px}
+.cover-meta-item .value{font-size:14px;color:var(--text);font-family:ui-monospace,monospace}
+section{padding:40px 0;border-bottom:1px solid var(--border-soft)}
+h2{font-size:26px;font-weight:700;margin-bottom:16px;color:var(--text);letter-spacing:-.01em}
+h3{font-size:18px;font-weight:600;margin:24px 0 10px;color:var(--accent-bright)}
+h4{font-size:14px;font-weight:600;margin:16px 0 8px;color:var(--text);text-transform:uppercase;letter-spacing:.05em}
+p{margin:10px 0;color:var(--text)}
+ul,ol{margin:10px 0 10px 20px}
+li{margin:4px 0;color:var(--text-muted)}
+li strong,li b{color:var(--text)}
+code{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:12px;background:rgba(139,92,246,.12);color:var(--accent-bright);padding:1px 5px;border-radius:3px}
+pre{background:var(--bg-code);border:1px solid var(--border);border-radius:8px;padding:14px 18px;overflow-x:auto;margin:12px 0;font-size:12px;line-height:1.5}
+pre code{background:transparent;color:#d4d4e0;padding:0;font-size:12px;font-family:'JetBrains Mono',ui-monospace,monospace}
+table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13px}
+th{text-align:left;padding:8px 10px;background:var(--bg-elev);color:var(--text);font-weight:600;border-bottom:1px solid var(--border);font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+td{padding:7px 10px;border-bottom:1px solid var(--border-soft);color:var(--text-muted);vertical-align:top}
+td strong{color:var(--text)}
+tr:hover td{background:rgba(139,92,246,.04)}
+.callout{margin:16px 0;padding:14px 18px;border-radius:8px;border:1px solid var(--border);border-left:4px solid var(--accent);background:var(--bg-elev);font-size:13px;color:var(--text-muted);line-height:1.5}
+.callout.warn{border-left-color:var(--warn)}
+.callout.crit{border-left-color:var(--hot)}
+.callout.ok{border-left-color:var(--mint)}
+.file-block{background:var(--bg-card);border:1px solid var(--border-soft);border-radius:10px;padding:18px 20px;margin:16px 0}
+.file-header{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.file-icon{font-size:16px}
+.file-path{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:13px;color:var(--cyan);font-weight:600}
+.file-meta{font-size:11px;color:var(--text-dim);margin-left:auto}
+.kw{color:#c084fc}.str{color:#86efac}.num{color:#fbbf24}.com{color:#6b7280;font-style:italic}.fn{color:#60a5fa}.typ{color:#f472b6}
+::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+.arch{background:var(--bg-code);border:1px solid var(--border);border-radius:8px;padding:18px;margin:14px 0;font-family:ui-monospace,monospace;font-size:12px;line-height:1.5;color:var(--text-muted);overflow-x:auto;white-space:pre}
+</style>
+</head>
+<body>
+
+<div class="cover">
+<div class="container">
+<div style="display:inline-flex;align-items:center;gap:8px;padding:4px 12px;background:var(--accent-dim);border:1px solid var(--accent);border-radius:999px;font-size:11px;color:var(--accent-bright);font-weight:600;letter-spacing:.04em;text-transform:uppercase">v2.0.3 · Documentación 100% fiel al código</div>
+<h1>VIRAHUB — Backend Completo</h1>
+<p class="subtitle">Documentación exhaustiva de TODO el backend: 15 archivos server, 15 API routes, 6 hooks, provider, tipos, scraper local. Auditado por 3 agentes independientes y verificado contra el código fuente.</p>
+<div class="cover-meta">
+<div class="cover-meta-item"><div class="label">Archivos server</div><div class="value">15</div></div>
+<div class="cover-meta-item"><div class="label">API routes</div><div class="value">15</div></div>
+<div class="cover-meta-item"><div class="label">Líneas código</div><div class="value">~3,500</div></div>
+<div class="cover-meta-item"><div class="label">Fuentes activas</div><div class="value">7</div></div>
+</div>
+</div>
+</div>
+
+<div class="container">
+
+<!-- ARQUITECTURA -->
+<section id="arch">
+<h2>Arquitectura General</h2>
+<div class="arch">┌─────────────────────────────────────────────────────────────┐
+│                     FUENTES EXTERNAS                         │
+│  Reddit(.rss) · Bluesky(api.bsky.app) · HN(Firebase)        │
+│  RSS(8 feeds) · GDELT(DOC 2.0) · GitHub(Search API)         │
+│  X(xcancel.com profiles) · Local Scraper(Playwright)        │
+└──────────────────────────┬──────────────────────────────────┘
+                           │ RawMention[]
+                           ▼
+┌──────────────────────────────────────────────────────────────┐
+│  FASE 1 — INGEST (lib/server/ingest/)                        │
+│  7 adapters + httpGet helper + runIngestion (paralelo)       │
+│  X adapter: pool dinámico + filtro relevancia + bootstrap    │
+└──────────────────────────┬───────────────────────────────────┘
+                           │ RawMention[]
+                           ▼
+┌──────────────────────────────────────────────────────────────┐
+│  FASE 2 — CORE ENGINE (lib/server/core/store.ts)             │
+│  • publishedAt validation (rechaza futuro >5min / viejo >7d) │
+│  • Dedup: contentHash exacto → MinHash LSH (128perm/32bands) │
+│  • Embeddings: TF-IDF char 3-gram 384-dim (FNV-1a hash)      │
+│  • NER: regex + dict (32 brands, 16 orgs) + rigid veto       │
+│  • Clustering: LSH bucket → Jaccard ≥0.85 → coseno ≥0.55     │
+│  • Time-decay: Weight(t)=e^(-λ·Δt), λ=ln2/6 (half-life 6h)  │
+│  • Velocity: menciones en 15min / 15 (no promedio 1h)        │
+│  • Acceleration: velocity(15min) - velocity(60min)           │
+│  • Score: 30%vel + 25%accel + 15%spread + 8%entropy +        │
+│           10%authorDiv + 7%freshness + 5%trust                │
+│  • Time-decay score: 0 menc en 30min→score≤5, 0 en 60min→0   │
+│  • Gates: ≥50 requiere menc15≥2+src60≥2, ≥70 requiere ratio  │
+│           ≥1.5+src60≥3                                        │
+│  • Source quota: fuente >35% sin social → penaliza score     │
+│  • Anti-gaming: spam(0.4)+bot(0.4)+recycle(0.3)               │
+│  • Shape: accel|rise|flat|decay|wobble (via acceleration)    │
+│  • Phase: forming|rising|peaked|decaying (early detection)   │
+│  • Briefing: extractive (sanitize JSON/MD/HTML) + evidence   │
+│  • GC: clusters <3 menc + 6h idle → eliminados               │
+└──────────────────────────┬───────────────────────────────────┘
+                           │ Cluster[] + Trend[]
+                           ▼
+┌──────────────────────────────────────────────────────────────┐
+│  FASE 3 — GATEWAY (lib/server/streaming/ + app/api/v1/)      │
+│  • SSE bus: ring buffer 1000 eventos, IDs monótonos          │
+│  • 11 tipos de evento SSE + heartbeat 15s                    │
+│  • Last-Event-ID: replay desde ring buffer o resyncRequired  │
+│  • Ingest loop: poll cada 45s dentro de lambda SSE           │
+│  • One-shot ingest: si store vacío en /trends,/engines,/about│
+│  • 15 REST endpoints con Zod + RFC 7807 errors               │
+│  • POST /ingest: acepta menciones de scraper local           │
+└──────────────────────────┬───────────────────────────────────┘
+                           │ REST + SSE
+                           ▼
+┌──────────────────────────────────────────────────────────────┐
+│  FASE 4 — UI ADAPTER (lib/hooks/ + components/provider)      │
+│  • useTrends: REST /trends + SSE trend.upserted + reconcile  │
+│  • useEngines: REST /engines + SSE engine.status_changed     │
+│  • useTrendDetail: REST /trends/:id + /briefing + SSE        │
+│  • useAlerts: REST /alerts (CRUD)                            │
+│  • useSavedTrends: REST /saved (CRUD)                        │
+│  • useSseStats: REST /about bootstrap + SSE scan.tick        │
+│  • VirahubProvider: context con backward-compat string[]     │
+│  • SseClient singleton: 1 conexión, backoff 1s→30s           │
+└──────────────────────────────────────────────────────────────┘</div>
+</section>
+
+<!-- TIPOS -->
+<section id="types">
+<h2>Tipos Compartidos — <code>lib/types.ts</code></h2>
+<p>Source of truth de todos los tipos del sistema. Consumido por backend, API, SSE y frontend.</p>
+
+<h3>Uniones y constantes</h3>
+<table>
+<tr><th>Export</th><th>Kind</th><th>Definición</th></tr>
+<tr><td><code>SourceKey</code></td><td>union</td><td><code>'reddit'|'bluesky'|'hn'|'rss'|'gdelt'|'github'|'x'</code></td></tr>
+<tr><td><code>ALL_SOURCES</code></td><td>const</td><td>Array con las 7 fuentes en orden canónico</td></tr>
+<tr><td><code>EngineHealth</code></td><td>union</td><td><code>'online'|'degraded'|'offline'</code></td></tr>
+<tr><td><code>CircuitState</code></td><td>union</td><td><code>'closed'|'open'|'half_open'</code></td></tr>
+<tr><td><code>Shape</code></td><td>union</td><td><code>'accel'|'rise'|'flat'|'decay'|'wobble'</code></td></tr>
+<tr><td><code>Phase</code></td><td>union</td><td><code>'forming'|'rising'|'peaked'|'decaying'</code></td></tr>
+<tr><td><code>TrendTone</code></td><td>union</td><td><code>'hot'|'cool'|'mint'|'muted'</code></td></tr>
+<tr><td><code>TrendDir</code></td><td>union</td><td><code>'up'|'down'|'flat'</code></td></tr>
+<tr><td><code>RangeKey</code></td><td>union</td><td><code>'1H'|'6H'|'24H'|'7D'</code></td></tr>
+<tr><td><code>EntityType</code></td><td>union</td><td>10 tipos: brand, product, model, url, cve, person, org, location, hashtag, cashtag</td></tr>
+<tr><td><code>AlertCondition</code></td><td>union</td><td>5 condiciones: score_gt, velocity_gt, mentions_gt, phase_is, delta_pct_gt</td></tr>
+<tr><td><code>AlertChannel</code></td><td>union</td><td><code>'toast'|'email'|'webhook'</code></td></tr>
+<tr><td><code>SseEventType</code></td><td>union (11)</td><td>scan.tick, trend.upserted, trend.velocity_spike, trend.phase_changed, engine.status_changed, engine.log_appended, alert.triggered, alert.acknowledged, briefing.generated, report.updated, connection.heartbeat</td></tr>
+</table>
+
+<h3>Interfaces principales</h3>
+
+<div class="file-block">
+<h4>RawMention (post-adapter, pre-dedup)</h4>
+<pre><code><span class="kw">interface</span> <span class="typ">RawMention</span> {
+  contentHash: <span class="typ">string</span>      <span class="com">// FNV-1a 64-bit de texto normalizado</span>
+  source: <span class="typ">SourceKey</span>
+  externalId: <span class="typ">string</span>     <span class="com">// ID nativo de la fuente</span>
+  authorId: <span class="typ">string</span>
+  authorHandle?: <span class="typ">string</span>
+  text: <span class="typ">string</span>
+  language?: <span class="typ">string</span>
+  publishedAt: <span class="typ">string</span>    <span class="com">// ISO UTC</span>
+  url?: <span class="typ">string</span>
+  hasMedia?: <span class="typ">boolean</span>
+  mediaUrls?: <span class="typ">string</span>[]
+  rawPayload: <span class="typ">string</span>    <span class="com">// JSON stringificado del payload upstream</span>
+}</code></pre>
+</div>
+
+<div class="file-block">
+<h4>Cluster (fila de store + campos derivados)</h4>
+<pre><code><span class="kw">interface</span> <span class="typ">Cluster</span> {
+  id: <span class="typ">string</span>                   <span class="com">// 'cl_' + FNV-1a hash determinista</span>
+  signatureHash: <span class="typ">string</span>
+  title: <span class="typ">string</span>                 <span class="com">// extractivo de mención más reciente</span>
+  summary: <span class="typ">string</span>               <span class="com">// misma mención que title (anti-hallucination)</span>
+  primarySource: <span class="typ">SourceKey</span>
+  sources: <span class="typ">SourceKey</span>[]           <span class="com">// todas las fuentes con menciones</span>
+  languages: <span class="typ">string</span>[]
+  entities: <span class="typ">Entity</span>[]             <span class="com">// max 20, dedup por type+value</span>
+  firstSeen: <span class="typ">string</span>             <span class="com">// ISO UTC, mención más antigua</span>
+  lastSeen: <span class="typ">string</span>              <span class="com">// ISO UTC, mención más reciente</span>
+  mentionsCount: <span class="typ">number</span>
+  uniqueAuthors: <span class="typ">number</span>
+  shape: <span class="typ">Shape</span>                 <span class="com">// accel|rise|flat|decay|wobble</span>
+  phase: <span class="typ">Phase</span>                 <span class="com">// forming|rising|peaked|decaying</span>
+  velocity: <span class="typ">number</span>              <span class="com">// menc/min en ventana 15min</span>
+  score: <span class="typ">number</span>                <span class="com">// 0..100, con time-decay</span>
+  originator?: { source: <span class="typ">SourceKey</span>; author: <span class="typ">string</span>; url?: <span class="typ">string</span>; lagSeconds?: <span class="typ">number</span> }
+  trashPenalty: <span class="typ">number</span>         <span class="com">// 0..1</span>
+  isTrending: <span class="typ">boolean</span>
+  sourceCounts: <span class="typ">Record</span>&lt;<span class="typ">SourceKey</span>, <span class="typ">number</span>&gt;
+  history?: { ts: <span class="typ">string</span>; score: <span class="typ">number</span>; mentions: <span class="typ">number</span>; velocity: <span class="typ">number</span> }[]
+}</code></pre>
+</div>
+
+<div class="file-block">
+<h4>Trend (proyección frontend de Cluster — 25 campos)</h4>
+<pre><code><span class="kw">interface</span> <span class="typ">Trend</span> {
+  <span class="com">// Identidad</span>
+  id: <span class="typ">string</span>; title: <span class="typ">string</span>; source: <span class="typ">SourceKey</span>; color: <span class="typ">string</span>
+  <span class="com">// Estado</span>
+  status: <span class="typ">string</span>; tone: <span class="typ">TrendTone</span>; dir: <span class="typ">TrendDir</span>; time: <span class="typ">string</span>; heat: <span class="typ">string</span>
+  <span class="com">// Métricas</span>
+  confidence: <span class="typ">number</span>; mentions: <span class="typ">number</span>; delta: <span class="typ">number</span>; shape: <span class="typ">Shape</span>
+  <span class="com">// IA</span>
+  why: <span class="typ">string</span>; evidence: { label: <span class="typ">string</span>; value: <span class="typ">string</span> }[]; inTimeline?: <span class="typ">boolean</span>
+  <span class="com">// Backend-only (opcionales)</span>
+  phase?: <span class="typ">Phase</span>; velocity?: <span class="typ">number</span>; uniqueAuthors?: <span class="typ">number</span>
+  firstSeen?: <span class="typ">string</span>; lastSeen?: <span class="typ">string</span>; originator?: <span class="typ">Cluster</span>[<span class="str">'originator'</span>]
+  sources?: <span class="typ">SourceKey</span>[]; sourceCounts?: <span class="typ">Record</span>&lt;<span class="typ">SourceKey</span>, <span class="typ">number</span>&gt;
+  tags?: <span class="typ">string</span>[]; hasMedia?: <span class="typ">boolean</span>; history?: {…}[]; trashPenalty?: <span class="typ">number</span>
+}</code></pre>
+</div>
+
+<div class="file-block">
+<h4>AnalysisBriefing</h4>
+<pre><code><span class="kw">interface</span> <span class="typ">AnalysisBriefing</span> {
+  clusterId: <span class="typ">string</span>
+  narrative: <span class="typ">string</span>             <span class="com">// QUÉ pasó + POR QUÉ importa + EVIDENCIA</span>
+  keyPoints: <span class="typ">string</span>[]          <span class="com">// 5 bullets concisos</span>
+  riskFlags: <span class="typ">string</span>[]          <span class="com">// spam, bot, fuente única, desaceleración, etc.</span>
+  confidence: <span class="typ">number</span>           <span class="com">// 0.2..0.95</span>
+  evidenceMentionIds?: <span class="typ">string</span>[] <span class="com">// anti-alucinación: IDs de menciones fuente</span>
+  model: <span class="typ">string</span>                <span class="com">// 'extractive-v1'</span>
+  tokensUsed: <span class="typ">number</span>; latencyMs: <span class="typ">number</span>; rangeKey: <span class="typ">RangeKey</span>; generatedAt: <span class="typ">string</span>
+}</code></pre>
+</div>
+
+<div class="file-block">
+<h4>EngineStatusDTO, AlertRuleDTO, SavedTrendDTO, SseEvent, ApiOk, ApiError</h4>
+<pre><code><span class="kw">interface</span> <span class="typ">EngineStatusDTO</span> {
+  id: <span class="typ">string</span>; source: <span class="typ">SourceKey</span>; name: <span class="typ">string</span>; enabled: <span class="typ">boolean</span>
+  health: <span class="typ">EngineHealth</span>; circuitState: <span class="typ">CircuitState</span>; lastRunAt: <span class="typ">string</span>|<span class="kw">null</span>
+  itemsIngested: <span class="typ">number</span>; itemsTotal: <span class="typ">number</span>; errorsLast24h: <span class="typ">number</span>
+  latencyMs: <span class="typ">number</span>; pending: <span class="typ">number</span>; recentLogs: <span class="typ">EngineLogDTO</span>[]
+}
+<span class="kw">interface</span> <span class="typ">AlertRuleDTO</span> {
+  id: <span class="typ">string</span>; clusterId: <span class="typ">string</span>|<span class="kw">null</span>; label: <span class="typ">string</span>; condition: <span class="typ">AlertCondition</span>
+  threshold: <span class="typ">string</span>; channel: <span class="typ">AlertChannel</span>; armed: <span class="typ">boolean</span>
+  lastFiredAt: <span class="typ">string</span>|<span class="kw">null</span>; cooldownSec: <span class="typ">number</span>; fireCount: <span class="typ">number</span>
+  createdAt: <span class="typ">string</span>; updatedAt: <span class="typ">string</span>
+}
+<span class="kw">interface</span> <span class="typ">SavedTrendDTO</span> {
+  id: <span class="typ">string</span>; clusterId: <span class="typ">string</span>; cluster: <span class="typ">Trend</span>; folder: <span class="typ">string</span>|<span class="kw">null</span>
+  notes: <span class="typ">string</span>|<span class="kw">null</span>; pinned: <span class="typ">boolean</span>; createdAt: <span class="typ">string</span>; updatedAt: <span class="typ">string</span>
+}
+<span class="kw">interface</span> <span class="typ">SseEvent</span>&lt;<span class="typ">T</span>=<span class="kw">unknown</span>&gt; { id: <span class="typ">string</span>; type: <span class="typ">SseEventType</span>; data: <span class="typ">T</span>; ts: <span class="typ">string</span> }
+<span class="kw">interface</span> <span class="typ">ApiOk</span>&lt;<span class="typ">T</span>&gt; { data: <span class="typ">T</span>; meta?: { cursor?: <span class="typ">string</span>|<span class="kw">null</span>; total?: <span class="typ">number</span>; traceId?: <span class="typ">string</span> } }
+<span class="kw">interface</span> <span class="typ">ApiError</span> { error: { type: <span class="typ">string</span>; title: <span class="typ">string</span>; status: <span class="typ">number</span>; detail: <span class="typ">string</span>; instance: <span class="typ">string</span>; traceId: <span class="typ">string</span>; issues?: {path:<span class="typ">string</span>;message:<span class="typ">string</span>}[] } }</code></pre>
+</div>
+</section>
+
+<!-- FASE 1: INGESTA -->
+<section id="fase1">
+<h2>FASE 1 — Ingesta (<code>lib/server/ingest/</code>)</h2>
+
+<div class="file-block">
+<div class="file-header"><span class="file-icon">📄</span><span class="file-path">lib/server/hash.ts</span><span class="file-meta">~44 líneas</span></div>
+<p><strong>Hashing y normalización. Sin dependencias externas.</strong></p>
+<ul>
+<li><code>fnv1a(input: string): string</code> — FNV-1a 32-bit, devuelve 8 hex chars. Usa <code>Math.imul</code> para precisión 32-bit.</li>
+<li><code>fnv1a64(input: string): string</code> — Concatena dos FNV-1a 32-bit con seeds distintos ('a:' y 'b:'). Devuelve 16 hex chars.</li>
+<li><code>normalizeText(text: string): string</code> — Lowercase, strip URLs/handles/hashtags/emojis, collapse whitespace.</li>
+<li><code>cuid(prefix = 'c'): string</code> — ID tipo cuid con timestamp base36 + random + counter.</li>
+</ul>
+</div>
+
+<div class="file-block">
+<div class="file-header"><span class="file-icon">📄</span><span class="file-path">lib/server/logger.ts</span><span class="file-meta">~29 líneas</span></div>
+<p><strong>Logger JSON a stdout. Sin dependencias (pino-shape sin pino).</strong></p>
+<ul>
+<li><code>logger.debug/info/warn/error(msg: string, meta?: Record&lt;string, unknown&gt;): void</code></li>
+<li>Niveles: debug=10, info=20, warn=30, error=40. Filtra por <code>process.env.LOG_LEVEL</code> (default 'info').</li>
+<li>Serializa <code>{ level, time: Date.now(), msg, ...meta }</code> como JSON.</li>
+</ul>
+</div>
+
+<div class="file-block">
+<div class="file-header"><span class="file-icon">📄</span><span class="file-path">lib/server/ingest/types.ts</span><span class="file-meta">~11 líneas</span></div>
+<p><strong>Interfaz Adapter. Separada para evitar dependencias circulares.</strong></p>
+<pre><code><span class="kw">export interface</span> <span class="typ">Adapter</span> {
+  source: <span class="typ">SourceKey</span>
+  <span class="fn">fetch</span>(): <span class="typ">Promise</span>&lt;<span class="typ">RawMention</span>[]&gt;
+}</code></pre>
+</div>
+
+<div class="file-block">
+<div class="file-header"><span class="file-icon">📄</span><span class="file-path">lib/server/ingest/adapters.ts</span><span class="file-meta">~498 líneas · ARCHIVO CRÍTICO</span></div>
+<p><strong>7 adapters con HTTP real + <code>runIngestion</code> paralelo. El archivo más importante de la ingesta.</strong></p>
+
+<h4>httpGet helper (privado)</h4>
+<pre><code><span class="kw">async function</span> <span class="fn">httpGet</span>(url: <span class="typ">string</span>, opts?: { headers?: <span class="typ">Record</span>&lt;<span class="typ">string</span>,<span class="typ">string</span>&gt;; timeoutMs?: <span class="typ">number</span> }): <span class="typ">Promise</span>&lt;<span class="typ">HttpResult</span>&gt;</code></pre>
+<p>Usa <code>fetch</code> con <code>AbortController</code>. UA browser-like (Chrome/121). Returns <code>{ ok, status, body, contentType }</code>.</p>
+
+<h4>Adapters (6 internos + X importado)</h4>
+<table>
+<tr><th>Adapter</th><th>Endpoint</th><th>Filtro</th><th>Datos clave</th></tr>
+<tr><td><strong>RedditAdapter</strong></td><td><code>www.reddit.com/r/{sub}/.rss</code></td><td>2 subreddits/ciclo, 500ms delay, 10 entries/sub</td><td>Atom XML via fast-xml-parser. content stripped a 400 chars.</td></tr>
+<tr><td><strong>BlueskyAdapter</strong></td><td><code>api.bsky.app/searchPosts</code> → fallback <code>public.api.bsky.app/getAuthorFeed</code></td><td>3 URLs en cadena, primer éxito gana</td><td>Maneja {posts:[]} y {feed:[{post:{}}]}</td></tr>
+<tr><td><strong>HNAdapter</strong></td><td><code>hacker-news.firebaseio.com/v0/topstories.json</code> + 12 items paralelo</td><td><strong>score &lt; 10 descartado</strong></td><td>Unix timestamp → ISO</td></tr>
+<tr><td><strong>RSSAdapter</strong></td><td>8 feeds (HN, Ars Technica, Verge, TechCrunch, Wired, Guardian, Feedburner, Reddit blog)</td><td>12 items/feed, paralelo</td><td>Soporta RSS y Atom</td></tr>
+<tr><td><strong>GDELTAdapter</strong></td><td><code>api.gdeltproject.org/api/v2/doc/doc</code></td><td>30 records, sort DateDesc</td><td>Parsea formato YYYYMMDDTHHMMSSZ</td></tr>
+<tr><td><strong>GitHubAdapter</strong></td><td><code>api.github.com/search/repositories</code> (3 queries: topic:llm, topic:agent, topic:ai)</td><td><strong>3 filtros anti-noise:</strong> 1) repo &lt;7d + &lt;100 stars → descarta. 2) pushed &gt;7d → descarta. 3) <strong>starsPerDay &lt; 2 → descarta</strong></td><td>Usa pushed_at (no updated_at). Registra _starsPerDay en rawPayload.</td></tr>
+<tr><td><strong>XAdapter</strong></td><td>Importado de <code>x-adapter.ts</code> (ver abajo)</td><td>—</td><td>—</td></tr>
+</table>
+
+<h4>runIngestion + getAdapterLatency</h4>
+<pre><code><span class="kw">export async function</span> <span class="fn">runIngestion</span>(enabledSources: <span class="typ">SourceKey</span>[]): <span class="typ">Promise</span>&lt;<span class="typ">RawMention</span>[]&gt;
+<span class="kw">export function</span> <span class="fn">getAdapterLatency</span>(source: <span class="typ">SourceKey</span>): <span class="typ">number</span></code></pre>
+<p><code>runIngestion</code> mapea sources → adapters, ejecuta todos en paralelo via <code>Promise.allSettled</code>, mide latencia por adapter (monkey-patch <code>_lastDurationMs</code>), loggea fallos, devuelve <code>RawMention[]</code> concatenado.</p>
+
+<h4>WATCHLIST (local, sombrea la de config/sources.ts)</h4>
+<pre><code>subreddits: [<span class="str">'technology'</span>, <span class="str">'worldnews'</span>, <span class="str">'programming'</span>, <span class="str">'science'</span>, <span class="str">'artificial'</span>]
+bskyQuery: <span class="str">'AI OR crypto OR fusion OR regulation'</span>
+rssFeeds: [8 URLs — HN, Ars, Verge, TechCrunch, Wired, Guardian, Feedburner, Reddit blog]
+githubTopics: [<span class="str">'llm'</span>, <span class="str">'agent'</span>, <span class="str">'crypto-exchange'</span>, <span class="str">'fusion'</span>, <span class="str">'satellite'</span>]
+xQueries: [<span class="str">'AI OR crypto OR fusion'</span>, <span class="str">'regulation OR EU OR chip'</span>]</code></pre>
+</div>
+
+<div class="file-block">
+<div class="file-header"><span class="file-icon">📄</span><span class="file-path">lib/server/ingest/x-adapter.ts</span><span class="file-meta">~323 líneas</span></div>
+<p><strong>X/Twitter scraper reactivo via xcancel.com. Pool dinámico + filtro de relevancia.</strong></p>
+
+<h4>Pool dinámico de cuentas (NO hardcoded)</h4>
+<ul>
+<li><code>seedPool: Map&lt;string, SeedAccount&gt;</code> — TTL 2h, max 30, LRU eviction</li>
+<li><code>addSeedAccount(handle, source, context)</code> — añade cuenta descubierta en Reddit/Bluesky/HN</li>
+<li><code>extractXHandlesFromOtherSources()</code> — escanea menciones buscando <code>/@([A-Za-z0-9_]{3,15})/g</code></li>
+<li><code>cleanSeedPool()</code> — evicta expirados (&gt;2h)</li>
+</ul>
+
+<h4>Filtro de relevancia</h4>
+<pre><code><span class="kw">function</span> <span class="fn">isRelevantTweet</span>(text: <span class="typ">string</span>, activeKeywords: <span class="typ">string</span>[]): <span class="typ">boolean</span></code></pre>
+<p>Un tweet entra SOLO si menciona: (1) un tema activo de las otras 6 fuentes, O (2) keywords del dominio (AI, GPT, OpenAI, crypto, Bitcoin, GPU, Nvidia, regulation, fusion, etc. — 35+ keywords). <strong>Tweets irrelevantes de celebrities se descartan.</strong></p>
+
+<h4>Parser de HTML de xcancel</h4>
+<pre><code><span class="kw">function</span> <span class="fn">parseTweetsFromHtml</span>(html: <span class="typ">string</span>): <span class="typ">RawMention</span>[]</code></pre>
+<p>Dos regex: <code>&lt;div class="tweet-content[^"]*"&gt;([\s\S]*?)&lt;/div&gt;</code> para texto, <code>href="/([^/"]+)/status/(\d+)"</code> para user+id. Empareja en orden, max 8 tweets. Strip HTML tags + decode entities.</p>
+
+<h4>XAdapter.fetch() — flujo completo</h4>
+<ol>
+<li><code>cleanSeedPool()</code> — evicta expirados</li>
+<li><code>extractXHandlesFromOtherSources()</code> — llena pool desde menciones de otras fuentes</li>
+<li><code>getActiveKeywords()</code> — extrae keywords de clusters trending</li>
+<li>Top 3 cuentas del pool dinámico por mentions count</li>
+<li>Si pool vacío → bootstrap mínimo <code>['elonmusk', 'sama']</code> (únicas que xcancel sirve sin JS challenge)</li>
+<li>Fetch paralelo via <code>Promise.allSettled</code></li>
+<li><code>isRelevantTweet()</code> filtra tweets irrelevantes</li>
+<li>Dedup por externalId</li>
+<li>Log con poolSize, accountsScraped, tweetsScraped, tweetsAfterFilter, uniqueAuthors</li>
+</ol>
+</div>
+
+<div class="file-block">
+<div class="file-header"><span class="file-icon">📄</span><span class="file-path">lib/server/config/sources.ts</span><span class="file-meta">~149 líneas</span></div>
+<p><strong>Configuración por fuente: URL, rate limits, circuit breaker, retry, timeout, poll cadence.</strong></p>
+<table>
+<tr><th>Fuente</th><th>Rate/min</th><th>Burst</th><th>Poll</th><th>Circuit</th><th>Auth</th></tr>
+<tr><td>reddit</td><td>60</td><td>10</td><td>60s</td><td>5 fails, 30s cooldown</td><td>—</td></tr>
+<tr><td>bluesky</td><td>120</td><td>15</td><td>45s</td><td>5 fails, 30s</td><td>—</td></tr>
+<tr><td>hn</td><td>120</td><td>20</td><td>60s</td><td>5 fails, 30s</td><td>—</td></tr>
+<tr><td>rss</td><td>90</td><td>15</td><td>120s</td><td>4 fails, 60s</td><td>—</td></tr>
+<tr><td>gdelt</td><td>30</td><td>5</td><td>90s</td><td>4 fails, 60s</td><td>—</td></tr>
+<tr><td>github</td><td>30</td><td>5</td><td>90s</td><td>4 fails, 60s</td><td>GITHUB_TOKEN (opcional)</td></tr>
+<tr><td>x</td><td>30</td><td>5</td><td>60s</td><td>3 fails, 120s</td><td>X_BEARER_TOKEN (no usado en Vercel)</td></tr>
+</table>
+</div>
+
+<div class="file-block">
+<div class="file-header"><span class="file-icon">📄</span><span class="file-path">lib/server/config/resilience.ts</span><span class="file-meta">~194 líneas</span></div>
+<p><strong>TokenBucket + CircuitBreaker + retryWithBackoff. Pure TS, sin dependencias.</strong></p>
+<ul>
+<li><code>TokenBucket(capacity, refillPerSecond)</code> — <code>tryConsume(key, cost): boolean</code>, <code>msUntilAvailable(key, cost): number</code></li>
+<li><code>CircuitBreaker(config)</code> — <code>allow(key): boolean</code>, <code>recordSuccess(key)`, `recordFailure(key)</code>, <code>status(key): 'closed'|'open'|'half_open'</code></li>
+<li><code>retryWithBackoff&lt;T&gt;(fn, config, onAttempt?): Promise&lt;T&gt;</code> — backoff exponencial + jitter ±25%. Retryable statuses: 429, 500, 502, 503, 504</li>
+<li><code>RetryExhaustedError</code> — extends Error con <code>lastStatus</code> y <code>attempts</code></li>
+</ul>
+<div class="callout warn"><strong>Nota:</strong> Estas primitivas existen pero NO son usadas por los adapters actuales (los adapters usan httpGet directo). Están listas para v2.0 local con CloakBrowser.</div>
+</div>
+</section>
+
+<!-- FASE 2: CORE ENGINE -->
+<section id="fase2">
+<h2>FASE 2 — Core Engine (<code>lib/server/core/store.ts</code>)</h2>
+<div class="callout crit"><strong>~949 líneas. El archivo más grande y crítico del sistema.</strong> Contiene TODO el motor de scoring, deduplicación, clustering, NER, embeddings, briefing y GC.</div>
+
+<h3>MinHash LSH (deduplicación rápida)</h3>
+<table>
+<tr><th>Parámetro</th><th>Valor</th><th>Descripción</th></tr>
+<tr><td>NUM_PERM</td><td>128</td><td>Número de funciones hash en la firma MinHash</td></tr>
+<tr><td>BANDS</td><td>32</td><td>Número de bandas LSH</td></tr>
+<tr><td>ROWS</td><td>4</td><td>Filas por banda (BANDS × ROWS = NUM_PERM)</td></tr>
+<tr><td>JACCARD_THRESHOLD</td><td>0.85</td><td>Similitud mínima para considerar duplicados</td></tr>
+</table>
+<pre><code><span class="kw">function</span> <span class="fn">minhashSignature</span>(text: <span class="typ">string</span>): <span class="typ">Uint32Array</span>   <span class="com">// 128 enteros</span>
+<span class="kw">function</span> <span class="fn">lshBands</span>(sig: <span class="typ">Uint32Array</span>): <span class="typ">string</span>[] <span class="com">// 32 bandas hash</span>
+<span class="kw">function</span> <span class="fn">jaccardFromSignatures</span>(a: <span class="typ">Uint32Array</span>, b: <span class="typ">Uint32Array</span>): <span class="typ">number</span></code></pre>
+
+<h3>Embeddings (fallback TF-IDF)</h3>
+<table>
+<tr><th>Parámetro</th><th>Valor</th></tr>
+<tr><td>EMBED_DIM</td><td>384</td></tr>
+<tr><td>NGRAM_SIZE</td><td>3 (char n-grams)</td></tr>
+<tr><td>EMBED_THRESHOLD</td><td>0.55 (coseno)</td></tr>
+</table>
+<pre><code><span class="kw">function</span> <span class="fn">embedText</span>(text: <span class="typ">string</span>): <span class="typ">Float32Array</span>  <span class="com">// 384-dim, L2-normalizado</span>
+<span class="kw">function</span> <span class="fn">cosineSimilarity</span>(a: <span class="typ">Float32Array</span>, b: <span class="typ">Float32Array</span>): <span class="typ">number</span></code></pre>
+<div class="callout">En v2.0 local se reemplaza por Ollama <code>nomic-embed-text</code> (misma interfaz).</div>
+
+<h3>NER + Rigid Veto</h3>
+<pre><code><span class="kw">function</span> <span class="fn">extractEntities</span>(text: <span class="typ">string</span>): <span class="typ">Entity</span>[]
+<span class="kw">function</span> <span class="fn">entitiesRigidVeto</span>(a: <span class="typ">Entity</span>[], b: <span class="typ">Entity</span>[]): <span class="typ">boolean</span></code></pre>
+<p>Regex para: URLs, CVEs, hashtags, cashtags, @mentions, modelos (\b[A-Z]{1,3}\d{2,4}\b). Diccionarios: 32 brands (Apple, Google, OpenAI, Nvidia...), 16 orgs (FBI, EU, NASA, CERN...). Max 30 entidades.</p>
+<p><strong>Rigid Veto:</strong> dos menciones con entidades rígidas conflictivas (brand, product, model, cve, cashtag con valores distintos) NUNCA se agrupan, sin importar la similitud vectorial.</p>
+
+<h3>ClusterStore — métodos públicos</h3>
+<table>
+<tr><th>Método</th><th>Signature</th><th>Descripción</th></tr>
+<tr><td><code>addMention</code></td><td><code>(raw: RawMention) → { isNew, clusterId }</code></td><td>Valida publishedAt, dedup exacto, MinHash LSH, embeddings, NER, clustering. Crea cluster con ID determinista.</td></tr>
+<tr><td><code>getCluster</code></td><td><code>(id: string) → Cluster | undefined</code></td><td>Lookup directo.</td></tr>
+<tr><td><code>getTrending</code></td><td><code>(limit = 20) → Cluster[]</code></td><td>Filtra lastSeen &gt;24h y score &gt;0, ordena por score desc.</td></tr>
+<tr><td><code>getAllClusters</code></td><td><code>(limit = 50) → Cluster[]</code></td><td>Filtra lastSeen &gt;24h, ordena por lastSeen desc.</td></tr>
+<tr><td><code>getClusterMentions</code></td><td><code>(clusterId, limit = 10) → RawMention[]</code></td><td>Menciones ordenadas por recencia.</td></tr>
+<tr><td><code>getClusterHistory</code></td><td><code>(clusterId) → { ts, score, mentions, velocity }[]</code></td><td>Score history (max 120 entries).</td></tr>
+<tr><td><code>totalMentions</code></td><td><code>() → number</code></td><td>—</td></tr>
+<tr><td><code>totalClusters</code></td><td><code>() → number</code></td><td>—</td></tr>
+<tr><td><code>gc</code></td><td><code>(maxAgeMs = 6h) → number</code></td><td>Elimina clusters &lt;3 menciones + 6h idle. Limpia LSH buckets.</td></tr>
+</table>
+
+<h3>Scoring — fórmula completa</h3>
+<div class="callout ok">
+<p><strong>Time-decay:</strong> <code>Weight(t) = e^(-λ·Δt)</code>, λ = ln(2)/6 ≈ 0.1155 por hora. Half-life = 6h. Una mención de hace 24h pesa 6.25% de una nueva.</p>
+<p><strong>Velocity real:</strong> <code>velocity = menciones_últimos_15min / 15</code> (menciones/minuto en ventana 15min)</p>
+<p><strong>Acceleration:</strong> <code>acceleration = velocity(15min) - velocity(60min)</code>. <code>accelerationRatio = velocity(15min) / velocity(60min)</code></p>
+<p><strong>Score ponderado:</strong></p>
+<pre><code>score = (0.30 × velocityScore +      <span class="com">// min(1, velocity/5)</span>
+         0.25 × accelerationScore +   <span class="com">// bucketed por ratio: ≥2→1.0, ≥1→0.5-1.0, ≥0.5→0.2-0.5, &lt;0.5→ratio×0.4</span>
+         0.15 × spreadScore +         <span class="com">// min(1, sourcesRecent60.size / 3)</span>
+         0.08 × entropyScore +        <span class="com">// Shannon entropy de sources en últimos 15min</span>
+         0.10 × authorDiversityScore +<span class="com">// min(1, uniqueAuthors60 / mentionsLast60)</span>
+         0.07 × freshnessScore +      <span class="com">// weightedVolume / mentions.length</span>
+         0.05 × trust                 <span class="com">// avg SOURCE_TRUST per source</span>
+        ) × (1 - trashPenalty) × 100</code></pre>
+<p><strong>Time-decay del score:</strong> 0 menc en 30min → score ≤ 5. 0 menc en 60min → score = 0.</p>
+<p><strong>Gates:</strong> score ≥ 50 requiere menc15 ≥ 2 AND sources60 ≥ 2. Score ≥ 70 requiere accelerationRatio ≥ 1.5 AND sources60 ≥ 3.</p>
+<p><strong>Source quota:</strong> Si fuente dominante &gt;35% sin corroboración social (X/Reddit/Bluesky) → penaliza proporcionalmente.</p>
+<p><strong>Single-mention:</strong> score capado a 15.</p>
+</div>
+
+<h3>Anti-gaming</h3>
+<table>
+<tr><th>Penalty</th><th>Condición</th><th>Valor</th></tr>
+<tr><td>pSpam</td><td>Autor con &gt;14 menciones en 60min</td><td>+0.4</td></tr>
+<tr><td>pBot</td><td>Autor con &gt;50% de menciones en 60min</td><td>+0.4</td></tr>
+<tr><td>pRecycle</td><td>&gt;30% de menciones son &gt;24h viejas</td><td>+0.3</td></tr>
+<tr><td><strong>trashPenalty</strong></td><td><code>min(1, pSpam + pBot + pRecycle)</code></td><td>0..1</td></tr>
+</table>
+
+<h3>Shape + Phase detection</h3>
+<pre><code><span class="kw">function</span> <span class="fn">detectShapeFromAcceleration</span>(acceleration, accelerationRatio, samples): <span class="typ">Shape</span>
+<span class="com">// accel: ratio ≥2 o nuevo cluster con accel &gt;0</span>
+<span class="com">// rise: accel &gt;0.05 AND ratio ≥1.2</span>
+<span class="com">// decay: accel &lt;-0.05 OR ratio &lt;0.5</span>
+<span class="com">// wobble: alta varianza sin accel clara</span>
+<span class="com">// flat: resto</span>
+
+<span class="kw">function</span> <span class="fn">detectPhaseEarly</span>(velocity, acceleration, menc15, menc60, src15, shape, ageHours): <span class="typ">Phase</span>
+<span class="com">// rising: age &lt;2h AND menc15 ≥2 AND accel &gt;0 AND src15 ≥2</span>
+<span class="com">// peaked: velocity &gt;0.3 AND menc60 ≥5 AND shape ≠ decay</span>
+<span class="com">// decaying: shape = decay OR menc15 = 0</span>
+<span class="com">// forming: resto</span></code></pre>
+
+<h3>clusterToTrend — proyección a frontend</h3>
+<pre><code><span class="kw">export function</span> <span class="fn">clusterToTrend</span>(cluster: <span class="typ">Cluster</span>): <span class="typ">Trend</span></code></pre>
+<ul>
+<li><code>delta</code>: rising → +velocity×10, decaying → -velocity×5, peaked → +velocity×2, forming → 0</li>
+<li><code>heat</code>: ≥70 "Muy caliente", ≥50 "Caliente", ≥30 "Templado", else "Enfriándose"</li>
+<li><code>status</code>: Si solo GitHub → "Tendencia técnica · Desarrollo · &lt;fase&gt;". Si GitHub+HN → "Tendencia técnica · &lt;fase&gt;". Else → "&lt;fase label&gt;"</li>
+<li><code>evidence</code>: [Velocidad: N/h, Fuentes: N, Edad: Xmin/Xh]</li>
+<li><code>tags</code>: entidades brand/cashtag/hashtag (max 5)</li>
+</ul>
+
+<h3>generateExtractiveBriefing — anti-alucinación</h3>
+<pre><code><span class="kw">export function</span> <span class="fn">generateExtractiveBriefing</span>(cluster: <span class="typ">Cluster</span>, mentions: <span class="typ">RawMention</span>[]): {
+  narrative: <span class="typ">string</span>; keyPoints: <span class="typ">string</span>[]; riskFlags: <span class="typ">string</span>[]
+  confidence: <span class="typ">number</span>; evidenceMentionIds: <span class="typ">string</span>[]
+}</code></pre>
+<ul>
+<li><strong>sanitize()</strong>: strip ```json codeblocks, backticks, escaped quotes, HTML tags</li>
+<li><strong>Narrativa</strong>: QUÉ pasó + POR QUÉ importa + EVIDENCIA (cita textual verificable)</li>
+<li><strong>evidenceMentionIds</strong>: IDs exactos de menciones fuente para cross-check</li>
+<li><strong>Risk flags</strong>: Spam/bot, Posible bot, Solo GitHub, Velocidad anómala, En desaceleración, Fuente única</li>
+</ul>
+
+<h3>Singleton + ingest</h3>
+<pre><code><span class="kw">export const</span> store = <span class="kw">new</span> <span class="typ">ClusterStore</span>()
+<span class="kw">export function</span> <span class="fn">ingestMentions</span>(mentions: <span class="typ">RawMention</span>[]): <span class="typ">IngestResult</span> <span class="com">// { ingested, newClusters, updatedClusters }</span>
+<span class="kw">export function</span> <span class="fn">startGcLoop</span>(): <span class="kw">void</span> <span class="com">// setInterval cada 5min</span></code></pre>
+</section>
+
+<!-- FASE 3: GATEWAY -->
+<section id="fase3">
+<h2>FASE 3 — Gateway (SSE + REST)</h2>
+
+<div class="file-block">
+<div class="file-header"><span class="file-icon">📄</span><span class="file-path">lib/server/streaming/bus.ts</span><span class="file-meta">~97 líneas</span></div>
+<p><strong>SSE bus in-memory con ring buffer 1000 eventos + IDs monótonos.</strong></p>
+<ul>
+<li><code>sseBus.publish&lt;T&gt;(type, data): SseEvent&lt;T&gt;</code> — asigna ID monótono, push a ring buffer, fan-out a listeners</li>
+<li><code>sseBus.subscribe(listener): () =&gt; void</code> — returns unsubscribe</li>
+<li><code>sseBus.replaySince(lastEventId): { events: SseEvent[]; needsFullResync: boolean }</code> — busca en ring buffer, devuelve eventos posteriores. Si no encuentra → needsFullResync=true</li>
+<li><code>formatSseEvent(event): string</code> — <code>id: X\nevent: TYPE\ndata: JSON\n\n</code></li>
+<li><code>generateEventId(): string</code> — <code>${Date.now()}-${counter}</code></li>
+</ul>
+</div>
+
+<div class="file-block">
+<div class="file-header"><span class="file-icon">📄</span><span class="file-path">lib/server/streaming/loop.ts</span><span class="file-meta">~227 líneas</span></div>
+<p><strong>Ingest loop: poll cada 45s dentro de lambda SSE. One-shot ingest en cold start.</strong></p>
+<ul>
+<li><code>getEngineStates(): EngineRuntimeState[]</code> — estado de los 7 motores</li>
+<li><code>setEngineEnabled(source, enabled)</code> — toggle + publica SSE engine.status_changed</li>
+<li><code>updateEngineStatesFromIngest(mentions, durationMs)</code> — actualiza per-source items, latency, health, tickCount, totalIngested</li>
+<li><code>startIngestLoop()</code> — idempotente, arranca tick() inmediato + setInterval 45s</li>
+<li><code>stopIngestLoop()</code> — clear timer</li>
+<li><code>getIngestStats()</code> — { tickCount, totalIngested, lastIngestAt, lastIngestDurationMs, totalClusters }</li>
+<li><code>generateAndPublishBriefing(clusterId, range)</code> — genera briefing y publica SSE briefing.generated</li>
+</ul>
+<p><strong>tick() flow:</strong> runIngestion → ingestMentions → updateEngineStates → publish scan.tick + trend.upserted + engine.status_changed → scheduleNext(45s)</p>
+</div>
+
+<div class="file-block">
+<div class="file-header"><span class="file-icon">📄</span><span class="file-path">lib/server/api/schemas.ts</span><span class="file-meta">~100 líneas</span></div>
+<p><strong>Zod schemas + RFC 7807 helpers para todos los endpoints.</strong></p>
+<h4>Esquemas Zod</h4>
+<table>
+<tr><th>Schema</th><th>Campos</th></tr>
+<tr><td>ListTrendsQuerySchema</td><td>source?, phase?, minScore?(0-100), q?(≤200), cursor?(regex ^[A-Za-z0-9_-]{1,64}$), limit?(1-100, default 30)</td></tr>
+<tr><td>TrendIdParamsSchema</td><td>id: string(min 1)</td></tr>
+<tr><td>TrendDetailQuerySchema</td><td>range: RangeKey (default '6H')</td></tr>
+<tr><td>BriefingQuerySchema</td><td>range: RangeKey (default '6H'), force: boolean (default false)</td></tr>
+<tr><td>EngineIdParamsSchema</td><td>id: SourceKey</td></tr>
+<tr><td>ToggleEngineBodySchema</td><td>enabled: boolean</td></tr>
+<tr><td>EngineLogsQuerySchema</td><td>limit?(1-200, default 50), level?('info'|'warn'|'error')</td></tr>
+<tr><td>CreateAlertBodySchema</td><td>clusterId?, label(3-80), condition(enum 5), threshold: string, channel?(default 'toast')</td></tr>
+<tr><td>PatchAlertBodySchema</td><td>armed?, cooldownSec?(0-86400)</td></tr>
+<tr><td>SaveTrendBodySchema</td><td>folder?(≤60), notes?(≤2000)</td></tr>
+<tr><td>PinSavedBodySchema</td><td>pinned: boolean</td></tr>
+</table>
+<h4>Helpers</h4>
+<pre><code><span class="fn">apiError</span>(status, title, detail, issues?): NextResponse   <span class="com">// RFC 7807</span>
+<span class="fn">apiOk</span>&lt;<span class="typ">T</span>&gt;(data, meta?): NextResponse                     <span class="com">// { data, meta? }</span>
+<span class="fn">parseZod</span>&lt;<span class="typ">T</span>&gt;(schema, value): { ok:true; value:T } | { ok:false; response: NextResponse }</code></pre>
+</div>
+
+<h3>15 API Routes</h3>
+<table>
+<tr><th>#</th><th>Ruta</th><th>Método</th><th>maxDuration</th><th>Descripción</th></tr>
+<tr><td>1</td><td><code>/api/v1/trends</code></td><td>GET</td><td>30s</td><td>Lista trends con filtros. One-shot ingest si store stale &gt;90s.</td></tr>
+<tr><td>2</td><td><code>/api/v1/trends/:id</code></td><td>GET</td><td>30s</td><td>Detalle de trend + history. One-shot ingest si not found.</td></tr>
+<tr><td>3</td><td><code>/api/v1/trends/:id/briefing</code></td><td>GET</td><td>30s</td><td>Briefing extractivo con evidenceMentionIds. One-shot si not found.</td></tr>
+<tr><td>4</td><td><code>/api/v1/stream</code></td><td>GET (SSE)</td><td>300s</td><td>Stream SSE. Replay via Last-Event-ID. Heartbeat 15s. Snapshot inicial de top 15.</td></tr>
+<tr><td>5</td><td><code>/api/v1/engines</code></td><td>GET</td><td>30s</td><td>Estado de 7 motores. One-shot ingest en cold start.</td></tr>
+<tr><td>6</td><td><code>/api/v1/engines/:id/toggle</code></td><td>POST</td><td>—</td><td>Toggle engine on/off. Valida SourceKey + body Zod.</td></tr>
+<tr><td>7</td><td><code>/api/v1/engines/:id/logs</code></td><td>GET</td><td>—</td><td>Logs sintéticos (placeholder, siempre 1 entry 'Engine running').</td></tr>
+<tr><td>8</td><td><code>/api/v1/alerts</code></td><td>GET, POST</td><td>—</td><td>GET: lista alerts. POST: crea con FK validation contra store.</td></tr>
+<tr><td>9</td><td><code>/api/v1/alerts/:id</code></td><td>PATCH</td><td>—</td><td>Patch armed/cooldownSec. 404 si no existe.</td></tr>
+<tr><td>10</td><td><code>/api/v1/saved</code></td><td>GET</td><td>—</td><td>Lista saved trends, sorted pinned-first then createdAt desc.</td></tr>
+<tr><td>11</td><td><code>/api/v1/saved/:id</code></td><td>POST, DELETE</td><td>30s</td><td>POST: save cluster by id (one-shot ingest si not found). DELETE: por saved-id o clusterId.</td></tr>
+<tr><td>12</td><td><code>/api/v1/saved/:id/pin</code></td><td>POST</td><td>—</td><td>Toggle pinned. Body-first validation (v2.0.1 fix).</td></tr>
+<tr><td>13</td><td><code>/api/v1/reports</code></td><td>GET</td><td>—</td><td>KPIs agregados: clusters, mentions, bySource, byPhase, topScore, avgScore.</td></tr>
+<tr><td>14</td><td><code>/api/v1/system/about</code></td><td>GET</td><td>30s</td><td>Health check: version, uptime, ingest stats, clusters, mentions. One-shot ingest.</td></tr>
+<tr><td>15</td><td><code>/api/v1/ingest</code></td><td>POST</td><td>15s</td><td><strong>Acepta menciones externas del scraper local.</strong> API key requerida. Ingesta + SSE publish.</td></tr>
+</table>
+
+<div class="callout warn"><strong>One-shot ingest pattern:</strong> 7 endpoints tienen su propio flag booleano de one-shot. Si el store está vacío o stale (&gt;90s), disparan un <code>runIngestion(ALL_SOURCES)</code> síncrono antes de responder. Necesario porque Vercel lambdas son stateless.</div>
+</section>
+
+<!-- FASE 4: UI -->
+<section id="fase4">
+<h2>FASE 4 — UI Adapter (Hooks + Provider)</h2>
+
+<div class="file-block">
+<div class="file-header"><span class="file-icon">📄</span><span class="file-path">lib/hooks/use-virahub-api.ts</span><span class="file-meta">~340 líneas</span></div>
+<p><strong>6 hooks que consumen REST + SSE. Reemplazan los setInterval/Math.random mocks.</strong></p>
+
+<h4>SseClient singleton</h4>
+<ul>
+<li>1 conexión EventSource por tab. URL: <code>/api/v1/stream</code> o <code>/api/v1/stream?lastEventId=X</code></li>
+<li>Backoff exponencial: 1s → 2s → 4s → ... → 30s cap. Reset a 1s on open.</li>
+<li>Escucha los 11 tipos de evento SSE. Parsea JSON, sintetiza SseEvent.</li>
+</ul>
+
+<h4>Hooks</h4>
+<table>
+<tr><th>Hook</th><th>REST</th><th>SSE escuchado</th><th>Retorna</th></tr>
+<tr><td><code>useTrends()</code></td><td>GET /trends?limit=30</td><td>trend.upserted (upsert+sort), connection.heartbeat (resyncRequired→refresh)</td><td>{ trends, loading, error, refresh }</td></tr>
+<tr><td><code>useEngines()</code></td><td>GET /engines, POST /engines/:source/toggle</td><td>engine.status_changed (merge por source)</td><td>{ engines, loading, toggle }</td></tr>
+<tr><td><code>useTrendDetail(id)</code></td><td>GET /trends/:id + GET /trends/:id/briefing (paralelo)</td><td>briefing.generated (si clusterId coincide)</td><td>{ trend, briefing, loading }</td></tr>
+<tr><td><code>useAlerts()</code></td><td>GET /alerts, POST /alerts, PATCH /alerts/:id</td><td>—</td><td>{ alerts, loading, create, patch }</td></tr>
+<tr><td><code>useSavedTrends()</code></td><td>GET /saved, POST /saved/:id, POST /saved/:id/pin, DELETE /saved/:id</td><td>—</td><td>{ saved, loading, save, pin, remove }</td></tr>
+<tr><td><code>useSseStats()</code></td><td>GET /system/about (bootstrap)</td><td>scan.tick (step, analyzed, latency), connection.heartbeat (connected)</td><td>{ step, analyzed, latency, connected, lastTickAt }</td></tr>
+</table>
+
+<div class="callout"><strong>Reconciliación:</strong> <code>useTrends</code> hace refresh completo cada 60s para limpiar trends que el servidor GC'd. También escucha <code>resyncRequired</code> en heartbeats para refresh inmediato.</div>
+</div>
+
+<div class="file-block">
+<div class="file-header"><span class="file-icon">📄</span><span class="file-path">components/virahub-provider.tsx</span><span class="file-meta">~327 líneas</span></div>
+<p><strong>Context provider que integra todos los hooks. Backward-compat con screens existentes.</strong></p>
+
+<h4>Ctx — todos los campos del contexto</h4>
+<table>
+<tr><th>Campo</th><th>Tipo</th><th>Origen</th></tr>
+<tr><td>screen / setScreen</td><td>ScreenKey</td><td>useState local</td></tr>
+<tr><td>range / setRange</td><td>RangeKey</td><td>useState local</td></tr>
+<tr><td>selectedId / select</td><td>string / fn</td><td>useState + useCallback</td></tr>
+<tr><td>selected</td><td>Trend</td><td>useMemo: selectedTrend ?? trends.find(id) ?? trends[0] ?? EMPTY_TREND</td></tr>
+<tr><td>selectedBriefing</td><td>AnalysisBriefing | null</td><td>useTrendDetail(selectedId)</td></tr>
+<tr><td>trends</td><td>Trend[]</td><td>useTrends() — fallback [EMPTY_TREND] si vacío</td></tr>
+<tr><td>step, analyzed, latency</td><td>number</td><td>useSseStats()</td></tr>
+<tr><td>clock</td><td>string</td><td>useState + setInterval 10s</td></tr>
+<tr><td>live / setLive</td><td>boolean</td><td>useState (cosmético, no pausa SSE)</td></tr>
+<tr><td>connected</td><td>boolean</td><td>useSseStats()</td></tr>
+<tr><td>engines</td><td>string[] (compat)</td><td>useMemo: engineStatuses.filter(enabled).map(source)</td></tr>
+<tr><td>engineStatuses</td><td>EngineStatusDTO[]</td><td>useEngines()</td></tr>
+<tr><td>toggleEngine</td><td>(id) => Promise</td><td>wrap useEngines().toggle + toast</td></tr>
+<tr><td>saved</td><td>string[] (compat)</td><td>useMemo: savedTrends.map(clusterId)</td></tr>
+<tr><td>savedTrends</td><td>SavedTrendDTO[]</td><td>useSavedTrends()</td></tr>
+<tr><td>toggleSaved, pinSaved, removeSaved</td><td>fn</td><td>wrap useSavedTrends() + toast</td></tr>
+<tr><td>alerts</td><td>string[] (compat)</td><td>useMemo: alertRules.map(clusterId).filter(Boolean)</td></tr>
+<tr><td>alertRules</td><td>AlertRuleDTO[]</td><td>useAlerts()</td></tr>
+<tr><td>toggleAlert, createAlert, patchAlert</td><td>fn</td><td>wrap useAlerts() + toast</td></tr>
+<tr><td>hiddenLanes / toggleLane</td><td>string[] / fn</td><td>useState local</td></tr>
+<tr><td>cardOpen / setCardOpen</td><td>boolean</td><td>useState local</td></tr>
+<tr><td>toast / notify / dismissToast</td><td>string | null / fn</td><td>useState + setTimeout 2.6s auto-clear</td></tr>
+</table>
+
+<h4>EMPTY_TREND (sentinel)</h4>
+<pre><code>{ id: <span class="str">'_empty'</span>, title: <span class="str">'Esperando datos en vivo…'</span>, source: <span class="str">'hn'</span>, color: <span class="str">'var(--muted)'</span>,
+  status: <span class="str">'Conectando con motores'</span>, tone: <span class="str">'muted'</span>, dir: <span class="str">'flat'</span>, time: <span class="str">'—'</span>, heat: <span class="str">'—'</span>,
+  confidence: <span class="num">0</span>, mentions: <span class="num">0</span>, delta: <span class="num">0</span>, shape: <span class="str">'flat'</span>,
+  why: <span class="str">'El pipeline está arrancando. En cuanto los motores completen el primer ciclo de ingesta (≤45s) verás tendencias reales aquí.'</span>,
+  evidence: [], inTimeline: <span class="kw">false</span> }</code></pre>
+</div>
+
+<div class="file-block">
+<div class="file-header"><span class="file-icon">📄</span><span class="file-path">app/page.tsx</span><span class="file-meta">~70 líneas</span></div>
+<p><strong>Router de 7 screens + layout flex.</strong></p>
+<ul>
+<li><code>ScreenRouter()</code> — lee <code>screen</code> del context, renderiza: radar (default), explorar, alertas, guardados, motores, informes, ajustes</li>
+<li>Radar default: <code>&lt;HeroCard /&gt;</code> + <code>&lt;LiveScan /&gt;</code> + <code>&lt;TrendTimeline /&gt;</code></li>
+<li>Layout: <code>h-svh flex flex-col</code> → TopBar fijo + flex-1 → LeftRail fijo + scroll area → ScreenRouter + AnalysisPanel</li>
+<li>Responsive: <code>flex-col</code> default, <code>lg:flex-row</code> en desktop</li>
+</ul>
+</div>
+</section>
+
+<!-- SCRAPER LOCAL -->
+<section id="scraper">
+<h2>Scraper Local de X (<code>scripts/local-x-scraper/</code>)</h2>
+<div class="file-block">
+<div class="file-header"><span class="file-icon">🔧</span><span class="file-path">scripts/local-x-scraper/scraper.js</span><span class="file-meta">~234 líneas · Node.js + Playwright</span></div>
+<p><strong>Arquitectura híbrida: tu PC scrapea X con Playwright (pasa JS challenge), envía tweets a Vercel via POST /api/v1/ingest, aparecen en dashboard en &lt;5s.</strong></p>
+
+<h4>Config (env vars)</h4>
+<pre><code>VERCEL_URL=<span class="str">"https://terminal-de-viralidad.vercel.app"</span>
+VIRAHUB_INGEST_API_KEY=<span class="str">"virahub-local-2025"</span>
+SCRAP_INTERVAL=<span class="str">"60000"</span> <span class="com">// 60s</span></code></pre>
+
+<h4>Flujo</h4>
+<ol>
+<li><code>getReactiveQueries()</code> — lee trends de Vercel (GET /api/v1/trends), extrae keywords de títulos</li>
+<li>Combina con FIXED_QUERIES (5 términos: AI, crypto, OpenAI, GPU, regulation)</li>
+<li><code>searchX(browser, query)</code> — abre Playwright en <code>xcancel.com/search?q=...</code>, espera <code>.tweet-content</code>, extrae tweets via <code>page.evaluate</code></li>
+<li>Dedup por externalId</li>
+<li><code>sendToVercel(tweets)</code> — POST /api/v1/ingest con { apiKey, mentions }</li>
+<li>Resultados aparecen en dashboard via SSE</li>
+</ol>
+
+<h4>Uso</h4>
+<pre><code><span class="kw">cd</span> scripts/local-x-scraper
+npm install && npx playwright install chromium
+node scraper.js           <span class="com"># modo continuo</span>
+node scraper.js --once     <span class="com"># una sola vez</span></code></pre>
+</div>
+</section>
+
+<!-- BUGS CONOCIDOS -->
+<section id="bugs">
+<h2>Bugs Conocidos y Observaciones</h2>
+<div class="callout warn">
+<p><strong>Bug 1:</strong> <code>ingestMentions</code> inicializa <code>newClusters = 0</code> pero nunca lo incrementa. Siempre devuelve 0.</p>
+<p><strong>Bug 2:</strong> <code>getActiveAuthorsAsSeeds()</code> en x-adapter.ts es un no-op (cuerpo vacío, solo comentarios). Siempre devuelve [].</p>
+<p><strong>Bug 3:</strong> <code>WATCHLIST</code> está duplicada en <code>config/sources.ts</code> (6 subreddits) y <code>ingest/adapters.ts</code> (5 subreddits). Los adapters usan la local.</p>
+<p><strong>Bug 4:</strong> <code>scraper.js</code> usa <code>contentHash: '${t.id}'</code> (raw ID, no hash real). Funciona pero rompe el contrato FNV-1a.</p>
+<p><strong>Bug 5:</strong> 5 de 11 eventos SSE no son consumidos por ningún hook específico (velocity_spike, phase_changed, log_appended, alert.triggered, alert.acknowledged, report.updated).</p>
+<p><strong>Bug 6:</strong> <code>live</code> toggle en el provider es cosmético — no pausa SSE ni REST polling.</p>
+<p><strong>Bug 7:</strong> <code>/api/v1/reports</code> traga <code>range</code> inválido silenciosamente (fallback a '6H') en vez de devolver 400.</p>
+<p><strong>Bug 8:</strong> <code>/api/v1/trends</code> declara <code>cursor</code> pero <code>nextCursor</code> siempre es null. Paginación no implementada.</p>
+<p><strong>Bug 9:</strong> <code>/api/v1/engines/:id/logs</code> parsea <code>limit</code> y <code>level</code> pero los ignora — siempre devuelve 1 log sintético.</p>
+<p><strong>Bug 10:</strong> <code>/api/v1/trends/:id</code> parsea <code>range</code> pero no lo usa.</p>
+</div>
+</section>
+
+</div>
+</body>
+</html>
