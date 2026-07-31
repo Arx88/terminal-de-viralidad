@@ -10,6 +10,9 @@ import type { RawMention, SourceKey } from '@/lib/types'
 import { fnv1a64, normalizeText } from '@/lib/server/hash'
 import { logger } from '@/lib/server/logger'
 import { XMLParser } from 'fast-xml-parser'
+import type { Adapter } from '@/lib/server/ingest/types'
+
+export type { Adapter }
 
 // ---------------------------------------------------------------------------
 // HTTP helper
@@ -75,13 +78,7 @@ export const WATCHLIST = {
   xQueries: ['AI OR crypto OR fusion', 'regulation OR EU OR chip'],
 }
 
-// ---------------------------------------------------------------------------
-// Adapter interface
-// ---------------------------------------------------------------------------
-export interface Adapter {
-  source: SourceKey
-  fetch(): Promise<RawMention[]>
-}
+// Adapter interface defined in @/lib/server/ingest/types.ts (avoids circular dep)
 
 // ---------------------------------------------------------------------------
 // Reddit — RSS feed (the ONLY endpoint that works from Vercel IPs)
