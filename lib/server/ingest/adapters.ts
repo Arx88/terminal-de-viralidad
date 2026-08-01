@@ -370,12 +370,12 @@ class GDELTAdapter implements Adapter {
 class GitHubAdapter implements Adapter {
   source: SourceKey = 'github'
   async fetch(): Promise<RawMention[]> {
-    // GitHub NO es fuente primaria de viralidad. Solo contribuimos cuando
-    // hay aceleración EXTREMA de stars (>50 stars/día = viralidad real).
-    // Un repo con push reciente pero pocos stars NO es viralidad — es desarrollo normal.
-    // Esto evita que GitHub inunde el dashboard con ruido de desarrollo.
+    // GitHub NO es fuente primaria de viralidad. SOLO contribuimos cuando
+    // un repo NUEVO (<30 días) tiene >500 stars = viralidad real.
+    // Repos viejos con muchos stars NO son viralidad — son acumulación histórica.
+    // Esto reduce GitHub de 27 items/ciclo a 0-2 items/ciclo.
     const r = await httpGet(
-      `https://api.github.com/search/repositories?q=stars:>2000+pushed:>2025-07-28&sort=stars&order=desc&per_page=5`,
+      `https://api.github.com/search/repositories?q=stars:>500+created:>2025-07-01&sort=stars&order=desc&per_page=5`,
       {
         headers: { Accept: 'application/vnd.github+json' },
         timeoutMs: 8000,
@@ -393,14 +393,16 @@ class GitHubAdapter implements Adapter {
         const pushedAt = String(repo['pushed_at'] ?? '')
         const createdAt = String(repo['created_at'] ?? '')
 
-        // FILTRO EXTREMO: solo repos con >50 stars/día (viralidad real)
+        // FILTRO: solo repos creados en los últimos 30 días
         const createdDate = new Date(createdAt)
         if (isNaN(createdDate.getTime())) continue
-        const daysSinceCreate = Math.max(1, (Date.now() - createdDate.getTime()) / 86400_000)
-        const starsPerDay = stars / daysSinceCreate
-        if (starsPerDay < 50) continue // <50 stars/día = NO es viralidad, es desarrollo normal
+        const daysSinceCreate = (Date.now() - createdDate.getTime()) / 86400_000
+        if (daysSinceCreate > 30) continue
 
-        // Solo repos con push en las últimas 48h
+        // FILTRO: mínimo 500 stars (viralidad real, no repo random)
+        if (stars < 500) continue
+
+        // FILTRO: push en las últimas 48h (activo)
         const pushedDate = new Date(pushedAt)
         if (isNaN(pushedDate.getTime())) continue
         const daysSincePush = (Date.now() - pushedDate.getTime()) / 86400_000
@@ -420,7 +422,7 @@ class GitHubAdapter implements Adapter {
           publishedAt: pushedAt,
           url: String(repo['html_url'] ?? `https://github.com/${full}`),
           hasMedia: false,
-          rawPayload: JSON.stringify({ ...repo, _starsPerDay: starsPerDay }),
+          rawPayload: JSON.stringify({ ...repo, _daysSinceCreate: daysSinceCreate }),
         })
       }
       return out
