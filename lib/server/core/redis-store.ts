@@ -421,18 +421,19 @@ class RedisClusterStore {
     let score = Math.round(safeWeighted * (1 - safePenalty) * 100 * 100) / 100
     if (!Number.isFinite(score)) score = 0
 
-    // Time-decay del score
-    if (m30 === 0) score = Math.min(score, 5)
-    if (m60 === 0) score = 0
-    if (mentions.length === 1) score = Math.min(score, 15)
+    // Time-decay del score — RELAJADO para que el dashboard no se vacíe
+    // Si no hay menciones en 60min → score baja pero no a 0 (mantiene visibility)
+    if (m60 === 0) score = Math.min(score, 10)  // antes era 0 — dashboard se vaciaba
+    if (m30 === 0 && m60 > 0) score = Math.min(score, 25)  // antes era 5
+    if (mentions.length === 1) score = Math.min(score, 20)
 
     // Gates (relajados durante cold start)
-    const gateThreshold = coldStartCycles < 3 ? 30 : 50
-    if (score >= gateThreshold && (m15 < 2 || sourcesRecent60.size < 2)) {
+    const gateThreshold = coldStartCycles < 5 ? 25 : 40
+    if (score >= gateThreshold && m60 < 2) {
       score = Math.min(score, gateThreshold - 1)
     }
-    if (score >= 70 && (effectiveAccelRatio < 1.5 || sourcesRecent60.size < 3)) {
-      score = Math.min(score, 69)
+    if (score >= 60 && (effectiveAccelRatio < 1.2 || sourcesRecent60.size < 2)) {
+      score = Math.min(score, 59)
     }
 
     // Source quota
@@ -478,9 +479,9 @@ class RedisClusterStore {
     })
 
     // Actualizar índices de trending y all
-    if (score > 0) {
-      await rZAdd('clusters:trending', score, clusterId)
-    }
+    // Siempre indexar en trending (incluso score 0) para que el dashboard
+    // muestre todos los clusters activos en las últimas 24h
+    await rZAdd('clusters:trending', score, clusterId)
     await rZAdd('clusters:all', lastSeen, clusterId)
   }
 
@@ -532,7 +533,7 @@ class RedisClusterStore {
     const HOUR_24 = now - 24 * 3600_000
     // Redis sorted set tiene clusterIds ordenados por score
     // Filtramos por lastSeen > 24h y score > 0
-    const allMembers = await rZRangeByScore('clusters:trending', 1, 9999999999999)
+    const allMembers = await rZRangeByScore('clusters:trending', 0, 9999999999999)
     // Reverse para score desc
     const reversed = allMembers.reverse()
     const clusters: Cluster[] = []
@@ -541,7 +542,6 @@ class RedisClusterStore {
       const cluster = await this.getCluster(cid)
       if (!cluster) continue
       if (Date.parse(cluster.lastSeen) < HOUR_24) continue
-      if (cluster.score <= 0) continue
       clusters.push(cluster)
     }
     return clusters
